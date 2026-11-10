@@ -84,7 +84,8 @@ main { flex: 1; padding: var(--islands, 8px) 16px 16px; display: flex; flex-dire
 }
 .stage header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; }
 .stage.off .knob, .stage.off .drop { opacity: .45; }
-#stage-eq { display: grid; grid-template-columns: repeat(3, 1fr); align-content: start; }
+#stage-eq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; }
+.field select { width: 100%; }
 #stage-eq header { grid-column: 1 / -1; }
 .field { display: flex; flex-direction: column; gap: 4px; color: var(--text-dim); font-size: var(--fs-xs); }
 .tag { font-size: var(--fs-xs); color: var(--text-dim); background: var(--panel-2); border-radius: var(--r-chip); padding: 1px 9px; text-transform: capitalize; }
@@ -103,7 +104,9 @@ main { flex: 1; padding: var(--islands, 8px) 16px 16px; display: flex; flex-dire
 
 /* knobs (app.js builds them: role=slider) */
 .knob { display: flex; flex-direction: column; align-items: center; gap: 2px; user-select: none; touch-action: none; outline: none; }
-.knob svg { width: 72px; height: 72px; cursor: ns-resize; }
+/* At most 72 px, and never wider than its column (the EQ's three share one stage). */
+.knob { min-width: 0; }
+.knob svg { width: 72px; max-width: 100%; height: auto; aspect-ratio: 1; cursor: ns-resize; }
 .knob .track { fill: none; stroke: var(--field); stroke-width: 5; stroke-linecap: round; }
 .knob .arc { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; }
 .knob .cap { fill: var(--panel-2); stroke: var(--line-2); }
@@ -162,8 +165,9 @@ dialog p { color: var(--text-dim); }
 .notices { padding-left: 18px; color: var(--text-dim); }
 
 /* ---------------------------------------------------------------- narrower screens */
-@media (max-width: 1180px) {
-  .chain { grid-template-columns: repeat(3, 1fr); }
+/* Six stages in a row need about 1400 px; below that, two rows of three. */
+@media (max-width: 1400px) {
+  .chain { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .stage + .stage::before { display: none; }
 }
 @media (max-width: 720px) {
