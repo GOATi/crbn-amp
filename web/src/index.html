@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-product="rig" data-look="capsule">
+<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,65 +13,60 @@
 <link rel="stylesheet" href="look/fonts/fonts.css">
 <link rel="stylesheet" href="look/themes.css">
 <link rel="stylesheet" href="style.css">
-<!-- The saved look before the first paint, so the page never flashes another. -->
-<script>try { var l = localStorage.getItem('crbn-rig/look'); if (l) document.documentElement.dataset.look = l } catch (e) {}</script>
+<!-- The saved look and drawings before the first paint, so the page never flashes another (look.js keeps them). -->
+<script>
+try {
+  var h = document.documentElement, c = document.cookie.split('; ').filter(function (x) { return x.indexOf('crbn-look=') === 0 })[0]
+  var s = c ? JSON.parse(decodeURIComponent(c.slice(10))) : null
+  var p = s && s.every ? s.prefs : JSON.parse(localStorage.getItem('crbn-rig/prefs') || 'null') || { look: localStorage.getItem('crbn-rig/look') }
+  if (p && /^(capsule|holo|redline|daylight)$/.test(p.look)) h.dataset.look = p.look
+  if (p && p.density === 'compact') h.dataset.density = 'compact'
+  var r = JSON.parse(localStorage.getItem('crbn-rig/rig') || '{}')
+  ;['layout', 'amp', 'meters'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
+} catch (e) {}
+</script>
 <script type="module" src="app.js"></script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <radialGradient id="knob-shine" cx=".36" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".45" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient>
+  <linearGradient id="vu-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".6" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+</defs></svg>
+
 <div class="brand-strip"></div>
 <header class="bar">
   <a class="mark" href="./" aria-label="CRBN Rig, home">
-    <img src="icons/icon-32.png" alt="" width="26" height="26">
+    <!-- Rig's mark (D-RIG-008): the CarbonLinear hex around a stompbox, cherry whatever the finish. -->
+    <svg class="rig-mark" viewBox="-50 -50 100 100" width="28" height="28" aria-hidden="true">
+      <rect class="m-body" x="-19" y="-29" width="38" height="58" rx="6"/>
+      <circle class="m-ink" cx="-8.5" cy="-15.5" r="6.2"/><circle class="m-ink" cx="8.5" cy="-15.5" r="6.2"/>
+      <path class="m-pupil" d="M-8.5,-15.5 L-10.9,-20.2 M8.5,-15.5 L6.1,-20.2"/>
+      <circle class="m-ink" cx="0" cy="-2.5" r="2.4"/>
+      <circle class="m-ring" cx="0" cy="14" r="8.4"/><circle class="m-ink" cx="0" cy="14" r="4.4"/>
+      <path class="m-hex" d="M0,-46 L39.8,-23 L39.8,23 L0,46 L-39.8,23 L-39.8,-23 Z"/>
+    </svg>
     <span class="word"><span class="crbn">CRBN</span><span class="brand-ink">Rig</span></span>
   </a>
   <div class="status" id="status">
     <span class="dot" aria-hidden="true"></span>
     <span id="status-text" role="status">Not playing</span>
-    <button class="btn small" id="stop" hidden>Stop</button>
+    <button class="btn small" id="stop" type="button" hidden>Stop</button>
   </div>
   <nav class="actions" aria-label="Page">
-    <label class="look-pick"><span>Look</span><select id="look"></select></label>
-    <a class="btn ghost" href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Desktop app</a>
+    <button class="btn look-btn" id="look-open" type="button" aria-expanded="false" aria-controls="look-menu">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.3 0 1.8-1 1.3-2-.6-1.2.2-2.5 1.5-2.5H17a4 4 0 0 0 4-4C21 7 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.2" r="1.2"/><circle cx="15" cy="7.6" r="1.2"/></svg>Look
+    </button>
+    <a class="btn ghost" id="desktop-link" href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Desktop app</a>
     <button class="btn ghost" id="about-open" type="button">About</button>
   </nav>
 </header>
 
-<main>
-  <section class="start" id="start" aria-labelledby="start-title">
-    <div>
-      <h1 id="start-title">Plug in. Play.</h1>
-      <p>Your guitar through captures of real pedals, amps and cabinets: <code>.nam</code> captures, like the thousands
-        shared on TONE3000, and <code>.wav</code> cabinet IRs. Everything runs here in your browser.</p>
-    </div>
-    <div class="start-actions">
-      <button class="btn primary" id="play-guitar" type="button">Play my guitar</button>
-      <button class="btn" id="play-demo" type="button" aria-pressed="false">Hear the demo riff</button>
-      <p class="hint">Use headphones. With a laptop's own microphone and speakers, the sound feeds back.</p>
-      <!-- Shown when Pavillion Hub's own view refuses the input (its tool view grants no microphone yet). -->
-      <div class="row" id="hub-help" hidden>
-        <button class="btn" id="hub-open-app" type="button">Open the installed app</button>
-        <button class="btn" id="hub-open-browser" type="button">Open in my browser</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="chain" aria-label="Signal chain">
-    <article class="stage" id="stage-input" aria-labelledby="h-input">
-      <header><h2 id="h-input">Input</h2></header>
-      <label class="field"><span>Device</span>
-        <select id="input-device" disabled><option value="">After you start</option></select>
-      </label>
-      <div class="knob" data-param="inputDB" data-min="-20" data-max="20" data-step="0.1" data-unit="dB" data-label="Level"></div>
-      <div class="meter" id="meter-in" aria-label="Input level"><div class="fill"></div><span class="clip" hidden>CLIP</span></div>
-    </article>
-
-    <article class="stage" id="stage-gate" aria-labelledby="h-gate">
-      <header><h2 id="h-gate">Gate</h2><label class="switch"><input type="checkbox" data-param="gateOn" aria-label="Gate on"><span></span></label></header>
-      <div class="knob" data-param="gateThresholdDB" data-min="-100" data-max="0" data-step="0.1" data-unit="dB" data-label="Threshold"></div>
-    </article>
-
-    <article class="stage wide" id="stage-capture" aria-labelledby="h-capture">
-      <header><h2 id="h-capture">Capture</h2><span class="tag" id="capture-kind" hidden></span></header>
+<main class="rig-page">
+  <section class="isl files" aria-labelledby="files-title">
+    <h2 id="files-title">Your captures</h2>
+    <p class="hint">Drop a <code>.nam</code> capture or a <code>.wav</code> cabinet IR anywhere on the page.</p>
+    <article class="slot" aria-labelledby="h-capture">
+      <header><h3 id="h-capture">Capture</h3><span class="tag" id="capture-kind" hidden></span></header>
       <div class="drop" id="capture-drop" data-slot="capture" tabindex="-1">
         <div class="empty">
           <p><strong>Drop a <code>.nam</code> capture</strong><br>of a pedal, an amp or a whole rig</p>
@@ -88,19 +83,9 @@
         </div>
         <input type="file" accept=".nam" hidden data-input="capture">
       </div>
-      <div class="knob" id="slim" data-param="slim" data-min="0" data-max="1" data-step="0.01" data-unit="" data-label="Size" hidden></div>
-      <a class="out-link" href="https://www.tone3000.com" target="_blank" rel="noopener">Find captures on TONE3000 &#8599;</a>
     </article>
-
-    <article class="stage" id="stage-eq" aria-labelledby="h-eq">
-      <header><h2 id="h-eq">EQ</h2><label class="switch"><input type="checkbox" data-param="eqOn" aria-label="EQ on"><span></span></label></header>
-      <div class="knob" data-param="bass" data-min="0" data-max="10" data-step="0.1" data-label="Bass"></div>
-      <div class="knob" data-param="middle" data-min="0" data-max="10" data-step="0.1" data-label="Middle"></div>
-      <div class="knob" data-param="treble" data-min="0" data-max="10" data-step="0.1" data-label="Treble"></div>
-    </article>
-
-    <article class="stage" id="stage-ir" aria-labelledby="h-ir">
-      <header><h2 id="h-ir">Cabinet</h2><label class="switch"><input type="checkbox" data-param="irOn" aria-label="Cabinet IR on"><span></span></label></header>
+    <article class="slot" aria-labelledby="h-ir">
+      <header><h3 id="h-ir">Cabinet IR</h3></header>
       <div class="drop" id="ir-drop" data-slot="ir" tabindex="-1">
         <div class="empty">
           <p><strong>Drop a <code>.wav</code> IR</strong><br>for a speaker cabinet</p>
@@ -116,24 +101,96 @@
         </div>
         <input type="file" accept=".wav,audio/wav" hidden data-input="ir">
       </div>
-      <a class="out-link" href="https://www.tone3000.com" target="_blank" rel="noopener">Find IRs on TONE3000 &#8599;</a>
     </article>
+    <a class="out-link" href="https://www.tone3000.com" target="_blank" rel="noopener">Find captures and IRs on TONE3000 &#8599;</a>
+  </section>
 
-    <article class="stage" id="stage-output" aria-labelledby="h-output">
-      <header><h2 id="h-output">Output</h2></header>
-      <div class="knob" data-param="outputDB" data-min="-40" data-max="40" data-step="0.1" data-unit="dB" data-label="Level"></div>
-      <div class="segmented" role="radiogroup" aria-label="Output level mode" data-param="outputMode">
-        <button type="button" role="radio" data-value="0" title="No adjustment">Raw</button>
-        <button type="button" role="radio" data-value="1" title="Every capture at about the same loudness">Normalized</button>
-        <button type="button" role="radio" data-value="2" title="Match the capture's analogue calibration">Calibrated</button>
+  <section class="isl rig" aria-label="The rig">
+    <div class="start" id="start" aria-labelledby="start-title">
+      <div class="start-words">
+        <h1 id="start-title">Plug in. Play.</h1>
+        <p>Your guitar through captures of real pedals, amps and cabinets: <code>.nam</code> captures, like the thousands
+          shared on TONE3000, and <code>.wav</code> cabinet IRs. Everything runs here in your browser.</p>
       </div>
-      <div class="meter" id="meter-out" aria-label="Output level"><div class="fill"></div><span class="clip" hidden>CLIP</span></div>
+      <div class="start-actions">
+        <div class="row">
+          <button class="btn primary" id="play-guitar" type="button">Play my guitar</button>
+          <button class="btn" id="play-demo" type="button" aria-pressed="false">Hear the demo riff</button>
+        </div>
+        <p class="hint">Use headphones. With a laptop's own microphone and speakers, the sound feeds back.</p>
+        <!-- Shown when Pavillion Hub's own view refuses the input (its tool view grants no microphone yet). -->
+        <div class="row" id="hub-help" hidden>
+          <button class="btn" id="hub-open-app" type="button">Open the installed app</button>
+          <button class="btn" id="hub-open-browser" type="button">Open in my browser</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chain">
+      <div class="meter" id="meter-in" data-label="In" aria-label="Input level"></div>
+
+      <div class="amp" id="amp" data-slot="capture" aria-labelledby="amp-logo">
+        <div class="amp-front">
+          <div class="amp-band">
+            <span class="sec">Amp</span>
+            <span class="amp-band-name" id="amp-band-name"></span>
+            <ul class="chips" id="amp-chips"></ul>
+          </div>
+          <div class="amp-plate">
+            <span class="jewel" id="jewel" aria-hidden="true"><i></i><b>Pilot</b><small id="jewel-state">Off</small></span>
+            <div class="knobs">
+              <div class="knob" data-param="inputDB" data-min="-20" data-max="20" data-step="0.1" data-unit="dB" data-label="Input" data-aria="Input level"></div>
+              <div class="knob" data-param="gateThresholdDB" data-min="-100" data-max="0" data-step="0.1" data-unit="dB" data-label="Gate" data-aria="Gate threshold"></div>
+              <div class="knob" data-param="bass" data-min="0" data-max="10" data-step="0.1" data-label="Bass"></div>
+              <div class="knob" data-param="middle" data-min="0" data-max="10" data-step="0.1" data-label="Middle"></div>
+              <div class="knob" data-param="treble" data-min="0" data-max="10" data-step="0.1" data-label="Treble"></div>
+              <div class="knob" data-param="outputDB" data-min="-40" data-max="40" data-step="0.1" data-unit="dB" data-label="Output" data-aria="Output level"></div>
+              <div class="knob" id="slim" data-param="slim" data-min="0" data-max="1" data-step="0.01" data-unit="" data-label="Size" data-aria="Capture size" hidden></div>
+            </div>
+            <div class="toggles">
+              <label class="toggle"><input type="checkbox" data-param="gateOn"><span class="tg" aria-hidden="true"></span><b>Gate</b><small class="tg-state"></small></label>
+              <label class="toggle"><input type="checkbox" data-param="eqOn"><span class="tg" aria-hidden="true"></span><b>EQ</b><small class="tg-state"></small></label>
+            </div>
+          </div>
+          <div class="amp-grille">
+            <span class="amp-logo" id="amp-logo">No capture</span>
+            <span class="amp-sub" id="amp-sub">Drop a .nam capture here</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cab" id="cab" data-slot="ir" aria-labelledby="cab-name">
+        <div class="cab-front">
+          <div class="cab-grille" aria-hidden="true"><i></i><i></i></div>
+          <div class="cab-plate">
+            <span class="sec">Cabinet IR</span>
+            <b id="cab-name">No IR</b>
+            <small id="cab-meta">Drop a .wav here</small>
+            <label class="toggle"><input type="checkbox" data-param="irOn" aria-label="Cabinet IR on"><span class="tg" aria-hidden="true"></span><b>IR</b><small class="tg-state"></small></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="meter" id="meter-out" data-label="Out" aria-label="Output level"></div>
+    </div>
+
+    <div class="setup">
+      <label class="field"><span>Input</span>
+        <select id="input-device" disabled><option value="">After you start</option></select>
+      </label>
+      <div class="field"><span>Output level</span>
+        <div class="segmented" role="radiogroup" aria-label="Output level mode" data-param="outputMode">
+          <button type="button" role="radio" data-value="0" title="No adjustment">Raw</button>
+          <button type="button" role="radio" data-value="1" title="Every capture at about the same loudness">Normalized</button>
+          <button type="button" role="radio" data-value="2" title="Match the capture's analogue calibration">Calibrated</button>
+        </div>
+      </div>
       <details class="calibration">
         <summary>Calibration</summary>
         <label class="check"><input type="checkbox" data-param="calibrateInput"> Calibrate the input to the capture</label>
         <div class="knob" data-param="inputCalibrationDBu" data-min="-60" data-max="60" data-step="0.1" data-unit="dBu" data-label="Interface level at 0 dBFS"></div>
       </details>
-    </article>
+    </div>
   </section>
 </main>
 
@@ -143,6 +200,58 @@
   <span>Captures and IRs belong to their authors</span>
   <button class="linkish" type="button" id="about-open-2">Notices</button>
 </footer>
+
+<!-- The look menu (Livewire's, D-SOUND-003 (b)), with Rig's own section: its finish and its drawings (D-RIG-008). -->
+<div class="look-menu" id="look-menu" role="dialog" aria-labelledby="lm-title" hidden>
+  <header class="lm-head"><h2 id="lm-title">Look</h2><button class="btn small ghost" id="look-close" type="button">Close</button></header>
+  <div class="lm-looks" id="lm-looks" role="group" aria-label="Look"></div>
+
+  <section class="lm-sec" aria-labelledby="lm-finish-h">
+    <h3 id="lm-finish-h">Rig’s finish</h3>
+    <div class="lm-chips" id="lm-finish" role="group" aria-label="Finish"></div>
+    <p class="lm-note" id="lm-finish-note" hidden></p>
+    <div class="custom" id="lm-custom" hidden>
+      <div class="wheel" id="wheel" aria-hidden="true"><canvas id="wheel-canvas" width="150" height="150"></canvas><i class="wheel-dim" id="wheel-dim"></i><i class="wheel-mark" id="wheel-mark"></i></div>
+      <div class="custom-controls">
+        <label class="tune"><span>Hue</span><input type="range" id="cu-h" min="0" max="360" step="1"><output id="cu-ho"></output></label>
+        <label class="tune"><span>Saturation</span><input type="range" id="cu-s" min="0" max="100" step="1"><output id="cu-so"></output></label>
+        <label class="tune"><span>Brightness</span><input type="range" id="cu-v" min="0" max="100" step="1"><output id="cu-vo"></output></label>
+        <label class="tune"><span>Hex</span><input type="text" id="cu-hex" maxlength="7" spellcheck="false" autocomplete="off"></label>
+      </div>
+      <div class="readouts" id="cu-read" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="lm-sec" aria-labelledby="lm-draw-h">
+    <h3 id="lm-draw-h">Rig’s drawing</h3>
+    <div class="lm-row"><span id="lm-layout-l">Layout</span><div class="segmented" data-rig="layout" role="radiogroup" aria-labelledby="lm-layout-l">
+      <button type="button" role="radio" data-value="b">Amp front</button><button type="button" role="radio" data-value="a">Signal chain</button><button type="button" role="radio" data-value="c">Captures first</button></div></div>
+    <div class="lm-row"><span id="lm-amp-l">Amp</span><div class="segmented" data-rig="amp" role="radiogroup" aria-labelledby="lm-amp-l">
+      <button type="button" role="radio" data-value="b">Faceplate</button><button type="button" role="radio" data-value="a">Islands</button><button type="button" role="radio" data-value="c">Stripe</button></div></div>
+    <div class="lm-row"><span id="lm-meters-l">Meters</span><div class="segmented" data-rig="meters" role="radiogroup" aria-labelledby="lm-meters-l">
+      <button type="button" role="radio" data-value="b">LED</button><button type="button" role="radio" data-value="a">Bars</button><button type="button" role="radio" data-value="c">VU</button></div></div>
+  </section>
+
+  <section class="lm-sec" aria-labelledby="lm-fonts-h">
+    <h3 id="lm-fonts-h">Fonts</h3>
+    <label class="lm-row"><span>Headings</span><select id="lm-display"></select></label>
+    <label class="lm-row"><span>Interface</span><select id="lm-ui"></select></label>
+    <label class="lm-row"><span>Numbers</span><select id="lm-mono"></select></label>
+  </section>
+
+  <section class="lm-sec" aria-labelledby="lm-accent-h">
+    <h3 id="lm-accent-h">Accent</h3>
+    <div class="lm-chips" id="lm-accent" role="group" aria-label="Accent"></div>
+  </section>
+
+  <section class="lm-sec">
+    <div class="lm-row"><span id="lm-density-l">Density</span><div class="segmented" id="lm-density" role="radiogroup" aria-labelledby="lm-density-l">
+      <button type="button" role="radio" data-value="compact">Compact</button><button type="button" role="radio" data-value="comfortable">Comfortable</button></div></div>
+    <label class="toggle suite"><input type="checkbox" id="lm-suite"><span class="tg" aria-hidden="true"></span><b>Use this look in every CRBN app</b></label>
+    <p class="lm-note" id="lm-suite-note"></p>
+    <button class="linkish" id="lm-reset" type="button">Reset to Rig’s defaults</button>
+  </section>
+</div>
 
 <div class="toast" id="toast" role="alert" hidden></div>
 

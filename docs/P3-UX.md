@@ -47,9 +47,13 @@ features in the web page first and moving the desktop later would build them twi
 
 A tuner, recording a take, and presets shared between people are good next steps, not in this pass.
 
-## Open choices for the owner (the next session asks these in the picker first)
+## The owner's choices (D-RIG-008 (e), 2026-11-11)
 
-1. **The desktop move early (U2), or the web page first?** The recommendation is early, so nothing is built twice.
-2. **The squeal guard's default:** on, with one click to come back (recommended), or off until a person turns it on.
-3. **How many pads, and which keys:** 1 to 0 (ten pads, recommended), or a full QWERTY row for more.
-4. **MIDI in the browser:** worth the second Hub permission ask (Web MIDI in the tool view), or MIDI on the desktop only.
+1. **The desktop moves early:** U2 comes right after the look, before U1's power switch and guard, so each feature is
+   built once for both.
+2. **The squeal guard is on out of the box,** with one click (or Space) to come back.
+3. **Ten favourites on keys 1 to 0;** Q, W and E for a rig's variants; arrows for next and previous.
+4. **Still open: MIDI in the browser** (a second Hub permission ask for Web MIDI), decided with U6.
+
+Each feature is drawn as the owner picked in the Rig Lab (D-RIG-008 (d)), with the other two drawings a player's
+choice: power B (pilot lamp and toggles), pedals B (stompboxes), library A (list), favourites A (footswitches).

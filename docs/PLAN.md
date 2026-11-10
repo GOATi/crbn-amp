@@ -26,6 +26,12 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-005): the owner's lab picks (D-RIG-008), built in the web version: the stompbox mark and its
+  app icon (`packaging/icons/icon.svg`, rendered into the .ico and the web icons); the Amp front layout, the faceplate
+  and LED meters by default, the other drawings in the look menu; the finishes (the look's own, cherry, gold, rose gold
+  `#f29077`, Custom with a colour wheel); Livewire's look menu with fonts, accent, density and the suite switch
+  (D-CRBN-024's `crbn-look` cookie). `web/check.mjs` 17/17. Next: U2, the desktop on this page.
+
 - 2026-11-11 (SYNC:RIG-004): the logo and UI pass (D-RIG-007). The Rig Lab
   (https://claude.ai/artifact/4fhxsEhpxxczgnWoAYR89v, source `docs/design/2026-11-10-rig-lab/lab.html`): three marks,
   the finishes (cherry, gold, rose gold) and how far they reach, and seven areas of Rig's own page around P3's features,

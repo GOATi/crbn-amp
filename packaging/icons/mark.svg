@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100" width="100" height="100">
+  <!-- CRBN Rig's mark (crbn-launcher D-RIG-008), alone: the CarbonLinear hex around a stompbox in Rig's cherry #d92b52
+       with white ink, its two knobs eyes (their pointers the pupils) and its footswitch a mouth. In the app the hex takes
+       the look's text colour (#f4f1f6 here, Capsule's); the cherry and the ink never change, whatever finish a person
+       picks (D-RIG-008 (c)). Drawn as the suite draws Livewire's cube, Mixtape's cassette and Console's VU meter. -->
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-19" y="-29" width="38" height="58" rx="6" fill="#d92b52"/>
+    <circle cx="-8.5" cy="-15.5" r="6.2" fill="#ffffff"/>
+    <circle cx="8.5" cy="-15.5" r="6.2" fill="#ffffff"/>
+    <path d="M-8.5,-15.5 L-10.9,-20.2 M8.5,-15.5 L6.1,-20.2" fill="none" stroke="#d92b52" stroke-width="2.6"/>
+    <circle cx="0" cy="-2.5" r="2.4" fill="#ffffff"/>
+    <circle cx="0" cy="14" r="8.4" fill="none" stroke="#ffffff" stroke-width="2.6"/>
+    <circle cx="0" cy="14" r="4.4" fill="#ffffff"/>
+    <path d="M0,-46 L39.8,-23 L39.8,23 L0,46 L-39.8,23 L-39.8,-23 Z" fill="none" stroke="#f4f1f6" stroke-width="5"/>
+  </g>
+</svg>

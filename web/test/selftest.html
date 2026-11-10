@@ -30,7 +30,14 @@ try {
   check('the brand strip is cherry #d92b52', strip === 'rgb(217, 43, 82)', strip)
   const accent = win.getComputedStyle(html).getPropertyValue('--accent').trim()
   check('cherry is the accent in Capsule', accent.toLowerCase() === '#d92b52', accent)
-  check('six stages in the chain', doc.querySelectorAll('.stage').length === 6, doc.querySelectorAll('.stage').length)
+  // The owner's picks (D-RIG-008): the Amp front layout, the faceplate and LED meters by default, the stompbox mark.
+  check('the rig: two meters, the amp and the cabinet', doc.querySelectorAll('.chain > .meter').length === 2 && doc.querySelector('.chain > .amp') && doc.querySelector('.chain > .cab'), doc.querySelectorAll('.chain > *').length)
+  check('the picked drawings by default', html.dataset.layout === 'b' && html.dataset.amp === 'b' && html.dataset.meters === 'b', `${html.dataset.layout}/${html.dataset.amp}/${html.dataset.meters}`)
+  const plate = win.getComputedStyle(doc.querySelector('.knob .k-plate')).display, ladder = win.getComputedStyle(doc.querySelector('#meter-out .m-led')).display
+  check('pointer knobs on the faceplate and an LED ladder', plate !== 'none' && ladder === 'flex', `${plate}/${ladder}`)
+  check('the mark is the stompbox in cherry', win.getComputedStyle(doc.querySelector('.rig-mark .m-body')).fill === 'rgb(217, 43, 82)', win.getComputedStyle(doc.querySelector('.rig-mark .m-body')).fill)
+  check('the look menu offers the four finishes and Custom', doc.querySelectorAll('#lm-finish [data-finish]').length === 5, doc.querySelectorAll('#lm-finish [data-finish]').length)
+  check('the amp shows the capture', doc.getElementById('amp-logo').textContent.trim() === 'Example capture', doc.getElementById('amp-logo').textContent)
   check('the eight knobs are sliders', doc.querySelectorAll('.knob[role="slider"]').length === 8, doc.querySelectorAll('.knob[role="slider"]').length)
   check('the example capture is shown', doc.getElementById('capture-name').textContent.trim().length > 0, doc.getElementById('capture-name').textContent)
   await doc.fonts.ready

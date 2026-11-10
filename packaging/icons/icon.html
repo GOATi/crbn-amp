@@ -1,8 +1,7 @@
 <!doctype html>
-<!-- CRBN Rig's PLACEHOLDER app icon (D-CRBN-002 (d), D-CRBN-021): the CRBN placeholder tile (crbn-pdf
-     assets/app-icon/pdfcraft.svg's geometry on a 512 grid) in Rig's deeper cherry #d92b52, with the word in the
-     suite's Poppins 700. Replace with the owner's final artwork. render.mjs serves this page on loopback to headless
-     Edge, which POSTs the PNGs it draws back to /result. -->
+<!-- Draws CRBN Rig's app icon (icon.svg beside this page; crbn-launcher D-RIG-008: the stompbox mark on a dark tile) at
+     every size the builds take. render.mjs serves this page on loopback to headless Edge, which POSTs the PNGs it draws
+     back to /result. -->
 <meta charset="utf-8">
 <title>CRBN Rig icon</title>
 <body style="margin:0;background:#000">
@@ -13,28 +12,15 @@
 </script>
 <script type="module">
 const SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 180, 192, 256, 512]
-const BRAND = ['#ec5878', '#d92b52', '#c52247', '#ad1a3d'] // lighter, the brand, darker, darkest (Press's ramp, in cherry)
-const INK = '#111'
 
-const font = new FontFace('Poppins', 'url(../../web/src/look/fonts/poppins-700.woff2)', { weight: '700' })
-document.fonts.add(await font.load())
-
-function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); g.fill() }
-
-function master() {
-  const c = new OffscreenCanvas(512, 512)
-  const g = c.getContext('2d')
-  const grad = () => { const r = g.createRadialGradient(138, 118, 0, 138, 118, 450); [0, 0.35, 0.7, 1].forEach((o, i) => r.addColorStop(o, BRAND[i])); return r }
-  g.fillStyle = grad(); rr(g, 0, 0, 512, 512, 112)
-  g.fillStyle = INK; g.beginPath(); g.arc(132, 170, 80, 0, 2 * Math.PI); g.fill()
-  g.fillStyle = grad(); g.beginPath(); g.arc(132, 170, 37, 0, 2 * Math.PI); g.fill()
-  g.fillStyle = INK
-  rr(g, 232, 90, 80, 160, 40)
-  rr(g, 328, 90, 80, 160, 40)
-  rr(g, 52, 294, 408, 34, 17)
-  // The word sits where Press's "PDF" does: centred on x 256, baseline 420, caps 55 px tall.
-  g.font = '700 79px Poppins'; g.textAlign = 'center'; g.textBaseline = 'alphabetic'
-  g.fillText('RIG', 256, 420)
+// The SVG drawn once at 1024, so every size is a clean downscale of it.
+async function master() {
+  const svg = await (await fetch('icon.svg')).text()
+  const img = new Image()
+  img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+  await img.decode()
+  const c = new OffscreenCanvas(1024, 1024)
+  c.getContext('2d').drawImage(img, 0, 0, 1024, 1024)
   return c
 }
 
@@ -51,7 +37,7 @@ function scaled(src, size) {
   return n
 }
 
-const big = master()
+const big = await master()
 const out = {}
 for (const s of SIZES) {
   const blob = await scaled(big, s).convertToBlob({ type: 'image/png' })

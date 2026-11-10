@@ -1,4 +1,4 @@
-// Renders CRBN Rig's placeholder icon (icon.html) with headless Edge and writes it where the builds take it:
+// Renders CRBN Rig's app icon (icon.svg, drawn by icon.html; D-RIG-008) with headless Edge and writes it where the builds take it:
 //   NeuralAmpModeler/resources/NeuralAmpModeler.ico   the Windows app icon (16..256, PNG entries)
 //   web/src/icons/icon-{32,180,192,512}.png            the web version's favicon, touch and manifest icons
 //   dist/icons/icon-<size>.png                         every size, for the Hub pictures (gitignored)
@@ -14,7 +14,7 @@ const root = resolve(import.meta.dirname, '..', '..')
 
 // Edge will not run a module script from file://, and on Windows its --dump-dom prints nothing we can read, so the page
 // is served from the repo on loopback for the one run and POSTs what it drew back to /result.
-const TYPES = { '.html': 'text/html', '.woff2': 'font/woff2', '.js': 'text/javascript' }
+const TYPES = { '.html': 'text/html', '.woff2': 'font/woff2', '.js': 'text/javascript', '.svg': 'image/svg+xml' }
 let deliver
 const result = new Promise((ok, fail) => { deliver = ok; setTimeout(() => fail(new Error('icon.html sent nothing in 60 s')), 60000).unref() })
 const server = createServer((req, res) => {

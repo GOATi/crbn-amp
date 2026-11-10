@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- CRBN Rig's app icon (crbn-launcher D-RIG-008): its mark on a dark tile, as Console's is (D-SOUND-005 (b)). The
+       mark is the CarbonLinear hex around a stompbox in cherry #d92b52, its knobs eyes and its footswitch a mouth.
+       mark.svg beside this file is the mark alone. `node packaging/icons/render.mjs` draws every PNG and the .ico from
+       this file. -->
+  <defs>
+    <radialGradient id="tile" cx="150" cy="110" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26222c"/><stop offset=".55" stop-color="#131116"/><stop offset="1" stop-color="#0b0a0c"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="8"/>
+  <g transform="translate(256 256) scale(4.5)" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-19" y="-29" width="38" height="58" rx="6" fill="#d92b52"/>
+    <circle cx="-8.5" cy="-15.5" r="6.2" fill="#ffffff"/>
+    <circle cx="8.5" cy="-15.5" r="6.2" fill="#ffffff"/>
+    <path d="M-8.5,-15.5 L-10.9,-20.2 M8.5,-15.5 L6.1,-20.2" fill="none" stroke="#d92b52" stroke-width="2.6"/>
+    <circle cx="0" cy="-2.5" r="2.4" fill="#ffffff"/>
+    <circle cx="0" cy="14" r="8.4" fill="none" stroke="#ffffff" stroke-width="2.6"/>
+    <circle cx="0" cy="14" r="4.4" fill="#ffffff"/>
+    <path d="M0,-46 L39.8,-23 L39.8,23 L0,46 L-39.8,23 L-39.8,-23 Z" fill="none" stroke="#f4f1f6" stroke-width="5.5"/>
+  </g>
+</svg>
