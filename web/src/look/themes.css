@@ -48,10 +48,15 @@
    Redline keeps forge orange in every product (its block below sets --accent; these rules leave Redline out). The
    user's own accent is set inline on <html> by the app's prefs and wins over both. */
 :root[data-product='mixtape']:not([data-look='redline']) { --accent: #c8ff3d; --accent-ink: #15200a; }
-:root[data-product='console']:not([data-look='redline']) { --accent: #ffb340; --accent-ink: #241600; }
+/* Console's VU amber is 4.9 ΔE (OKLab) from the DAW's own Touch-automation colour, 6.7 from Solo and 1.5-3.9 from the
+   looks' --warn, so as an accent its selected controls would read as Mute, Touch or a warning. Amber stays its brand;
+   its controls default to sky blue, at least 14 ΔE from every DAW signal colour and the looks' states (D-CRBN-022). */
+:root[data-product='console']:not([data-look='redline']) { --accent: #45b4ff; --accent-ink: #04182b; }
 :root[data-product='press']:not([data-look='redline']) { --accent: #5b8cff; --accent-ink: #0a1430; }
-/* Rig's cherry is within 4 ΔE (OKLab) of Daylight's and Holo's own --bad, so there it would read as an error: it is the
-   accent in Capsule alone, and Daylight and Holo keep their own accent, as they do for Livewire (D-CRBN-021 (b)). */
+/* Rig's cherry is within 4 ΔE (OKLab) of Daylight's and Holo's own --bad, so there it would read as an error: its
+   controls take tweed gold in those looks, after Fender's tweed amps, 12.7 ΔE or more from every brand, accent and
+   state colour in the suite; cherry stays the accent in Capsule, the rule after it (D-CRBN-021 (b), D-RIG-002). */
+:root[data-product='rig']:not([data-look='redline']) { --accent: #be9851; --accent-ink: #1d1406; }
 :root[data-product='rig'][data-look='capsule'] { --accent: #d92b52; --accent-ink: #ffffff; }
 .brand-strip { height: 2px; background: var(--brand); flex: none; }
 .brand-ink { color: var(--brand); }

@@ -484,6 +484,8 @@
       "main": "Console",
       "brand": "#ffb340",
       "ink": "#241600",
+      "accent": "#45b4ff",
+      "accentInk": "#04182b",
       "appId": "com.pavillionhub.crbn.sound",
       "repo": "GOATi/crbn-sound"
     },
@@ -502,6 +504,14 @@
       "main": "Rig",
       "brand": "#d92b52",
       "ink": "#ffffff",
+      "accent": "#be9851",
+      "accentInk": "#1d1406",
+      "accentByLook": {
+        "capsule": {
+          "accent": "#d92b52",
+          "ink": "#ffffff"
+        }
+      },
       "appId": "com.pavillionhub.crbn.amp",
       "repo": "GOATi/crbn-amp"
     }

@@ -1,7 +1,11 @@
-// The CRBN products and the brand colour each keeps (D-CRBN-018, D-CRBN-019, D-CRBN-020, D-CRBN-021). `--brand` is fixed per product: it is
+// The CRBN products and the brand colour each keeps (D-CRBN-018, D-CRBN-019, D-CRBN-020, D-CRBN-021, D-CRBN-022). `--brand` is fixed per product: it is
 // where a person tells the apps apart in a hurry (the taskbar icon, the mark and name in the header, a `.brand-strip`,
 // the Hub card). It is never the user's to change; `--accent` (the look's, then the user's) is. In Capsule, Holo and
-// Daylight the brand colour is also the product's default accent; Redline keeps forge orange in every product.
+// Daylight the brand colour is also the product's default accent, unless the product names an `accent` of its own;
+// Redline keeps forge orange in every product. Console names one: its VU amber sits beside the DAW's own Mute, Touch
+// and Solo colours and the looks' --warn, so its controls default to sky blue (D-CRBN-022). Rig names one and keeps its
+// brand in one look: its cherry is the accent in Capsule, where it clears --bad by 10.5 ΔE, and tweed gold is the
+// accent in Holo and Daylight, whose own reds sit within 4 ΔE of cherry (D-CRBN-021 (b), D-RIG-002).
 // Hex cyan (#4fe3ff) stays Holo's live colour and forge orange (#ff3200) Redline's accent, so neither is a product's.
 // Data only: `./themes.css` carries the same values as `:root[data-product]` blocks.
 
@@ -16,6 +20,11 @@ export interface Product {
   /** The brand colour, and the ink that reads on it. */
   brand: string
   ink: string
+  /** The default accent and its ink, when it is not the brand colour (D-CRBN-022). */
+  accent?: string
+  accentInk?: string
+  /** A look where the default accent is something else, with its ink: Rig keeps its brand as the accent in Capsule. */
+  accentByLook?: Readonly<Record<string, { accent: string, ink: string }>>
   /** The app's identity in Pavillion Hub (pavillion_client D-237), which the product name never changes. */
   appId: string
   /** The repo that builds it. */
@@ -25,9 +34,9 @@ export interface Product {
 export const PRODUCTS: readonly Product[] = [
   { id: 'livewire', name: 'CRBN Livewire', main: 'Livewire', brand: '#f375b9', ink: '#1a0b14', appId: 'com.pavillionhub.crbn.photo', repo: 'GOATi/crbn-photo' },
   { id: 'mixtape', name: 'CRBN Mixtape', main: 'Mixtape', brand: '#c8ff3d', ink: '#15200a', appId: 'com.pavillionhub.crbn.audio', repo: 'GOATi/crbn-audio' },
-  { id: 'console', name: 'CRBN Console', main: 'Console', brand: '#ffb340', ink: '#241600', appId: 'com.pavillionhub.crbn.sound', repo: 'GOATi/crbn-sound' },
+  { id: 'console', name: 'CRBN Console', main: 'Console', brand: '#ffb340', ink: '#241600', accent: '#45b4ff', accentInk: '#04182b', appId: 'com.pavillionhub.crbn.sound', repo: 'GOATi/crbn-sound' },
   { id: 'press', name: 'CRBN Press', main: 'Press', brand: '#5b8cff', ink: '#0a1430', appId: 'com.pavillionhub.crbn.pdf', repo: 'GOATi/crbn-pdf' },
-  { id: 'rig', name: 'CRBN Rig', main: 'Rig', brand: '#d92b52', ink: '#ffffff', appId: 'com.pavillionhub.crbn.amp', repo: 'GOATi/crbn-amp' },
+  { id: 'rig', name: 'CRBN Rig', main: 'Rig', brand: '#d92b52', ink: '#ffffff', accent: '#be9851', accentInk: '#1d1406', accentByLook: { capsule: { accent: '#d92b52', ink: '#ffffff' } }, appId: 'com.pavillionhub.crbn.amp', repo: 'GOATi/crbn-amp' },
 ]
 
 /** The Hub's own colour, so the suite stays distinct from its host (Livewire's accent list calls it heliotrope). */
