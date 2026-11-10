@@ -17,3 +17,6 @@ NeuralAmpModeler/peaks/
 # CRBN Rig: build outputs (icons, the web build, the Hub folder, pictures); never committed
 /dist/
 /.wrangler/
+
+# Claude Code: this PC's own permissions (the web publish, which needs this PC's R2 credentials)
+/.claude/settings.local.json
