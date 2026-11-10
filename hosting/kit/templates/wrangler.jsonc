@@ -1,0 +1,26 @@
+// The build host for <project>: a Cloudflare Worker that serves whichever build hosting/kit/publish.mjs
+// last promoted in R2 bucket <bucket>. The Worker's code is the kit's (hosting/kit/worker/) and carries no
+// knowledge of this project; this file is the only place its name, bucket and hostname are written.
+//
+// Deploy once, and again only when hosting/kit/worker/ changes — from the repo root:
+//   npx wrangler@4 deploy --config hosting/wrangler.jsonc
+// Publishing a build never needs wrangler.
+{
+  "name": "<worker-name>",
+  "main": "kit/worker/build-host.mjs",
+  "compatibility_date": "2026-09-01",
+  "r2_buckets": [{ "binding": "BUILDS", "bucket_name": "<bucket>" }],
+
+  // A hostname goes on the WORKER — never on the bucket as an R2 custom domain, which serves raw keys
+  // (no index.html at /, every stored build exposed). RUNBOOK §8. Uncomment once the domain's zone is on
+  // Cloudflare, redeploy, and change publish.json's "url" to it:
+  // "routes": [{ "pattern": "<host.example.com>", "custom_domain": true }],
+
+  // Serving under a path instead of the root (RUNBOOK §8b) — the same string as publish.json's "prefix":
+  // "vars": { "PREFIX": "/pub" },
+
+  // Access attached to the Worker (RUNBOOK §6) covers workers.dev as well. For a PUBLIC site that has its
+  // own hostname, set this false so there is one address, not two.
+  "workers_dev": true,
+  "preview_urls": false
+}

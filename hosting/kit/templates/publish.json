@@ -1,0 +1,14 @@
+{
+  "//": "The build host's config — hosting/kit/README.md has every field. Credentials are NOT here: %USERPROFILE%\\.r2\\<bucket>.json on each PC that publishes.",
+  "bucket": "<project>-dev",
+  "url": "https://<worker-name>.<account-subdomain>.workers.dev",
+  "artifact": "dist",
+  "//build": "A no-build site stages an allowlist (the 'stage' block below). A bundled site puts its own build here, e.g. 'npm run build'.",
+  "build": "node hosting/kit/stage.mjs",
+  "//check": "Must exit 0 before anything is sent. It gets ARTIFACT_DIR, PUBLISH_URL and PUBLISH_BUCKET. Delete the line only if there is truly nothing to check.",
+  "check": "<a command that exits 0 only when the artifact works>",
+  "stage": {
+    "include": ["index.html", "<every file and folder a visitor's browser loads>"],
+    "exclude": ["*.psd", "*.ai"]
+  }
+}

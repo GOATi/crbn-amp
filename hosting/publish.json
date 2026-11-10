@@ -1,0 +1,10 @@
+{
+  "//": "CRBN Rig's web version (hosting/README.md; crbn-launcher D-CRBN-021 (d)). hosting/kit/README.md has every field. Credentials are NOT here: %USERPROFILE%\\.r2\\crbn-rig-web.json on each PC that publishes.",
+  "bucket": "crbn-rig-web",
+  "url": "https://rig.carbonlinear.com",
+  "artifact": "dist/web",
+  "build": "node web/build.mjs",
+  "check": "node web/check.mjs",
+  "//contentTypes": "A capture (.nam) is JSON; the demo ships one.",
+  "contentTypes": { "nam": "application/json" }
+}

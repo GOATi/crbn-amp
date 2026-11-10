@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en" data-product="rig" data-look="capsule">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Public but unlisted (D-CRBN-021 (d), D-PHOTOLIVE-021 (b)): not for search engines. -->
+<meta name="robots" content="noindex, nofollow">
+<title>CRBN Rig</title>
+<meta name="description" content="Play your guitar through captures of real pedals, amps and cabinets, in your browser.">
+<link rel="icon" type="image/png" href="icons/icon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="look/fonts/fonts.css">
+<link rel="stylesheet" href="look/themes.css">
+<link rel="stylesheet" href="style.css">
+<!-- The saved look before the first paint, so the page never flashes another. -->
+<script>try { var l = localStorage.getItem('crbn-rig/look'); if (l) document.documentElement.dataset.look = l } catch (e) {}</script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div class="brand-strip"></div>
+<header class="bar">
+  <a class="mark" href="./" aria-label="CRBN Rig, home">
+    <img src="icons/icon-32.png" alt="" width="26" height="26">
+    <span class="word"><span class="crbn">CRBN</span><span class="brand-ink">Rig</span></span>
+  </a>
+  <div class="status" id="status">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="status-text" role="status">Not playing</span>
+    <button class="btn small" id="stop" hidden>Stop</button>
+  </div>
+  <nav class="actions" aria-label="Page">
+    <label class="look-pick"><span>Look</span><select id="look"></select></label>
+    <a class="btn ghost" href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Desktop app</a>
+    <button class="btn ghost" id="about-open" type="button">About</button>
+  </nav>
+</header>
+
+<main>
+  <section class="start" id="start" aria-labelledby="start-title">
+    <div>
+      <h1 id="start-title">Plug in. Play.</h1>
+      <p>Your guitar through captures of real pedals, amps and cabinets: <code>.nam</code> captures, like the thousands
+        shared on TONE3000, and <code>.wav</code> cabinet IRs. Everything runs here in your browser.</p>
+    </div>
+    <div class="start-actions">
+      <button class="btn primary" id="play-guitar" type="button">Play my guitar</button>
+      <button class="btn" id="play-demo" type="button" aria-pressed="false">Hear the demo riff</button>
+      <p class="hint">Use headphones. With a laptop's own microphone and speakers, the sound feeds back.</p>
+    </div>
+  </section>
+
+  <section class="chain" aria-label="Signal chain">
+    <article class="stage" id="stage-input" aria-labelledby="h-input">
+      <header><h2 id="h-input">Input</h2></header>
+      <label class="field"><span>Device</span>
+        <select id="input-device" disabled><option value="">After you start</option></select>
+      </label>
+      <div class="knob" data-param="inputDB" data-min="-20" data-max="20" data-step="0.1" data-unit="dB" data-label="Level"></div>
+      <div class="meter" id="meter-in" aria-label="Input level"><div class="fill"></div><span class="clip" hidden>CLIP</span></div>
+    </article>
+
+    <article class="stage" id="stage-gate" aria-labelledby="h-gate">
+      <header><h2 id="h-gate">Gate</h2><label class="switch"><input type="checkbox" data-param="gateOn" aria-label="Gate on"><span></span></label></header>
+      <div class="knob" data-param="gateThresholdDB" data-min="-100" data-max="0" data-step="0.1" data-unit="dB" data-label="Threshold"></div>
+    </article>
+
+    <article class="stage wide" id="stage-capture" aria-labelledby="h-capture">
+      <header><h2 id="h-capture">Capture</h2><span class="tag" id="capture-kind" hidden></span></header>
+      <div class="drop" id="capture-drop" data-slot="capture" tabindex="-1">
+        <div class="empty">
+          <p><strong>Drop a <code>.nam</code> capture</strong><br>of a pedal, an amp or a whole rig</p>
+          <button class="btn" type="button" data-pick="capture">Choose a capture&hellip;</button>
+        </div>
+        <div class="loaded" hidden>
+          <p class="name" id="capture-name"></p>
+          <ul class="chips" id="capture-chips"></ul>
+          <p class="meta" id="capture-meta"></p>
+          <div class="row">
+            <button class="btn small" type="button" data-pick="capture">Change&hellip;</button>
+            <button class="btn small ghost" type="button" data-clear="capture">Remove</button>
+          </div>
+        </div>
+        <input type="file" accept=".nam" hidden data-input="capture">
+      </div>
+      <div class="knob" id="slim" data-param="slim" data-min="0" data-max="1" data-step="0.01" data-unit="" data-label="Size" hidden></div>
+      <a class="out-link" href="https://www.tone3000.com" target="_blank" rel="noopener">Find captures on TONE3000 &#8599;</a>
+    </article>
+
+    <article class="stage" id="stage-eq" aria-labelledby="h-eq">
+      <header><h2 id="h-eq">EQ</h2><label class="switch"><input type="checkbox" data-param="eqOn" aria-label="EQ on"><span></span></label></header>
+      <div class="knob" data-param="bass" data-min="0" data-max="10" data-step="0.1" data-label="Bass"></div>
+      <div class="knob" data-param="middle" data-min="0" data-max="10" data-step="0.1" data-label="Middle"></div>
+      <div class="knob" data-param="treble" data-min="0" data-max="10" data-step="0.1" data-label="Treble"></div>
+    </article>
+
+    <article class="stage" id="stage-ir" aria-labelledby="h-ir">
+      <header><h2 id="h-ir">Cabinet</h2><label class="switch"><input type="checkbox" data-param="irOn" aria-label="Cabinet IR on"><span></span></label></header>
+      <div class="drop" id="ir-drop" data-slot="ir" tabindex="-1">
+        <div class="empty">
+          <p><strong>Drop a <code>.wav</code> IR</strong><br>for a speaker cabinet</p>
+          <button class="btn" type="button" data-pick="ir">Choose an IR&hellip;</button>
+        </div>
+        <div class="loaded" hidden>
+          <p class="name" id="ir-name"></p>
+          <p class="meta" id="ir-meta"></p>
+          <div class="row">
+            <button class="btn small" type="button" data-pick="ir">Change&hellip;</button>
+            <button class="btn small ghost" type="button" data-clear="ir">Remove</button>
+          </div>
+        </div>
+        <input type="file" accept=".wav,audio/wav" hidden data-input="ir">
+      </div>
+      <a class="out-link" href="https://www.tone3000.com" target="_blank" rel="noopener">Find IRs on TONE3000 &#8599;</a>
+    </article>
+
+    <article class="stage" id="stage-output" aria-labelledby="h-output">
+      <header><h2 id="h-output">Output</h2></header>
+      <div class="knob" data-param="outputDB" data-min="-40" data-max="40" data-step="0.1" data-unit="dB" data-label="Level"></div>
+      <div class="segmented" role="radiogroup" aria-label="Output level mode" data-param="outputMode">
+        <button type="button" role="radio" data-value="0" title="No adjustment">Raw</button>
+        <button type="button" role="radio" data-value="1" title="Every capture at about the same loudness">Normalized</button>
+        <button type="button" role="radio" data-value="2" title="Match the capture's analogue calibration">Calibrated</button>
+      </div>
+      <div class="meter" id="meter-out" aria-label="Output level"><div class="fill"></div><span class="clip" hidden>CLIP</span></div>
+      <details class="calibration">
+        <summary>Calibration</summary>
+        <label class="check"><input type="checkbox" data-param="calibrateInput"> Calibrate the input to the capture</label>
+        <div class="knob" data-param="inputCalibrationDBu" data-min="-60" data-max="60" data-step="0.1" data-unit="dBu" data-label="Interface level at 0 dBFS"></div>
+      </details>
+    </article>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>CRBN Rig <span id="version"></span></span>
+  <span>Based on Neural Amp Modeler by Steven Atkinson</span>
+  <span>Captures and IRs belong to their authors</span>
+  <button class="linkish" type="button" id="about-open-2">Notices</button>
+</footer>
+
+<div class="toast" id="toast" role="alert" hidden></div>
+
+<dialog id="about" aria-labelledby="about-title">
+  <form method="dialog">
+    <h2 id="about-title"><span class="crbn">CRBN</span> <span class="brand-ink">Rig</span></h2>
+    <p class="dim" id="about-build"></p>
+    <p>Play your guitar through captures of real gear. CRBN Rig is by GOATi Entertainment, part of the CRBN suite, and
+      is also a desktop app on <a href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Pavillion Hub</a>
+      with lower latency through your audio interface.</p>
+    <p>Based on Neural Amp Modeler by Steven Atkinson. It plays NAM captures, such as those shared on
+      <a href="https://www.tone3000.com" target="_blank" rel="noopener">TONE3000</a>; captures and IRs belong to their
+      authors and are not part of CRBN Rig. The demo riff and example capture come from Neural Amp Modeler Core.</p>
+    <p>Your files stay in your browser: nothing you load is uploaded.</p>
+    <ul class="notices">
+      <li><a href="LICENSE.txt" target="_blank">Licence (MIT, Neural Amp Modeler)</a></li>
+      <li><a href="ThirdPartyNotices.txt" target="_blank">Third-party notices</a></li>
+      <li><a href="NOTICE.txt" target="_blank">Notice</a></li>
+      <li><a href="MODIFIED-FILES.txt" target="_blank">Files changed from the original</a></li>
+      <li><a href="look/fonts/LICENSES.md" target="_blank">Font licences</a></li>
+    </ul>
+    <p><a href="https://pavillionhub.com/help" target="_blank" rel="noopener">Help</a></p>
+    <div class="row end"><button class="btn primary" value="close">Close</button></div>
+  </form>
+</dialog>
+</body>
+</html>

@@ -1,0 +1,24 @@
+// The build host for CRBN Rig's web version (hosting/README.md; crbn-launcher D-CRBN-021 (d)): a Cloudflare Worker that
+// serves whichever build hosting/kit/publish.mjs last promoted in R2 bucket crbn-rig-web. The Worker's code is the
+// kit's (hosting/kit/worker/) and carries no knowledge of this project; this file is the only place its name, bucket
+// and hostname are written. The wiring copies CRBN Press's, Mixtape's and Livewire's (D-PHOTOLIVE-021).
+//
+// Deploy once, and again only when hosting/kit/worker/ changes, from the repo root (the owner's, or his allow rule:
+// it attaches a custom domain):
+//   npx wrangler@4 deploy --config hosting/wrangler.jsonc
+// Publishing a build never needs wrangler.
+{
+  "name": "crbn-rig-web",
+  "main": "kit/worker/build-host.mjs",
+  "compatibility_date": "2026-09-01",
+  "r2_buckets": [{ "binding": "BUILDS", "bucket_name": "crbn-rig-web" }],
+
+  // A hostname goes on the WORKER, never on the bucket as an R2 custom domain, which serves raw keys (no index.html
+  // at /, every stored build exposed). Kit RUNBOOK section 8.
+  "routes": [{ "pattern": "rig.carbonlinear.com", "custom_domain": true }],
+
+  // PUBLIC but unlisted (as livewire., mixtape. and press.carbonlinear.com are): one address, so no workers.dev or
+  // preview URL. The app is one page with no routes, so the kit's FALLBACK var is not set.
+  "workers_dev": false,
+  "preview_urls": false
+}

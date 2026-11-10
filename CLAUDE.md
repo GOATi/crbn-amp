@@ -38,7 +38,11 @@ put the same page on the desktop (`docs/PLAN.md`).
 - **Desktop:** `pwsh packaging/windows/package.ps1` (Visual Studio 18, toolset v145; about a minute). `-SkipBuild` to
   re-package, `-Sign` with the owner's SimplySign session open.
 - **Web:** `node web/build.mjs` (emscripten SDK 6.0.13 at `%LOCALAPPDATA%\emsdk`), then `node web/check.mjs`
-  (headless Edge on loopback: the page paints and the engine renders a known signal through a capture).
+  (headless Edge on loopback: the page paints in Rig's look, and the engine plays the example capture through the real
+  AudioWorklet, equal to the engine run directly). `node web/engine/test.mjs` plays every NAM Core example capture
+  through the wasm engine and the same source built with MSVC and compares them sample by sample (most are
+  bit-identical). `node web/shots.mjs` takes the store screenshots, one per look.
+- **Hosting:** `hosting/README.md` (`node hosting/kit/publish.mjs --promote` from a clean `main`).
 - **Icons:** `node packaging/icons/render.mjs` (headless Edge).
 - Builds fetch nothing. `dist/` is never committed.
 

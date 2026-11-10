@@ -1,0 +1,107 @@
+<!doctype html>
+<!-- CRBN Rig's in-browser self-test, served by web/check.mjs beside the built site (never published). It POSTs its
+     results to /__result. Checks: the page paints in Capsule with Rig's brand; the engine plays the example capture in
+     this browser, directly and through the real AudioWorklet (rig-processor.js), and the two agree; the cabinet stage
+     scales as the desktop's does. -->
+<meta charset="utf-8">
+<title>CRBN Rig self-test</title>
+<body style="margin:0">
+<iframe id="page" src="/?example" style="width:1440px;height:900px;border:0"></iframe>
+<script type="module">
+import { createEngine } from '/engine.js'
+import { irGain, scaledIR } from '/ir.js'
+
+const results = { checks: [], userAgent: navigator.userAgent }
+const check = (name, ok, detail = '') => results.checks.push({ name, ok: Boolean(ok), detail: String(detail) })
+const wait = async (fn, ms, what) => {
+  const until = performance.now() + ms
+  while (performance.now() < until) { try { if (fn()) return true } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 50)) }
+  throw new Error(`timed out waiting for ${what}`)
+}
+const rms = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length)
+
+try {
+  // 1. The page.
+  const frame = document.getElementById('page')
+  await wait(() => frame.contentDocument?.documentElement.dataset.ready === 'true', 20000, 'the page to be ready')
+  const doc = frame.contentDocument, win = frame.contentWindow, html = doc.documentElement
+  check('look and product on <html>', html.dataset.look === 'capsule' && html.dataset.product === 'rig', `${html.dataset.look}/${html.dataset.product}`)
+  const strip = win.getComputedStyle(doc.querySelector('.brand-strip')).backgroundColor
+  check('the brand strip is cherry #d92b52', strip === 'rgb(217, 43, 82)', strip)
+  const accent = win.getComputedStyle(html).getPropertyValue('--accent').trim()
+  check('cherry is the accent in Capsule', accent.toLowerCase() === '#d92b52', accent)
+  check('six stages in the chain', doc.querySelectorAll('.stage').length === 6, doc.querySelectorAll('.stage').length)
+  check('the eight knobs are sliders', doc.querySelectorAll('.knob[role="slider"]').length === 8, doc.querySelectorAll('.knob[role="slider"]').length)
+  check('the example capture is shown', doc.getElementById('capture-name').textContent.trim().length > 0, doc.getElementById('capture-name').textContent)
+  await doc.fonts.ready
+  check('the look fonts loaded', doc.fonts.check('600 15px "Lexend Giga"') && doc.fonts.check('400 13px "Poppins"'))
+
+  // 2. The engine in this browser.
+  const rate = 48000
+  const wasm = await (await fetch('/rig-engine.wasm')).arrayBuffer()
+  const capture = new Uint8Array(await (await fetch('/demo/example.nam')).arrayBuffer())
+  const decoder = new OfflineAudioContext(1, rate, rate)
+  const di = await decoder.decodeAudioData(await (await fetch('/demo/di.wav')).arrayBuffer())
+  const input = di.getChannelData(0)
+
+  const engine = await createEngine(wasm.slice(0), rate)
+  const loaded = engine.loadCapture(capture)
+  check('the example capture loads', loaded.ok, loaded.error ?? '')
+  const direct = new Float32Array(input.length)
+  let t0 = performance.now()
+  for (let at = 0; at < input.length; at += 128) {
+    const n = Math.min(128, input.length - at)
+    engine.process(input.subarray(at, at + n), direct.subarray(at, at + n))
+  }
+  const directMs = performance.now() - t0
+  check('the engine plays it (finite, not silent)', direct.every(Number.isFinite) && rms(direct) > 1e-4, `rms ${rms(direct).toExponential(2)}`)
+  results.realtime = +(input.length / rate / (directMs / 1000)).toFixed(1)
+
+  // Through the AudioWorklet: the first render quantum passes while the engine instantiates, so rendering pauses after
+  // it, the capture goes in, and the riff starts one quantum later. Output from there must equal `direct`.
+  async function render(irBuffer) {
+    const Q = 128, ctx = new OfflineAudioContext(1, input.length + Q, rate)
+    await ctx.audioWorklet.addModule('/rig-processor.js')
+    const node = new AudioWorkletNode(ctx, 'crbn-rig', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
+      processorOptions: { wasm: wasm.slice(0) },
+    })
+    const replies = []
+    node.port.onmessage = (e) => replies.push(e.data)
+    const src = new AudioBufferSourceNode(ctx, { buffer: di })
+    src.connect(node)
+    if (irBuffer) { const conv = new ConvolverNode(ctx, { disableNormalization: true, buffer: irBuffer }); node.connect(conv); conv.connect(ctx.destination) }
+    else node.connect(ctx.destination)
+    src.start(Q / rate)
+    const paused = ctx.suspend(Q / rate).then(async () => {
+      await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
+      const bytes = capture.slice(0)
+      node.port.postMessage({ type: 'capture', id: 1, bytes: bytes.buffer }, [bytes.buffer])
+      await wait(() => replies.some((m) => m.type === 'capture'), 15000, 'the capture in the worklet')
+      await ctx.resume()
+    })
+    const rendered = await ctx.startRendering()
+    await paused
+    const reply = replies.find((m) => m.type === 'capture')
+    return { out: rendered.getChannelData(0).subarray(Q), reply }
+  }
+  t0 = performance.now()
+  const dry = await render(null)
+  results.workletMs = Math.round(performance.now() - t0)
+  check('the worklet loads the capture', dry.reply?.ok, dry.reply?.error ?? '')
+  let max = 0
+  for (let i = 0; i < direct.length; i++) max = Math.max(max, Math.abs(dry.out[i] - direct[i]))
+  check('the worklet output equals the engine run directly', max < 1e-6, `max difference ${max.toExponential(2)}`)
+
+  // The cabinet stage with a unit impulse: the output is the dry output scaled as the desktop scales an IR.
+  const impulse = new AudioBuffer({ length: 4, numberOfChannels: 1, sampleRate: rate })
+  impulse.getChannelData(0)[0] = 1
+  const wet = await render(scaledIR(impulse, rate))
+  const ratio = rms(wet.out) / rms(dry.out)
+  check('the cabinet stage scales by -18 dB as the desktop does', Math.abs(ratio / irGain(rate) - 1) < 0.01, `ratio ${ratio.toFixed(5)}, expected ${irGain(rate).toFixed(5)}`)
+} catch (err) {
+  check('the self-test ran to the end', false, err?.stack ?? err)
+}
+await fetch('/__result', { method: 'POST', body: JSON.stringify(results) })
+</script>
+</body>
