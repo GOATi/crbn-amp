@@ -25,7 +25,7 @@
 /* the finishes (cherry is Rig's brand; gold is D-RIG-002's tweed gold; rose gold is new) */
 [data-finish="cherry"] { --fin:#d92b52; --fin-ink:#ffffff; --plate-a:#f0607f; --plate-b:#d92b52; --plate-c:#9c1838; --plate-ink:#ffffff; }
 [data-finish="gold"] { --fin:#be9851; --fin-ink:#1d1406; --plate-a:#f0dba3; --plate-b:#c9a660; --plate-c:#8d6a2e; --plate-ink:#1d1406; }
-[data-finish="rose"] { --fin:#e3a3a0; --fin-ink:#2b1513; --plate-a:#fadfda; --plate-b:#e3a3a0; --plate-c:#aa6a67; --plate-ink:#2b1513; }
+[data-finish="rose"] { --fin:#dea193; --fin-ink:#2a1710; --plate-a:#f6d3c7; --plate-b:#dea193; --plate-c:#a66a5d; --plate-ink:#2a1710; }
 [data-finish] { --accent:var(--fin); --accent-ink:var(--fin-ink); --accent-text:color-mix(in oklab, var(--fin) 80%, white); }
 /* how far the finish reaches (area 3) */
 [data-reach="b"] .brandmark { --mkb:var(--fin); --mki:var(--fin-ink); --name:var(--fin); }
@@ -478,6 +478,34 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
 .next { color: var(--text-dim); max-width: 80ch; margin: 0; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 32px); padding: 8px 10px 8px 16px; border-radius: var(--r-btn); background: var(--popover); border: 1px solid var(--line-2); box-shadow: 0 10px 30px rgba(0,0,0,.4); font-size: 12.5px; }
 .toast a { color: var(--accent-text); font-weight: 600; white-space: nowrap; }
+/* the rose gold tuner: a colour wheel the owner drags, docked so the page stays in view */
+.tuner { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 25; width: 312px; max-width: calc(100% - 32px); max-height: calc(100% - 90px); overflow: auto; display: grid; gap: 10px; padding: 14px; border-radius: var(--r); background: var(--popover); border: 1px solid var(--line-2); box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+:root[data-look="daylight"] .tuner { box-shadow: 0 18px 40px rgba(40,20,40,.2); }
+.tu-head { display: flex; align-items: center; gap: 10px; }
+.tu-head b { font: 700 calc(12px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; }
+.tu-head .lm-x { margin-left: auto; }
+.tu-sw { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255,255,255,.3), 0 0 0 1px rgba(0,0,0,.3); flex: none; }
+.tu-wheel { position: relative; width: 200px; height: 200px; justify-self: center; touch-action: none; cursor: crosshair; }
+.tu-wheel canvas { display: block; width: 200px; height: 200px; border-radius: 50%; }
+.tu-dim { position: absolute; inset: 0; border-radius: 50%; background: #000; pointer-events: none; }
+.tu-mark { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.7), 0 1px 4px rgba(0,0,0,.5); pointer-events: none; }
+.tu-row { display: grid; grid-template-columns: 72px minmax(0, 1fr) 38px; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); }
+.tu-row output { font: 11px var(--font-mono); color: var(--text-faint); text-align: right; }
+.tu-row input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; margin: 0; border-radius: 6px; background: var(--trk, var(--field)); box-shadow: inset 0 0 0 1px rgba(128,128,128,.3); }
+.tu-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid #1b1720; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.tu-row input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #1b1720; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.tu-row input[type="text"] { grid-column: 2 / 4; width: 100%; padding: 5px 10px; border-radius: var(--r-btn); border: 1px solid var(--line-2); background: var(--field); color: var(--text); font: 12.5px var(--font-mono); }
+.tu-row input[aria-invalid="true"] { border-color: var(--bad); }
+.tu-stats { display: grid; gap: 5px; padding: 10px; border-radius: var(--r-sm); background: var(--panel-2); font-size: 11.5px; }
+.tu-stat { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: baseline; }
+.tu-stat span { color: var(--text-dim); }
+.tu-stat b { font: 500 11px var(--font-mono); }
+.tu-stat em { font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--ok); }
+.tu-stat em.close { color: var(--warn); }
+.tu-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tu-note { margin: 0; font-size: 11px; color: var(--text-faint); }
+.tune-btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line-2); background: var(--field); border-radius: var(--r-btn); padding: 4px 12px; font-size: 12px; }
+.tune-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent-text); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
@@ -502,8 +530,9 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
       <div class="seg" role="group" aria-label="Finish" id="fins">
         <button type="button" data-fin-set="cherry" aria-pressed="true"><span class="dot" style="background:#d92b52"></span>Cherry</button>
         <button type="button" data-fin-set="gold" aria-pressed="false"><span class="dot" style="background:#be9851"></span>Gold</button>
-        <button type="button" data-fin-set="rose" aria-pressed="false"><span class="dot" style="background:#e3a3a0"></span>Rose gold</button>
+        <button type="button" data-fin-set="rose" aria-pressed="false"><span class="dot" id="rose-dot" style="background:#dea193"></span>Rose gold</button>
       </div>
+      <button type="button" class="tune-btn" data-tuner="toggle" aria-expanded="false" aria-controls="tuner">Adjust rose gold</button>
       <span class="save" id="save" data-s="wait" role="status"><i></i><span id="save-t">Reaching your saved picks…</span></span>
     </div>
   </div>
@@ -514,7 +543,7 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
   <div class="intro">
     <h1>CRBN Rig, drawn our way</h1>
     <p>Pick how Rig looks, area by area. The page just below is Rig with your picks; an area you haven’t picked shows my recommendation. <strong>Click any option’s picture to try it on the page</strong>, then <strong>Pick</strong> to keep it, with a note if you like. Your picks and notes are saved here, and the next session builds from them.</p>
-    <p>Switch <strong>Cherry, Gold and Rose gold</strong> at the top to see each finish on the whole page, the mark and the amp. Upstream’s plug-in drawing isn’t in this lab, as you asked: every option is ours, and the desktop app gets this same page in place of the one in your screenshot. The captures, names and numbers shown are examples.</p>
+    <p>Switch <strong>Cherry, Gold and Rose gold</strong> at the top to see each finish on the whole page, the mark and the amp. <strong>Adjust rose gold</strong> opens a colour wheel that recolours the page as you drag; it starts on your #DEA193, and the colour you leave it on is saved for the build. Upstream’s plug-in drawing isn’t in this lab, as you asked: every option is ours, and the desktop app gets this same page in place of the one in your screenshot. The captures, names and numbers shown are examples.</p>
     <div class="progress" id="progress"></div>
   </div>
 
@@ -541,6 +570,18 @@ h2 { margin: 0; font-size: 17px; font-weight: 600; text-wrap: balance; }
   <p class="next">What happens next: the session reads your picks, records them as Rig’s decisions, makes the mark into Rig’s app icon, web icon and Hub logo, and builds the page to your picks in both the web version and the desktop app (the desktop through iPlug2’s WebView2, over the same engine). The power switch, library, favourites, pedals and MIDI then land in that page step by step, as the P3 plan sets out.</p>
 </main>
 
+<aside class="tuner" id="tuner" hidden aria-labelledby="tuner-h">
+  <div class="tu-head"><span class="tu-sw" id="tu-swatch"></span><b id="tuner-h">Rose gold</b><button type="button" class="lm-x" data-tuner="close">Close</button></div>
+  <div class="tu-wheel" id="tu-wheel" aria-hidden="true"><canvas id="tu-canvas" width="200" height="200"></canvas><i class="tu-dim" id="tu-dim"></i><i class="tu-mark" id="tu-mark"></i></div>
+  <label class="tu-row"><span>Hue</span><input type="range" id="tu-h" min="0" max="360" step="1"><output id="tu-ho"></output></label>
+  <label class="tu-row"><span>Saturation</span><input type="range" id="tu-s" min="0" max="100" step="1"><output id="tu-so"></output></label>
+  <label class="tu-row"><span>Brightness</span><input type="range" id="tu-v" min="0" max="100" step="1"><output id="tu-vo"></output></label>
+  <label class="tu-row"><span>Hex</span><input type="text" id="tu-hex" maxlength="7" spellcheck="false" autocomplete="off"></label>
+  <div class="tu-stats" id="tu-stats" aria-live="polite"></div>
+  <div class="tu-acts"><button type="button" class="pick" data-rose-reset="#dea193">Back to #DEA193</button><button type="button" class="pick" data-rose-reset="#e3a3a0">My first rose gold</button></div>
+  <p class="tu-note" id="tu-note">Your colour saves to the lab when you let go.</p>
+</aside>
+
 <div class="toast" id="toast" hidden><span id="toast-t"></span><a href="#stage-sec">See it on the page</a></div>
 
 <script>
@@ -550,7 +591,7 @@ const LETTER = { a: 'A', b: 'B', c: 'C' }
 const FIN = {
   cherry: { name: 'Cherry', hex: '#d92b52' },
   gold: { name: 'Gold', hex: '#be9851' },
-  rose: { name: 'Rose gold', hex: '#e3a3a0' },
+  rose: { name: 'Rose gold', hex: '#dea193' },
 }
 const FIN_SETS = { a: ['cherry', 'gold'], b: ['cherry', 'rose'], c: ['cherry', 'gold', 'rose'] }
 const LOOKS = [
@@ -772,8 +813,8 @@ const AREAS = [
   { id: 'finish', title: 'Finishes', q: 'Which finishes a person can switch between, your Marshall idea. Each recolours the controls and the amp’s faceplate. Gold is the tweed gold Rig already uses in Holo and Daylight; a brighter brass sat too close to the warning amber, so the brushed plate carries the shine.', rec: 'c',
     opts: {
       a: ['Cherry and gold', 'Rig’s own cherry, and gold for black-and-gold amps. Two choices, one switch.'],
-      b: ['Cherry and rose gold', 'Cherry, and a softer rose gold that sits between cherry and gold.'],
-      c: ['All three', 'Cherry, gold and rose gold. Rose gold sits clear of every warning, error and brand colour in the suite, so a third finish costs nothing in meaning.'],
+      b: ['Cherry and rose gold', 'Cherry, and your rose gold: a warm gold with copper in it, tuned on the colour wheel.'],
+      c: ['All three', 'Cherry, gold and rose gold. Your #DEA193 clears every warning, error and OK colour (12.9 at the nearest) but sits 9.8 from the gold, so side by side the two may read alike; the colour wheel shows that distance as you move it.'],
     } },
   { id: 'reach', title: 'What the finish changes', q: 'How far a person’s finish reaches. The app icon on the taskbar and the Hub card stay cherry in every case: Windows and the Hub show one icon for everyone. (Shown in gold.)', rec: 'a',
     opts: {
@@ -832,7 +873,7 @@ function preview (id, v) {
     case 'mark': {
       return `<div class="mark-hero">${markSvg(v, 128)}<div class="sizes">${[48, 32, 24, 16].map(s => `<div>${markSvg(v, s)}${s}px</div>`).join('')}</div><div class="looks4">${LOOKS.map(l => `<div style="--lb:${l.bg};--lt:${l.t}">${markSvg(v, 30)}${l.name}</div>`).join('')}</div></div>`
     }
-    case 'finish': return `<div class="pv-fin">${FIN_SETS[v].map(f => `<div class="fin-tile" data-finish="${f}"><div class="ah-plate">${plateKnob(.62, 40)}${plateKnob(.4, 40)}<span class="jewel"><i></i></span></div><span>${FIN[f].name}</span><code>${FIN[f].hex}</code></div>`).join('')}</div>`
+    case 'finish': return `<div class="pv-fin">${FIN_SETS[v].map(f => `<div class="fin-tile" data-finish="${f}"><div class="ah-plate">${plateKnob(.62, 40)}${plateKnob(.4, 40)}<span class="jewel"><i></i></span></div><span>${FIN[f].name}</span><code class="${f === 'rose' ? 'hex-rose' : ''}">${FIN[f].hex}</code></div>`).join('')}</div>`
     case 'reach': return `<div class="pv-reach" data-finish="gold" data-reach="${v}"><div class="ph"><div class="s-strip"></div><div class="s-head"><span class="brandmark">${lockup(cur('mark'), 22)}</span><span class="sp"></span>${sw(true)}${arcKnob(.62, 34)}</div></div><div class="ico"><span class="tile" style="width:34px;height:34px">${markSvg(cur('mark'), 25)}</span>The taskbar icon and the Hub card: cherry</div></div>`
     case 'layout': return `<div class="wf lay-${v}"><div class="wf-b h">Header</div><div class="wf-b r">Rig</div><div class="wf-b p">Favourites</div><div class="wf-b l">Library</div></div>`
     case 'amp': return `<div class="pv" data-z=".56" style="width:600px">${amp(v, 'none', 'play')}</div>`
@@ -856,6 +897,7 @@ function renderAreas () {
       <button type="button" class="pick" data-pick="${a.id}:${v}" aria-pressed="false">Pick ${LETTER[v]}</button></div>
     </article>`).join('')}</div>
     ${a.id === 'mark' ? `<div class="uses" id="mark-uses"></div>` : ''}
+    ${a.id === 'finish' ? `<div><button type="button" class="tune-btn" data-tuner="open" aria-controls="tuner">Adjust rose gold on a colour wheel</button></div>` : ''}
     <label class="note"><span>Your note on ${a.title.toLowerCase()}</span><textarea id="note-${a.id}" data-note="${a.id}" rows="2" placeholder="Optional"></textarea></label>
   </section>`).join('')
 }
@@ -940,9 +982,10 @@ function save (id) {
   if (inflight[id]) { again[id] = true; return }
   inflight[id] = true
   const v = saved[id] || {}
+  const data = id === 'rose' ? { hex: roseHex, at: new Date().toISOString() } : { variant: v.variant || null, note: v.note || '', at: new Date().toISOString() }
   status_('saving', 'Saving…')
-  db.collection('picks').doc(id).set({ variant: v.variant || null, note: v.note || '', at: new Date().toISOString() })
-    .then(() => { status_('saved', 'Saved') })
+  db.collection('picks').doc(id).set(data)
+    .then(() => { status_('saved', 'Saved'); if (id === 'rose' && !again.rose) { roseDirty = false; $('#tu-note').textContent = `Saved: ${roseHex}` } })
     .catch(() => { status_('off', 'Couldn’t save that: try again') })
     .finally(() => { inflight[id] = false; if (again[id]) { again[id] = false; save(id) } })
 }
@@ -954,6 +997,7 @@ async function connect () {
     if (!snap.metadata.fromCache) clearTimeout(timer)
     for (const d of snap.docs) {
       const v = d.data() || {}
+      if (d.id === 'rose') { if (!roseDirty && !dragging && typeof v.hex === 'string' && HEX_RE.test(v.hex)) setRose(v.hex.toLowerCase(), 'db'); continue }
       if (!AREA_IDS.includes(d.id) && d.id !== 'general') continue
       const variant = ['a', 'b', 'c'].includes(v.variant) ? v.variant : null
       saved[d.id] = { variant, note: typeof v.note === 'string' ? v.note : '' }
@@ -962,6 +1006,135 @@ async function connect () {
     if (!snap.metadata.fromCache && $('#save').dataset.s !== 'saving') status_('saved', snap.size ? 'Your saved picks are loaded' : 'Ready: picks save as you make them')
   }, () => { clearTimeout(timer); status_('off', 'Couldn’t reach your saved picks') })
 }
+
+// ---------------------------------------------------------------- the rose gold tuner (picks/rose: { hex })
+const HEX_RE = /^#[0-9a-f]{6}$/i
+let roseHex = '#dea193', roseHsv = [0, 0, 0], roseDirty = false, dragging = false
+const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255] }
+const rgb2hex = (r, g, b) => '#' + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('')
+function rgb2hsv ([r, g, b]) {
+  r /= 255; g /= 255; b /= 255
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn
+  let h = 0
+  if (d) { h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360 }
+  return [h, mx ? d / mx : 0, mx]
+}
+function hsv2rgb (h, s, v) { const f = n => { const k = (n + h / 60) % 6; return 255 * (v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) }; return [f(5), f(3), f(1)] }
+const lin = c => { c /= 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4 }
+const unlin = c => { c = Math.max(0, Math.min(1, c)); return 255 * (c <= .0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - .055) }
+function toLab (hex) {
+  const [r, g, b] = hex2rgb(hex).map(lin)
+  const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b)
+  return [.2104542553 * l + .7936177850 * m - .0040720468 * s, 1.9779984951 * l - 2.4285922050 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .8086757660 * s]
+}
+function fromLab ([L, a, b]) {
+  const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.2914855480 * b) ** 3
+  return rgb2hex(unlin(4.0767416621 * l - 3.3077115913 * m + .2309699292 * s), unlin(-1.2684380046 * l + 2.6097574011 * m - .3413193965 * s), unlin(-.0041960863 * l - .7034186147 * m + 1.7076147010 * s))
+}
+const dE = (x, y) => { const p = toLab(x), q = toLab(y); return 100 * Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) }
+const lum = h => { const [r, g, b] = hex2rgb(h).map(lin); return .2126 * r + .7152 * g + .0722 * b }
+const contrast = (x, y) => { const a = lum(x), b = lum(y); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05) }
+// every look's OK / warning / error colour (the looks test holds a control colour 10 dE from these), and the suite's
+// other product and finish colours
+const STATES = [['Capsule', '#5fd39a', '#f2c037', '#ff5470'], ['Daylight', '#18965a', '#a86a00', '#d1243f'], ['Holo', '#3ecf8e', '#f2c037', '#e0445a'], ['Redline', '#6fdc6a', '#ffb020', '#ff2a3d']]
+  .flatMap(([lk, ok, warn, bad]) => [[`${lk}’s OK green`, ok], [`${lk}’s warning amber`, warn], [`${lk}’s error red`, bad]])
+const OTHERS = [['Livewire pink', '#f375b9'], ['Mixtape lime', '#c8ff3d'], ['Console amber', '#ffb340'], ['Console sky blue', '#45b4ff'], ['Press cobalt', '#5b8cff'], ['Hub heliotrope', '#a25aff'], ['Redline’s forge orange', '#ff3200'], ['Holo cyan', '#4fe3ff']]
+function roseStyle (hex) {
+  const [L, a, b] = toLab(hex)
+  const dark = fromLab([.22, a * .3, b * .3]), ink = contrast(hex, dark) >= contrast(hex, '#ffffff') ? dark : '#ffffff'
+  const plA = fromLab([Math.min(.97, L + .1), a * .75, b * .75]), plC = fromLab([Math.max(.25, L - .17), a * 1.08, b * 1.08])
+  return { ink, css: `[data-finish="rose"] { --fin:${hex}; --fin-ink:${ink}; --plate-a:${plA}; --plate-b:${hex}; --plate-c:${plC}; --plate-ink:${ink}; }` }
+}
+function roseStats (hex, ink) {
+  const near = list => list.map(([n, c]) => [n, c, dE(hex, c)]).sort((x, y) => x[2] - y[2])[0]
+  const row = (label, d, need, word) => `<div class="tu-stat"><span>${label}</span><b>${d.toFixed(1)}</b><em class="${d < need ? 'close' : ''}">${d < need ? word : 'clear'}</em></div>`
+  const st = near(STATES), ot = near(OTHERS), cr = contrast(hex, ink)
+  return `<div class="tu-stat"><span>Text on it (${ink === '#ffffff' ? 'white' : 'dark'} ink)</span><b>${cr.toFixed(1)}:1</b><em class="${cr < 4.5 ? 'close' : ''}">${cr < 4.5 ? 'too faint' : 'clear'}</em></div>` +
+    row(`Nearest warning, error or OK: ${st[0]}`, st[2], 10, 'too close') +
+    row('From Gold (#be9851)', dE(hex, '#be9851'), 10, 'close') +
+    row('From Cherry (#d92b52)', dE(hex, '#d92b52'), 10, 'close') +
+    row(`Nearest other CRBN colour: ${ot[0]}`, ot[2], 10, 'close') +
+    '<div class="tu-stat"><span>Distances are ΔE in OKLab; the suite asks for 10 or more.</span></div>'
+}
+function setRose (hex, from) {
+  roseHex = hex
+  if (from !== 'hsv') { const hsv = rgb2hsv(hex2rgb(hex)); roseHsv = [hsv[1] ? hsv[0] : roseHsv[0], hsv[1], hsv[2]] }
+  FIN.rose.hex = hex
+  const { ink, css } = roseStyle(hex)
+  let el = document.getElementById('rose-style')
+  if (!el) { el = document.createElement('style'); el.id = 'rose-style'; document.body.appendChild(el) } // after the page's own stylesheet, so it wins
+  el.textContent = css
+  $('#rose-dot').style.background = hex
+  document.querySelectorAll('.hex-rose').forEach(c => { c.textContent = hex })
+  $('#tu-swatch').style.background = hex
+  $('#tu-stats').innerHTML = roseStats(hex, ink)
+  const [h, s, v] = roseHsv
+  if (from !== 'hex') { const hx = $('#tu-hex'); hx.value = hex; hx.removeAttribute('aria-invalid') }
+  $('#tu-h').value = Math.round(h); $('#tu-s').value = Math.round(s * 100); $('#tu-v').value = Math.round(v * 100)
+  $('#tu-ho').textContent = `${Math.round(h)}°`; $('#tu-so').textContent = `${Math.round(s * 100)}%`; $('#tu-vo').textContent = `${Math.round(v * 100)}%`
+  const g = (hh, ss, vv) => rgb2hex(...hsv2rgb(hh, ss, vv))
+  $('#tu-h').style.setProperty('--trk', `linear-gradient(90deg, ${[0, 60, 120, 180, 240, 300, 360].map(x => g(x, Math.max(s, .35), Math.max(v, .5))).join(', ')})`)
+  $('#tu-s').style.setProperty('--trk', `linear-gradient(90deg, ${g(h, 0, v)}, ${g(h, 1, v)})`)
+  $('#tu-v').style.setProperty('--trk', `linear-gradient(90deg, #000000, ${g(h, s, 1)})`)
+  $('#tu-dim').style.opacity = String(1 - v)
+  const R = 100, mk = $('#tu-mark')
+  mk.style.left = `${R + s * R * Math.cos(rad(h))}px`; mk.style.top = `${R + s * R * Math.sin(rad(h))}px`; mk.style.background = hex
+  if (lmOpen) renderStage()
+}
+function roseFromHsv () { setRose(rgb2hex(...hsv2rgb(...roseHsv)), 'hsv') }
+let roseTimer
+function roseChanged () {
+  roseDirty = true
+  if (finish !== 'rose') { setFinish('rose'); renderAll() }
+  clearTimeout(roseTimer)
+  roseTimer = setTimeout(() => { if (db) { $('#tu-note').textContent = 'Saving…'; save('rose') } else $('#tu-note').textContent = 'Not saved in this view: open the lab on claude.ai to keep your colour' }, 250)
+}
+function drawWheel () {
+  const c = $('#tu-canvas'), dpr = Math.min(2, window.devicePixelRatio || 1), n = Math.round(200 * dpr)
+  c.width = c.height = n
+  const ctx = c.getContext('2d'), img = ctx.createImageData(n, n), R = n / 2
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = x - R + .5, dy = y - R + .5, r = Math.hypot(dx, dy) / R, i = (y * n + x) * 4
+    if (r > 1) continue
+    const [rr, gg, bb] = hsv2rgb((Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, r, 1)
+    img.data[i] = rr; img.data[i + 1] = gg; img.data[i + 2] = bb; img.data[i + 3] = r > .985 ? Math.round(255 * (1 - r) / .015) : 255
+  }
+  ctx.putImageData(img, 0, 0)
+}
+let wheelDrawn = false
+function openTuner (open) {
+  const t = $('#tuner')
+  t.hidden = !open
+  document.querySelectorAll('[data-tuner="toggle"]').forEach(b => b.setAttribute('aria-expanded', String(open)))
+  if (open) {
+    if (!wheelDrawn) { drawWheel(); wheelDrawn = true }
+    if (finish !== 'rose') { setFinish('rose'); renderAll() }
+  }
+}
+const wheel = $('#tu-wheel')
+function wheelAt (e) {
+  const r = wheel.getBoundingClientRect(), R = r.width / 2, dx = e.clientX - r.left - R, dy = e.clientY - r.top - R
+  roseHsv[0] = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360
+  roseHsv[1] = Math.min(1, Math.hypot(dx, dy) / R)
+  if (roseHsv[2] < .05) roseHsv[2] = .85
+  roseFromHsv()
+}
+wheel.addEventListener('pointerdown', e => { dragging = true; roseDirty = true; wheel.setPointerCapture(e.pointerId); wheelAt(e) })
+wheel.addEventListener('pointermove', e => { if (dragging) wheelAt(e) })
+const endDrag = () => { if (dragging) { dragging = false; roseChanged() } }
+wheel.addEventListener('pointerup', endDrag)
+wheel.addEventListener('pointercancel', endDrag)
+for (const [id, k, scale] of [['#tu-h', 0, 1], ['#tu-s', 1, 100], ['#tu-v', 2, 100]]) {
+  $(id).addEventListener('input', e => { roseDirty = true; roseHsv[k] = Number(e.target.value) / scale; roseFromHsv() })
+  $(id).addEventListener('change', roseChanged)
+}
+$('#tu-hex').addEventListener('input', e => {
+  let v = e.target.value.trim().toLowerCase()
+  if (v && v[0] !== '#') v = '#' + v
+  const ok = HEX_RE.test(v)
+  e.target.setAttribute('aria-invalid', String(!ok && v.length >= 7))
+  if (ok) { roseDirty = true; setRose(v, 'hex'); roseChanged() }
+})
 
 // ---------------------------------------------------------------- events
 function tryOpt (id, v) {
@@ -972,8 +1145,10 @@ function tryOpt (id, v) {
   toast(`Trying ${LETTER[v]} · ${a.opts[v][0]} on the page.`)
 }
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-try],[data-pick],[data-look-set],[data-fin-set],[data-state],[data-lm]')
+  const t = e.target.closest('[data-try],[data-pick],[data-look-set],[data-fin-set],[data-state],[data-lm],[data-tuner],[data-rose-reset]')
   if (!t) return
+  if (t.dataset.tuner) { openTuner(t.dataset.tuner === 'open' ? true : t.dataset.tuner === 'close' ? false : $('#tuner').hidden); return }
+  if (t.dataset.roseReset) { roseDirty = true; setRose(t.dataset.roseReset, 'reset'); roseChanged(); return }
   if (t.dataset.try) { const [id, v] = t.dataset.try.split(':'); tryOpt(id, v); return }
   if (t.dataset.pick) {
     const [id, v] = t.dataset.pick.split(':')
@@ -1011,6 +1186,7 @@ document.addEventListener('focusout', e => {
 let l0 = 'capsule', f0 = 'cherry'
 try { l0 = localStorage.getItem('rig-lab.look') || 'capsule'; f0 = localStorage.getItem('rig-lab.finish') || 'cherry' } catch {}
 setLook(l0); setFinish(f0)
+setRose(roseHex, 'start')
 renderAreas(); renderAll(); fitPreviews()
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitPreviews)
 window.addEventListener('resize', () => { clearTimeout(window.__fit); window.__fit = setTimeout(fitPreviews, 150) })
