@@ -3,11 +3,33 @@
 // process we spawned (or its tree) leaves dozens of processes holding the profile; they are found by the profile path
 // on their command line instead. Node built-ins only.
 import { spawn, spawnSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
 export const DEFAULT_EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
+
+/**
+ * A screenshot of `url` at `width` x `height` pixels into `file`. The page is laid out at `scale` times smaller and
+ * drawn at `scale`, so text reads as on a laptop screen; `transparent` keeps the page's transparent background.
+ * Edge's --screenshot returns before the file is written, so this waits until it exists and stops growing.
+ */
+export async function screenshot(url, file, { width = 1920, height = 1080, scale = 1, transparent = false, edge = DEFAULT_EDGE } = {}) {
+  rmSync(file, { force: true })
+  const browser = startHeadlessEdge(url, {
+    edge,
+    args: ['--hide-scrollbars', `--window-size=${Math.round(width / scale)},${Math.round(height / scale)}`, `--force-device-scale-factor=${scale}`,
+      '--virtual-time-budget=6000', `--screenshot=${file}`, ...(transparent ? ['--default-background-color=00000000'] : [])],
+  })
+  let last = -1
+  try {
+    for (let i = 0; i < 120; i++) {
+      await new Promise((r) => setTimeout(r, 250))
+      if (existsSync(file)) { const s = statSync(file).size; if (s > 0 && s === last) break; last = s }
+    }
+  } finally { await browser.stop() }
+  if (!existsSync(file)) throw new Error(`no screenshot of ${url}`)
+}
 
 /** Opens `url` in a headless Edge with a fresh profile. Returns { stop }, which ends every process of that profile. */
 export function startHeadlessEdge(url, { edge = DEFAULT_EDGE, args = [] } = {}) {

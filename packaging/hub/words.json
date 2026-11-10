@@ -1,0 +1,33 @@
+{
+  "//": "CRBN Rig's Pavillion Hub record and store words (crbn-launcher D-CRBN-021), sent by crbn-launcher scripts/hub-listing with pictures.json. links.tool (the web version, https://rig.carbonlinear.com/) is added only once that host serves and web/check.mjs --url passes, so the Hub never offers a web version that does not answer. Every claim is checked against the desktop build: RtAudio with ASIO, DirectSound and MME (no WASAPI); gate, EQ, IR, output modes and calibration as NeuralAmpModeler.cpp has them.",
+  "title": "CRBN Rig",
+  "app_type": "tool",
+  "mainProcess": "crbn-rig",
+  "launch_options": [],
+  "release": "earlyaccess",
+  "tagline": "Play your guitar through captures of real pedals, amps and cabinets.",
+  "lines": [
+    "Plays Neural Amp Modeler captures: real amps, pedals and whole rigs, thousands of them shared on TONE3000",
+    "A cabinet IR, a noise gate and a three-band EQ in the chain",
+    "Every capture at about the same loudness, or calibrated to your interface",
+    "Low latency through your audio interface with ASIO"
+  ],
+  "description": "**CRBN Rig puts real gear under your fingers.** Load a capture of an amp, a pedal or a whole rig, add a speaker cabinet, and play through it with your audio interface. Captures made with Neural Amp Modeler, like the thousands shared on TONE3000, play as they were recorded.",
+  "page": "## Real gear, captured\n\nA capture is a neural network trained to sound like one piece of gear: an amp head, a pedal, or a whole rig from pedal to microphone. CRBN Rig plays Neural Amp Modeler captures (`.nam` files), so the thousands shared on TONE3000 by players and studios are yours to try. Find one you like, drop it in, and play.\n\n## Your chain\n\n- **Input** with its own level, and a meter that tells you when your interface clips.\n- **Noise gate** to keep high-gain captures quiet between notes.\n- **The capture**, resampled for you when it was recorded at another rate.\n- **EQ**: bass, middle and treble.\n- **Cabinet**: a speaker cabinet impulse response (`.wav`).\n- **Output**: raw, normalized so every capture sits at about the same loudness, or calibrated to your interface's levels.\n\n## Made for playing\n\nCRBN Rig runs as its own app with your audio interface, through ASIO for the lowest latency, or DirectSound. Pick your input, output, buffer size and sample rate under File > Preferences.\n\n## Part of the CRBN suite\n\nCRBN Rig is installed and kept up to date by Pavillion Hub, beside the rest of the CRBN tools.\n\n## Credits\n\nBased on Neural Amp Modeler by Steven Atkinson. Captures and impulse responses belong to their authors.",
+  "features": {
+    "kb": true,
+    "mouse": true
+  },
+  "requirements": {
+    "minimum": {
+      "OS": "Windows 10 or 11, 64-bit",
+      "Storage": "20 MB",
+      "Other": "An audio interface or other audio input for your guitar, and headphones or monitors. An ASIO driver gives the lowest latency"
+    }
+  },
+  "developer": {
+    "name": "GOATi Entertainment",
+    "website": "https://www.carbonlinear.io"
+  },
+  "website": "https://www.carbonlinear.io"
+}
