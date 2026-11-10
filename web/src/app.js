@@ -10,6 +10,12 @@ import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from
 
 const $ = (id) => document.getElementById(id)
 const ENGINE_PARAMS = Object.keys(DEFAULTS)
+
+// Pavillion Hub's own view for web tools marks its user agent `PavillionTool/<app id>` (pavillion_client
+// hub/apps/desktop/src/main/toolView.ts), as crbn-photo-live's hub.ts reads it. There a pavillion://app/<id> link, sent
+// with window.open, brings up the app's Library card, and an https window.open goes to the person's browser.
+const TOOL_MARK = /(?:^|\s)PavillionTool\/([PS]2K[1-9A-HJ-NP-Za-km-z]{44})(?:\s|$)/
+const hubApp = TOOL_MARK.exec(navigator.userAgent)?.[1] ?? null
 const PAGE_DEFAULTS = { ...DEFAULTS, irOn: 1 }
 
 // ------------------------------------------------------------------------------------------------- settings
@@ -142,9 +148,15 @@ async function playGuitar() {
     stopDemo()
     await openMic($('input-device').value || undefined)
   } catch (err) {
-    toast(err?.name === 'NotAllowedError'
-      ? 'CRBN Rig needs your microphone or audio interface to hear your guitar. Allow it in the address bar, then try again.'
-      : `Your input could not be opened: ${err?.message ?? err}`)
+    if (err?.name === 'NotAllowedError' && hubApp) {
+      // The Hub's tool view grants no microphone yet (its TOOL_PERMISSIONS): offer the two places that can hear it.
+      $('hub-help').hidden = false
+      toast("Pavillion Hub's window can't hear your guitar yet. Open the installed app, or open CRBN Rig in your browser. The demo riff plays here.")
+    } else {
+      toast(err?.name === 'NotAllowedError'
+        ? 'CRBN Rig needs your microphone or audio interface to hear your guitar. Allow it in the address bar, then try again.'
+        : `Your input could not be opened: ${err?.message ?? err}`)
+    }
   }
   updateStatus()
 }
@@ -432,6 +444,14 @@ async function start() {
   $('input-device').addEventListener('change', () => { if (micStream) openMic($('input-device').value).catch((e) => toast(String(e?.message ?? e))) })
   navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (micStream) listDevices($('input-device').value) })
   for (const id of ['about-open', 'about-open-2']) $(id).addEventListener('click', () => $('about').showModal())
+  if (hubApp) {
+    const openApp = (e) => { e?.preventDefault(); window.open(`pavillion://app/${hubApp}`) }
+    const desktop = document.querySelector('.actions a.btn')
+    desktop.textContent = 'Open the installed app'
+    desktop.addEventListener('click', openApp)
+    $('hub-open-app').addEventListener('click', openApp)
+    $('hub-open-browser').addEventListener('click', () => window.open(location.href))
+  }
 
   try {
     const b = await (await fetch('build.json')).json()
