@@ -32,6 +32,8 @@ put the same page on the desktop (`docs/PLAN.md`).
 | The web host | `hosting/` (the r2-host-kit, `wrangler.jsonc`, `publish.json`, `README.md`) |
 | The placeholder icon | `packaging/icons/` (`node packaging/icons/render.mjs`) |
 | The plan and progress log | `docs/PLAN.md` |
+| **The build plan to finish the Rig push** (sessions R1..R9, in order) | `docs/BUILD_PLAN.md` |
+| The look's labs (the owner's picks live in their db) | `docs/design/` |
 
 ## Build and check (Box-C)
 

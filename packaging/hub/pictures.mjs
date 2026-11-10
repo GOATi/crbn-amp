@@ -27,12 +27,12 @@ await new Promise((ok) => server.listen(0, '127.0.0.1', ok))
 const art = (piece) => `http://127.0.0.1:${server.address().port}/packaging/hub/art/art.html?piece=${piece}`
 
 const pieces = [
-  ['hero', 'crbn-rig-hero.png', 1920, 1080],
-  ['card', 'crbn-rig-card.png', 1920, 1080],
-  ['cover', 'crbn-rig-cover.png', 600, 840],
-  ['logo', 'crbn-rig-logo.png', 800, 240, true],
+  ['hero', 'crbn-rig-hero-2.png', 1920, 1080],
+  ['card', 'crbn-rig-card-2.png', 1920, 1080],
+  ['cover', 'crbn-rig-cover-2.png', 600, 840],
+  ['logo', 'crbn-rig-logo-2.png', 800, 240, true],
   ['desktop', 'crbn-rig-shot-2-desktop.png', 1920, 1080],
-  ['looks', 'crbn-rig-shot-3-looks-2.png', 1920, 1080],
+  ['looks', 'crbn-rig-shot-3-looks-3.png', 1920, 1080],
 ]
 try {
   for (const [piece, name, width, height, transparent] of pieces) {
@@ -40,7 +40,7 @@ try {
     console.log(`${name} ${width}x${height} (${(statSync(join(out, name)).size / 1024).toFixed(0)} KiB)`)
   }
 } finally { server.close() }
-copyFileSync(join(root, 'dist', 'shots', 'web-capsule.png'), join(out, 'crbn-rig-shot-1-web.png'))
+copyFileSync(join(root, 'dist', 'shots', 'web-capsule.png'), join(out, 'crbn-rig-shot-1-web-2.png'))
 copyFileSync(join(import.meta.dirname, 'words.json'), join(out, 'words.json'))
 copyFileSync(join(import.meta.dirname, 'pictures.json'), join(out, 'pictures.json'))
 for (const f of JSON.parse(readFileSync(join(out, 'pictures.json'), 'utf8')).storeMedia) {

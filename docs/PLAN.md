@@ -10,7 +10,7 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 |---|---|---|
 | **P1 Desktop on the Hub** | The rebrand (name, cherry, icon, About, links, `crbn-rig.exe`), the Hub folder, the store page, `pavillion-publish` to dev, confirmed byte for byte | done on dev (2026-11-10); the owner's Install and Play to see |
 | **P2 Web on the Hub** | NAM's core in WebAssembly behind our own page in the suite's looks; guitar in through the browser; captures and IRs from disk; `rig.carbonlinear.com`; the record's `links.tool` | live on dev (2026-11-10): `rig.carbonlinear.com` serves it and the record's `links.tool` names it; in the desktop Hub's window the guitar input waits on the Hub lane's microphone grant |
-| **P3 Our UX** | The owner's first pass (D-RIG-006), briefed in `docs/P3-UX.md`: the power switch and squeal guard, the page on the desktop (WebView2 over the same engine), the library, favourites on standby with QWERTY keys, rigs and variants with hot-swapped pedals, drag-and-drop MIDI (his Morningstar MC8), then TONE3000 in the library | next: `docs/P3-UX.md`'s open choices first |
+| **P3 Our UX** | The order of sessions is `docs/BUILD_PLAN.md` (R1..R9). The owner's first pass (D-RIG-006), briefed in `docs/P3-UX.md`: the power switch and squeal guard, the page on the desktop (WebView2 over the same engine), the library, favourites on standby with QWERTY keys, rigs and variants with hot-swapped pedals, drag-and-drop MIDI (his Morningstar MC8), then TONE3000 in the library | next: `docs/P3-UX.md`'s open choices first |
 | P4 Plug-in formats | VST3 (and AU on macOS) for DAWs: the VST3 SDK, an install the Hub can place where hosts look. Upstream's Inno installer (`NeuralAmpModeler/installer/`, with its RTF readmes and the manual PDF) is not CRBN's route and still carries upstream's words; P4 rebrands it or replaces it, with an `AppId` of its own (it has none, so Inno keys it on `AppName` and it would meet an upstream install) | later |
 | P5 Signing, review, public | Certum signing in a SimplySign session; a director's first-publish review; `display: public` | done on dev (2026-11-10, D-RIG-005): signed, reviewed, public |
 
@@ -25,6 +25,10 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
   suite-wide finding is Audeze's live US registration of CRBN for headphones (Class 9), for the owner's adviser.
 
 ## Progress log
+
+- 2026-11-11 (SYNC:RIG-006): the new look live on the web (build `20261110-1452-36ad4b0`, the owner's publish); the store
+  pictures with the stompbox icon uploaded (record version 10); `docs/BUILD_PLAN.md` written: R1 the look's details, R2
+  the desktop on the page, R3..R8 U1 and U3..U7, R9 release and store.
 
 - 2026-11-11 (SYNC:RIG-005): the owner's lab picks (D-RIG-008), built in the web version: the stompbox mark and its
   app icon (`packaging/icons/icon.svg`, rendered into the .ico and the web icons); the Amp front layout, the faceplate
