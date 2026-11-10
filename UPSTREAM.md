@@ -1,0 +1,44 @@
+# Upstream: Neural Amp Modeler
+
+CRBN Rig (this repo, `GOATi/crbn-amp`, private) is GOATi Entertainment's fork of **NeuralAmpModelerPlugin** by Steven
+Atkinson, <https://github.com/sdatkinson/NeuralAmpModelerPlugin>, under the **MIT License** (`LICENSE`). Unlike the
+rest of the CRBN suite it is not an ArtCraft fork, so "storytold" in the suite's rules means sdatkinson here
+(crbn-launcher `docs/DECISIONS.md` D-CRBN-021 (e)).
+
+## The baseline
+
+| What | Where it came from | Commit |
+|---|---|---|
+| The plug-in (this repo's own tree) | sdatkinson/NeuralAmpModelerPlugin `main` | `fee982a86096ea17e7a6b004577207ab7c460e0c` (2026-11-03, "Update pull request template to simplify checklist") |
+| `iPlug2/` (submodule) | sdatkinson/iPlug2, Steven Atkinson's fork of iPlug2 | `de5a4fb14fd964247f0c70f2c90b32876a3bfc7c` (2026-08-09) |
+| `NeuralAmpModelerCore/` (submodule) | sdatkinson/NeuralAmpModelerCore, v0.6.0 | `0b3d3c97b0859a3a8c92a8628c4dd89a25eb5842` (2026-09-18) |
+| `AudioDSPTools/` (submodule) | sdatkinson/AudioDSPTools, v0.1.2 | `e19ef4b5b3bf2171c431847563acde29eedf85c0` (2026-08-09) |
+| `eigen/` (submodule) | gitlab.com/libeigen/eigen, 5.0.1 | `bc3b39870ecb690a623a3f49149a358b95c5781d` (2025-11-08) |
+| `NeuralAmpModelerCore/Dependencies/` (its own submodules) | AudioDSPTools v0.1.1 `0827c6c2`, Eigen 5.0.1 `bc3b3987`; nlohmann/json vendored in its tree | - |
+
+The repo was forked with upstream's whole history, so `git log fee982a` is upstream's log. GOATi's commits start after it.
+There is no baseline tag yet (sessions never push tags, D-CRBN-006); `scripts/change-list.ps1` names the commit.
+
+## The rules (D-CRBN-001, with sdatkinson in storytold's place)
+
+- **Upstream is frozen.** `main` never merges upstream. Nothing is pushed to, opened on, or asked of sdatkinson's repos.
+  An upstream change reaches `main` only by a reviewed cherry-pick (a security or crash fix, say) or a deliberate
+  re-fork from a newer point, on the owner's word. This clone has no `upstream` remote.
+- **The submodules still point at upstream's URLs** (sdatkinson's GitHub, Eigen's GitLab). They are checked out on
+  Box-C and nothing is fetched at build time, but a fresh `git submodule update` fetches from upstream, and a change to
+  a submodule cannot be committed here. Mirroring them under GOATi or vendoring them into this repo is the owner's open
+  question (D-CRBN-021 (g)). Until then, changes go in this repo's own files (the single-instance fix in
+  `NeuralAmpModeler.cpp` works around iPlug2's `WinMain` rather than editing it).
+- **Licence.** Everything here is MIT (the plug-in, NAM Core, AudioDSPTools, iPlug2, WDL's zlib-style terms) or
+  MPL-2.0 shipped unmodified (Eigen), with the third-party notices upstream keeps in
+  `NeuralAmpModeler/installer/ThirdPartyNotices.txt` (CRBN Rig adds its header and the embedded fonts' licences). Every
+  build ships `LICENSE.txt`, `ThirdPartyNotices.txt`, `NOTICE.txt` and `MODIFIED-FILES.txt`, the change list since the
+  baseline (D-CRBN-007's practice; MIT does not ask for it).
+- **Credit.** About keeps one plain-text credit: "Based on Neural Amp Modeler by Steven Atkinson". The app says it plays
+  captures from TONE3000 and links there for them; TONE3000's name is used only to say so.
+
+## What is upstream's in name only
+
+The C++ class `NeuralAmpModeler`, the projects (`NeuralAmpModeler-app.vcxproj` and the rest), the source file names and
+the saved-state header `###NeuralAmpModeler###` keep upstream's names (D-CRBN-002 (e)); every word a person reads says
+CRBN Rig.

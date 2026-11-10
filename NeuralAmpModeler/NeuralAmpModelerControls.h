@@ -39,6 +39,41 @@ IRECT CornerButtonArea(const IRECT& rect)
   return mainArea.GetFromTRHC(50, 50).GetCentredInside(20, 20);
 };
 
+// The header's name as the CRBN suite writes it: "CRBN" in the text colour, the product's part in its brand colour,
+// centred together, with the drop shadow upstream's title had (D-CRBN-019 (c), D-CRBN-021).
+class CRBNTitleControl : public IControl
+{
+public:
+  CRBNTitleControl(const IRECT& bounds, const char* suite, const char* product, float size, const char* fontID)
+  : IControl(bounds)
+  , mSuite(suite)
+  , mProduct(product)
+  , mText(size, PluginColors::CRBN_TEXT, fontID, EAlign::Near, EVAlign::Middle)
+  { mIgnoreMouse = true; }
+
+  void Draw(IGraphics& g) override
+  {
+    const IText productText = mText.WithFGColor(PluginColors::CRBN_BRAND);
+    IRECT suiteBounds, productBounds;
+    g.MeasureText(mText, mSuite.c_str(), suiteBounds);
+    g.MeasureText(productText, mProduct.c_str(), productBounds);
+    const float gap = 0.45f * mText.mSize;
+    const float left = mRECT.MW() - 0.5f * (suiteBounds.W() + gap + productBounds.W());
+    const IRECT suiteRect(left, mRECT.T, left + suiteBounds.W(), mRECT.B);
+    const IRECT productRect(suiteRect.R + gap, mRECT.T, suiteRect.R + gap + productBounds.W(), mRECT.B);
+    const IText shadow = mText.WithFGColor(COLOR_BLACK.WithOpacity(0.5f));
+    g.DrawText(shadow, mSuite.c_str(), suiteRect.GetTranslated(2.f, 2.f));
+    g.DrawText(shadow, mProduct.c_str(), productRect.GetTranslated(2.f, 2.f));
+    g.DrawText(mText, mSuite.c_str(), suiteRect);
+    g.DrawText(productText, mProduct.c_str(), productRect);
+  }
+
+private:
+  std::string mSuite;
+  std::string mProduct;
+  IText mText;
+};
+
 class NAMSquareButtonControl : public ISVGButtonControl
 {
 public:
@@ -581,13 +616,13 @@ public:
   void DrawTrackHandle(IGraphics& g, const IRECT& r, int chIdx, bool aboveBaseValue) override
   {
     if (r.H() > 2)
-      g.FillRect(GetColor(kX1), r, &mBlend);
+      g.FillRect(PluginColors::CRBN_METER, r, &mBlend);
   }
 
   void DrawPeak(IGraphics& g, const IRECT& r, int chIdx, bool aboveBaseValue) override
   {
     g.DrawGrid(COLOR_BLACK, mTrackBounds.Get()[chIdx], 10, 2);
-    g.FillRect(GetColor(kX3), r, &mBlend);
+    g.FillRect(PluginColors::CRBN_TEXT, r, &mBlend);
   }
 };
 
@@ -853,10 +888,11 @@ public:
     }
 
     const float halfWidth = PLUG_WIDTH / 2.0f - pad;
-    const auto bottomArea = GetRECT().GetPadded(-pad).GetFromBottom(78.0f);
+    // Six lines of About (CRBN Rig adds the TONE3000 line), so the bottom area is one line taller than upstream's 78.
+    const auto bottomArea = GetRECT().GetPadded(-pad).GetFromBottom(93.0f);
     const float lineHeight = 15.0f;
     const auto modelInfoArea = bottomArea.GetFromLeft(halfWidth).GetFromTop(4 * lineHeight);
-    const auto aboutArea = bottomArea.GetFromRight(halfWidth).GetFromTop(5 * lineHeight);
+    const auto aboutArea = bottomArea.GetFromRight(halfWidth).GetFromTop(AboutControl::kLines * lineHeight);
     AddNamedChildControl(new ModelInfoControl(modelInfoArea, leftStyle), mControlNames.modelInfo);
     AddNamedChildControl(new AboutControl(aboutArea, leftStyle, leftText), mControlNames.about);
 
@@ -949,6 +985,8 @@ private:
   class AboutControl : public IContainerBase
   {
   public:
+    static constexpr int kLines = 6;
+
     AboutControl(const IRECT& bounds, const IVStyle& style, const IText& text)
     : IContainerBase(bounds)
     , mStyle(style)
@@ -961,16 +999,19 @@ private:
 
       buildInfoStr.SetFormatted(100, "Version %s %s %s", verStr.Get(), PLUG()->GetArchStr(), PLUG()->GetAPIStr());
 
-      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 0), "NEURAL AMP MODELER",
-                                      "https://www.neuralampmodeler.com", mText, COLOR_TRANSPARENT,
+      // The name in the brand colour, linking to the app's Hub page (D-CRBN-019 (c), D-CRBN-021).
+      AddChildControl(new IURLControl(GetRECT().SubRectVertical(kLines, 0), "CRBN RIG", CRBN_HUB_PAGE_URL,
+                                      mText.WithFGColor(PluginColors::CRBN_BRAND), COLOR_TRANSPARENT,
                                       PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
-      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 1), "By Steven Atkinson", mStyle));
-      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(5, 2), buildInfoStr.Get(), mStyle));
-      AddChildControl(new IURLControl(GetRECT().SubRectVertical(5, 3),
-                                      "Plug-in development: Steve Atkinson, Oli Larkin, ... ",
-                                      "https://github.com/sdatkinson/NeuralAmpModelerPlugin/graphs/contributors", mText,
-                                      COLOR_TRANSPARENT, PluginColors::HELP_TEXT_MO, PluginColors::HELP_TEXT_CLICKED));
-      AddChildControl(new ThirdPartyNoticesControl(GetRECT().SubRectVertical(5, 4), mText));
+      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(kLines, 1), "By GOATi Entertainment", mStyle));
+      AddChildControl(new IVLabelControl(GetRECT().SubRectVertical(kLines, 2), buildInfoStr.Get(), mStyle));
+      // The one plain-text credit to upstream (D-CRBN-021 (e)).
+      AddChildControl(new IVLabelControl(
+        GetRECT().SubRectVertical(kLines, 3), "Based on Neural Amp Modeler by Steven Atkinson", mStyle));
+      AddChildControl(new IURLControl(GetRECT().SubRectVertical(kLines, 4), "Plays captures from TONE3000",
+                                      CRBN_GET_CAPTURES_URL, mText, COLOR_TRANSPARENT, PluginColors::HELP_TEXT_MO,
+                                      PluginColors::HELP_TEXT_CLICKED));
+      AddChildControl(new ThirdPartyNoticesControl(GetRECT().SubRectVertical(kLines, 5), mText));
     };
 
   private:

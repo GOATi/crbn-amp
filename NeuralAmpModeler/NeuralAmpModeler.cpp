@@ -20,6 +20,33 @@
 using namespace iplug;
 using namespace igraphics;
 
+#if defined(APP_API) && defined(OS_WIN)
+// One copy of the standalone at a time, and a second start brings the first to the front. iPlug2's WinMain looks for
+// the running window by the title BUNDLE_NAME, which for CRBN Rig is the identity "CRBNAmp", not the title "CRBN Rig"
+// (config.h), so its lookup would find nothing. This runs before WinMain: if the first copy's mutex exists, it raises
+// that copy's window by its real title and leaves; otherwise WinMain goes on and makes the mutex itself.
+namespace
+{
+struct CRBNSingleInstance
+{
+  CRBNSingleInstance()
+  {
+    HANDLE running = OpenMutexA(SYNCHRONIZE, FALSE, BUNDLE_NAME);
+    if (running == nullptr)
+      return;
+    CloseHandle(running);
+    if (HWND window = FindWindowA(nullptr, PLUG_NAME))
+    {
+      if (IsIconic(window))
+        ShowWindow(window, SW_RESTORE);
+      SetForegroundWindow(window);
+    }
+    ExitProcess(0);
+  }
+} gCRBNSingleInstance;
+} // namespace
+#endif
+
 const double kDCBlockerFrequency = 5.0;
 
 // Styles
@@ -217,7 +244,7 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
 
     pGraphics->AttachBackground(BACKGROUND_FN);
     pGraphics->AttachControl(new IBitmapControl(b, linesBitmap));
-    pGraphics->AttachControl(new IVLabelControl(titleArea, "NEURAL AMP MODELER", titleStyle));
+    pGraphics->AttachControl(new CRBNTitleControl(titleArea, "CRBN", "RIG", 30.f, "Michroma-Regular"));
     pGraphics->AttachControl(new ISVGControl(modelIconArea, modelIconSVG));
 
 #ifdef NAM_PICK_DIRECTORY
@@ -227,12 +254,12 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     const std::string defaultNamFileString = "Select model...";
     const std::string defaultIRString = "Select IR...";
 #endif
-    // Getting started page listing additional resources
-    const char* const getUrl = "https://www.neuralampmodeler.com/users#comp-marb84o5";
+    // Captures and IRs come from TONE3000's library (D-CRBN-021 (e)).
+    const char* const getUrl = CRBN_GET_CAPTURES_URL;
     pGraphics->AttachControl(
       new NAMFileBrowserControl(modelArea, kMsgTagClearModel, defaultNamFileString.c_str(), "nam",
                                 loadModelCompletionHandler, style, fileSVG, crossSVG, leftArrowSVG, rightArrowSVG,
-                                fileBackgroundBitmap, globeSVG, "Get NAM Models", getUrl),
+                                fileBackgroundBitmap, globeSVG, "Get captures on TONE3000", getUrl),
       kCtrlTagModelFileBrowser);
 
     auto hideSlimOverlay = [](IControl* pCaller) {
@@ -262,7 +289,7 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
     pGraphics->AttachControl(
       new NAMFileBrowserControl(irArea, kMsgTagClearIR, defaultIRString.c_str(), "wav", loadIRCompletionHandler, style,
                                 fileSVG, crossSVG, leftArrowSVG, rightArrowSVG, fileBackgroundBitmap, globeSVG,
-                                "Get IRs", getUrl),
+                                "Get IRs on TONE3000", getUrl),
       kCtrlTagIRFileBrowser);
     pGraphics->AttachControl(
       new NAMSwitchControl(ngToggleArea, kNoiseGateActive, "Noise Gate", style, switchHandleBitmap));
@@ -304,6 +331,9 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
       ->AttachControl(new NAMKnobControl(slimKnobArea, kSlim, "Slim", style, knobBackgroundBitmap), kCtrlTagSlimKnob)
       ->Hide(true);
 
+    // The brand strip: 2 px of the product's colour along the window's top edge, over every page (D-CRBN-019 (c)).
+    pGraphics->AttachControl(new IPanelControl(b.GetFromTop(2.f), PluginColors::CRBN_BRAND))->SetIgnoreMouse(true);
+
     pGraphics->ForAllControlsFunc([](IControl* pControl) {
       pControl->SetMouseEventsWhenDisabled(true);
       pControl->SetMouseOverWhenDisabled(true);
@@ -315,8 +345,28 @@ NeuralAmpModeler::NeuralAmpModeler(const InstanceInfo& info)
 }
 
 NeuralAmpModeler::~NeuralAmpModeler()
+{ _DeallocateIOPointers(); }
+
+bool NeuralAmpModeler::OnHostRequestingAboutBox()
 {
-  _DeallocateIOPointers();
+  // The standalone's Help > About opens the settings page, whose About names the app, its version and its credits.
+  if (IGraphics* pGraphics = GetUI())
+  {
+    if (IControl* pPage = pGraphics->GetControlWithTag(kCtrlTagSettingsBox))
+    {
+      pPage->As<NAMSettingsPageControl>()->HideAnimated(false);
+      return true;
+    }
+  }
+  return false;
+}
+
+bool NeuralAmpModeler::OnHostRequestingProductHelp()
+{
+  // Help goes to Pavillion Hub (D-CRBN-002), not to a manual.
+  if (IGraphics* pGraphics = GetUI())
+    return pGraphics->OpenURL(CRBN_HELP_URL);
+  return false;
 }
 
 void NeuralAmpModeler::ProcessBlock(iplug::sample** inputs, iplug::sample** outputs, int nFrames)

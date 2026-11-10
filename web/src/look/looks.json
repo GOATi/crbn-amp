@@ -1,0 +1,510 @@
+{
+  "generated": "scripts/export-looks.mjs",
+  "defaultLook": "capsule",
+  "looks": [
+    {
+      "id": "capsule",
+      "label": "Capsule",
+      "blurb": "CarbonLinear’s shapes: floating rounded islands, one pink accent.",
+      "motion": "pop",
+      "accent": "#f375b9",
+      "fonts": {
+        "display": "lexend-giga",
+        "ui": "poppins",
+        "mono": "geist-mono"
+      },
+      "swatch": [
+        "#0b0a0c",
+        "#1c1a20",
+        "#f375b9"
+      ],
+      "tokens": {
+        "bg": "#0b0a0c",
+        "chrome": "#0b0a0c",
+        "panel": "#141317",
+        "panel-2": "#1c1a20",
+        "field": "#1b191f",
+        "popover": "#18161b",
+        "hover": "rgba(255, 255, 255, .055)",
+        "hover-2": "rgba(255, 255, 255, .1)",
+        "line": "rgba(255, 255, 255, .055)",
+        "line-2": "rgba(255, 255, 255, .11)",
+        "text": "#f4f1f6",
+        "text-dim": "#b1acb8",
+        "text-faint": "#87818f",
+        "accent": "#f375b9",
+        "accent-ink": "#1a0b14",
+        "brand": "#f375b9",
+        "brand-ink": "#1a0b14",
+        "ok": "#5fd39a",
+        "warn": "#f2c037",
+        "warn-text": "#f6d98a",
+        "warn-bg": "rgba(242, 192, 55, .08)",
+        "warn-line": "rgba(242, 192, 55, .4)",
+        "bad": "#ff5470",
+        "bad-bg": "#7a1f30",
+        "checker-a": "#34313a",
+        "checker-b": "#26242b",
+        "r": "14px",
+        "r-sm": "9px",
+        "r-btn": "999px",
+        "r-field": "999px",
+        "r-chip": "999px",
+        "r-thumb": "8px",
+        "r-pop": "16px",
+        "islands": "8px",
+        "fs": "13px",
+        "fs-s": "12px",
+        "fs-xs": "11px"
+      },
+      "derived": {
+        "accent-text": "color-mix(in oklab, var(--accent) 82%, white)",
+        "primary-bg": "var(--accent)",
+        "live": "var(--accent-text)",
+        "sel": "color-mix(in oklab, var(--accent) 12%, transparent)",
+        "sel-focus": "color-mix(in oklab, var(--accent) 24%, transparent)",
+        "sel-line": "color-mix(in oklab, var(--accent) 40%, transparent)"
+      }
+    },
+    {
+      "id": "holo",
+      "label": "Holo",
+      "blurb": "The CarbonLinear hex cube: plum-black, cyan for live, HUD corner ticks.",
+      "motion": "arc",
+      "accent": "#f375b9",
+      "fonts": {
+        "display": "lexend-mega",
+        "ui": "lexend",
+        "mono": "jetbrains-mono"
+      },
+      "swatch": [
+        "#07060a",
+        "#1a1320",
+        "#4fe3ff"
+      ],
+      "tokens": {
+        "bg": "#07060a",
+        "chrome": "#0c0a10",
+        "panel": "#120d17",
+        "panel-2": "#1a1320",
+        "field": "#150f1b",
+        "popover": "#171019",
+        "hover": "rgba(120, 220, 255, .07)",
+        "hover-2": "rgba(120, 220, 255, .12)",
+        "line": "rgba(130, 200, 255, .09)",
+        "line-2": "rgba(130, 200, 255, .2)",
+        "text": "#ebe7f2",
+        "text-dim": "#aaa3ba",
+        "text-faint": "#8a82a0",
+        "accent": "#f375b9",
+        "accent-ink": "#1a0b14",
+        "brand": "#f375b9",
+        "brand-ink": "#1a0b14",
+        "live": "#4fe3ff",
+        "ok": "#3ecf8e",
+        "warn": "#f2c037",
+        "warn-text": "#f6d98a",
+        "warn-bg": "rgba(242, 192, 55, .08)",
+        "warn-line": "rgba(242, 192, 55, .4)",
+        "bad": "#e0445a",
+        "bad-bg": "#6b1a2a",
+        "sel": "rgba(79, 227, 255, .08)",
+        "sel-focus": "rgba(79, 227, 255, .16)",
+        "sel-line": "rgba(79, 227, 255, .35)",
+        "checker-a": "#2a2232",
+        "checker-b": "#1d1724",
+        "r": "6px",
+        "r-sm": "4px",
+        "r-btn": "4px",
+        "r-field": "4px",
+        "r-chip": "6px",
+        "r-thumb": "3px",
+        "r-pop": "8px",
+        "islands": "0px",
+        "fs": "13px",
+        "fs-s": "12px",
+        "fs-xs": "11px"
+      },
+      "derived": {
+        "accent-text": "color-mix(in oklab, var(--accent) 82%, white)",
+        "primary-bg": "linear-gradient(100deg, var(--accent), color-mix(in oklab, var(--accent) 80%, white))"
+      }
+    },
+    {
+      "id": "redline",
+      "label": "Redline",
+      "blurb": "Motorsport and forge: charcoal, square corners, a forge-orange redline.",
+      "motion": "slide",
+      "accent": "#ff3200",
+      "fonts": {
+        "display": "helvetica-xc",
+        "ui": "barlow-sc",
+        "mono": "plex-mono"
+      },
+      "swatch": [
+        "#0b0a0a",
+        "#22201f",
+        "#ff3200"
+      ],
+      "tokens": {
+        "bg": "#0b0a0a",
+        "chrome": "#121110",
+        "panel": "#191716",
+        "panel-2": "#22201f",
+        "field": "#100f0e",
+        "popover": "#1d1b1a",
+        "hover": "rgba(255, 255, 255, .05)",
+        "hover-2": "rgba(255, 255, 255, .09)",
+        "line": "#2a2725",
+        "line-2": "#3e3936",
+        "text": "#f3eee9",
+        "text-dim": "#bdb3ab",
+        "text-faint": "#8f857d",
+        "accent": "#ff3200",
+        "accent-ink": "#160805",
+        "brand": "#f375b9",
+        "brand-ink": "#1a0b14",
+        "live": "#ff7a1a",
+        "ok": "#6fdc6a",
+        "warn": "#ffb020",
+        "warn-text": "#ffd27a",
+        "warn-bg": "rgba(255, 176, 32, .07)",
+        "warn-line": "rgba(255, 176, 32, .4)",
+        "bad": "#ff2a3d",
+        "bad-bg": "#6e1018",
+        "checker-a": "#2e2b29",
+        "checker-b": "#211f1d",
+        "r": "2px",
+        "r-sm": "2px",
+        "r-btn": "2px",
+        "r-field": "2px",
+        "r-chip": "2px",
+        "r-thumb": "1px",
+        "r-pop": "3px",
+        "islands": "0px",
+        "fs": "13px",
+        "fs-s": "12px",
+        "fs-xs": "11px"
+      },
+      "derived": {
+        "accent-text": "color-mix(in oklab, var(--accent) 75%, white)",
+        "primary-bg": "linear-gradient(100deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 85%, #ff9a70) 45%, #f375b9 130%)",
+        "sel": "color-mix(in oklab, var(--accent) 10%, transparent)",
+        "sel-focus": "color-mix(in oklab, var(--accent) 20%, transparent)",
+        "sel-line": "color-mix(in oklab, var(--accent) 50%, transparent)"
+      }
+    },
+    {
+      "id": "daylight",
+      "label": "Daylight",
+      "blurb": "Capsule in light, for bright rooms and colour checks on white.",
+      "motion": "pop",
+      "accent": "#f375b9",
+      "fonts": {
+        "display": "lexend-giga",
+        "ui": "poppins",
+        "mono": "geist-mono"
+      },
+      "swatch": [
+        "#e8e6ea",
+        "#fbfafc",
+        "#f375b9"
+      ],
+      "tokens": {
+        "bg": "#e8e6ea",
+        "chrome": "#e8e6ea",
+        "panel": "#fbfafc",
+        "panel-2": "#f1eff3",
+        "field": "#f0eef2",
+        "popover": "#ffffff",
+        "hover": "rgba(30, 10, 30, .05)",
+        "hover-2": "rgba(30, 10, 30, .09)",
+        "line": "rgba(30, 10, 30, .07)",
+        "line-2": "rgba(30, 10, 30, .16)",
+        "text": "#1b1720",
+        "text-dim": "#4f4957",
+        "text-faint": "#6f6878",
+        "accent": "#f375b9",
+        "accent-ink": "#1a0b14",
+        "brand": "#f375b9",
+        "brand-ink": "#1a0b14",
+        "ok": "#18965a",
+        "warn": "#a86a00",
+        "warn-text": "#7a4d00",
+        "warn-bg": "#fff4dc",
+        "warn-line": "#e8c37a",
+        "bad": "#d1243f",
+        "bad-bg": "#fbe1e5",
+        "checker-a": "#e2dfe5",
+        "checker-b": "#f4f2f6",
+        "r": "14px",
+        "r-sm": "9px",
+        "r-btn": "999px",
+        "r-field": "999px",
+        "r-chip": "999px",
+        "r-thumb": "8px",
+        "r-pop": "16px",
+        "islands": "8px",
+        "fs": "13px",
+        "fs-s": "12px",
+        "fs-xs": "11px"
+      },
+      "derived": {
+        "accent-text": "color-mix(in oklab, var(--accent) 58%, black)",
+        "primary-bg": "var(--accent)",
+        "live": "color-mix(in oklab, var(--accent) 70%, black)",
+        "sel": "color-mix(in oklab, var(--accent) 16%, transparent)",
+        "sel-focus": "color-mix(in oklab, var(--accent) 28%, transparent)",
+        "sel-line": "color-mix(in oklab, var(--accent) 60%, black)"
+      }
+    }
+  ],
+  "motions": [
+    {
+      "id": "pop",
+      "label": "Pop",
+      "ms": 120,
+      "ease": "cubic-bezier(.3,1.45,.5,1)",
+      "what": "Scales up from 94% with a small overshoot; indicators overshoot too."
+    },
+    {
+      "id": "arc",
+      "label": "Arc",
+      "ms": 150,
+      "ease": "cubic-bezier(.2,.9,.1,1)",
+      "what": "A wipe led by a glowing edge in the live colour."
+    },
+    {
+      "id": "slide",
+      "label": "Slide",
+      "ms": 130,
+      "ease": "cubic-bezier(.2,.9,.1,1)",
+      "what": "Slides 14 px in from its edge on a hard ease-out."
+    },
+    {
+      "id": "snap",
+      "label": "Snap",
+      "ms": 90,
+      "ease": "ease-out",
+      "what": "A 4 px rise and fade. The quietest style."
+    },
+    {
+      "id": "wipe",
+      "label": "Wipe",
+      "ms": 120,
+      "ease": "cubic-bezier(.4,0,.2,1)",
+      "what": "A reveal from the side it enters from: the CarbonLinear site’s logo reveal."
+    },
+    {
+      "id": "glitch",
+      "label": "Glitch",
+      "ms": 110,
+      "ease": "linear",
+      "what": "Two torn frames, then it settles. The loudest style."
+    },
+    {
+      "id": "off",
+      "label": "Off",
+      "ms": 0,
+      "ease": "linear",
+      "what": "Every change is instant."
+    }
+  ],
+  "fonts": {
+    "display": [
+      {
+        "id": "lexend-giga",
+        "label": "Lexend Giga",
+        "stack": "'Lexend Giga', 'Lexend', sans-serif",
+        "scale": 0.9,
+        "tracking": ".24em"
+      },
+      {
+        "id": "lexend-mega",
+        "label": "Lexend Mega",
+        "stack": "'Lexend Mega', 'Lexend', sans-serif",
+        "scale": 0.92,
+        "tracking": ".16em"
+      },
+      {
+        "id": "helvetica-xc",
+        "label": "Helvetica Extra Compressed",
+        "stack": "'HelvXC', 'Big Shoulders Display', sans-serif",
+        "scale": 1.42,
+        "tracking": ".05em"
+      },
+      {
+        "id": "big-shoulders",
+        "label": "Big Shoulders Display",
+        "stack": "'Big Shoulders Display', sans-serif",
+        "scale": 1.25,
+        "tracking": ".06em"
+      },
+      {
+        "id": "system",
+        "label": "System",
+        "stack": "system-ui, 'Segoe UI', sans-serif",
+        "scale": 1,
+        "tracking": ".08em"
+      }
+    ],
+    "ui": [
+      {
+        "id": "poppins",
+        "label": "Poppins",
+        "stack": "'Poppins', 'Segoe UI', system-ui, sans-serif"
+      },
+      {
+        "id": "lexend",
+        "label": "Lexend",
+        "stack": "'Lexend', 'Segoe UI', system-ui, sans-serif"
+      },
+      {
+        "id": "barlow-sc",
+        "label": "Barlow Semi Condensed",
+        "stack": "'Barlow Semi Condensed', 'Segoe UI', system-ui, sans-serif"
+      },
+      {
+        "id": "atkinson",
+        "label": "Atkinson Hyperlegible (easiest to read)",
+        "stack": "'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif"
+      },
+      {
+        "id": "system",
+        "label": "System",
+        "stack": "system-ui, 'Segoe UI', sans-serif"
+      }
+    ],
+    "mono": [
+      {
+        "id": "geist-mono",
+        "label": "Geist Mono",
+        "stack": "'Geist Mono', ui-monospace, Consolas, monospace"
+      },
+      {
+        "id": "jetbrains-mono",
+        "label": "JetBrains Mono",
+        "stack": "'JetBrains Mono', ui-monospace, Consolas, monospace"
+      },
+      {
+        "id": "plex-mono",
+        "label": "IBM Plex Mono",
+        "stack": "'IBM Plex Mono', ui-monospace, Consolas, monospace"
+      },
+      {
+        "id": "system",
+        "label": "System",
+        "stack": "ui-monospace, Consolas, monospace"
+      }
+    ]
+  },
+  "accents": [
+    {
+      "id": "look",
+      "label": "The look’s own",
+      "hex": null
+    },
+    {
+      "id": "pink",
+      "label": "CarbonLinear pink",
+      "hex": "#f375b9"
+    },
+    {
+      "id": "cyan",
+      "label": "Hex cyan",
+      "hex": "#4fe3ff"
+    },
+    {
+      "id": "forge",
+      "label": "Forge orange",
+      "hex": "#ff3200"
+    },
+    {
+      "id": "ice",
+      "label": "Ice blue",
+      "hex": "#bdd6ff"
+    },
+    {
+      "id": "heliotrope",
+      "label": "Hub heliotrope",
+      "hex": "#a25aff"
+    },
+    {
+      "id": "gorse",
+      "label": "Hub gorse",
+      "hex": "#fffb59"
+    }
+  ],
+  "speeds": [
+    {
+      "value": 0.6,
+      "label": "Quick"
+    },
+    {
+      "value": 1,
+      "label": "1×"
+    },
+    {
+      "value": 1.5,
+      "label": "Relaxed"
+    }
+  ],
+  "densities": [
+    {
+      "value": "compact",
+      "label": "Compact"
+    },
+    {
+      "value": "comfortable",
+      "label": "Comfortable"
+    }
+  ],
+  "products": [
+    {
+      "id": "livewire",
+      "name": "CRBN Livewire",
+      "main": "Livewire",
+      "brand": "#f375b9",
+      "ink": "#1a0b14",
+      "appId": "com.pavillionhub.crbn.photo",
+      "repo": "GOATi/crbn-photo"
+    },
+    {
+      "id": "mixtape",
+      "name": "CRBN Mixtape",
+      "main": "Mixtape",
+      "brand": "#c8ff3d",
+      "ink": "#15200a",
+      "appId": "com.pavillionhub.crbn.audio",
+      "repo": "GOATi/crbn-audio"
+    },
+    {
+      "id": "console",
+      "name": "CRBN Console",
+      "main": "Console",
+      "brand": "#ffb340",
+      "ink": "#241600",
+      "appId": "com.pavillionhub.crbn.sound",
+      "repo": "GOATi/crbn-sound"
+    },
+    {
+      "id": "press",
+      "name": "CRBN Press",
+      "main": "Press",
+      "brand": "#5b8cff",
+      "ink": "#0a1430",
+      "appId": "com.pavillionhub.crbn.pdf",
+      "repo": "GOATi/crbn-pdf"
+    },
+    {
+      "id": "rig",
+      "name": "CRBN Rig",
+      "main": "Rig",
+      "brand": "#d92b52",
+      "ink": "#ffffff",
+      "appId": "com.pavillionhub.crbn.amp",
+      "repo": "GOATi/crbn-amp"
+    }
+  ],
+  "hubBrand": "#a25aff"
+}

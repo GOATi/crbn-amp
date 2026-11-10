@@ -93,6 +93,8 @@ public:
   int UnserializeState(const iplug::IByteChunk& chunk, int startPos) override;
   void OnUIOpen() override;
   bool OnHostRequestingSupportedViewConfiguration(int width, int height) override { return true; }
+  bool OnHostRequestingAboutBox() override;
+  bool OnHostRequestingProductHelp() override;
 
   void OnParamChange(int paramIdx) override;
   void OnParamChangeUI(int paramIdx, iplug::EParamSource source) override;

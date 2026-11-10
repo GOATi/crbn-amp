@@ -67,11 +67,20 @@ const iplug::igraphics::IColor NAM_3(255, 162, 178, 191); // Cadet Blue Crayola
 // const iplug::igraphics::IColor NAM_3(255, 207, 220, 229);  // Beau Blue
 // const iplug::igraphics::IColor NAM_3(255, 187, 199, 208);  // Silver Sand
 
+// CRBN Rig in the suite's Capsule look (crbn-launcher looks/, D-CRBN-019, D-CRBN-021). The brand is fixed per product;
+// in Capsule it is also the accent. Upstream's azure (80, 133, 232) is no longer used.
+const iplug::igraphics::IColor CRBN_BRAND(255, 0xd9, 0x2b, 0x52); // --brand, deeper cherry #d92b52
+const iplug::igraphics::IColor CRBN_BRAND_INK(255, 0xff, 0xff, 0xff); // --brand-ink, white (4.75:1 on the brand)
+const iplug::igraphics::IColor CRBN_TEXT(255, 0xf4, 0xf1, 0xf6); // Capsule --text
+const iplug::igraphics::IColor CRBN_TEXT_DIM(255, 0xb1, 0xac, 0xb8); // Capsule --text-dim
+// Meters are a level, not a state: they draw in a neutral, so a hot signal is never confused with the cherry accent
+// or with an error. Rig's clip and error marks carry a label or shape, never colour alone (D-CRBN-021 (b)).
+const iplug::igraphics::IColor CRBN_METER(255, 0xb1, 0xac, 0xb8); // Capsule --text-dim
+
 // Evan Heritage theme colors
 const iplug::igraphics::IColor NAM_0(0, 18, 17, 19); // Transparent
-const iplug::igraphics::IColor NAM_THEMECOLOR(255, 80, 133, 232); // Azure
-// const iplug::igraphics::IColor NAM_THEMECOLOR(255, 23, 190, 187); // Custom :)
-const iplug::igraphics::IColor NAM_THEMEFONTCOLOR(255, 242, 242, 242); // Dark White
+const iplug::igraphics::IColor NAM_THEMECOLOR = CRBN_BRAND;
+const iplug::igraphics::IColor NAM_THEMEFONTCOLOR = CRBN_TEXT;
 
 // Misc
 // const iplug::igraphics::IColor MOUSEOVER = NAM_3.WithOpacity(0.3);

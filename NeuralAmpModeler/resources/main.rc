@@ -65,7 +65,7 @@ END
 
 IDD_DIALOG_MAIN DIALOG 0, 0, 500, 300
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "NeuralAmpModeler"
+CAPTION "CRBN Rig"
 MENU IDR_MENU1
 FONT 8, "MS Sans Serif"
 BEGIN
@@ -94,7 +94,7 @@ BEGIN
     POPUP "&Help"
     BEGIN
         MENUITEM "&About",                      ID_ABOUT
-        MENUITEM "&Read Manual",                ID_HELP
+        MENUITEM "&Help on Pavillion Hub",      ID_HELP
     END
 END
 
@@ -218,8 +218,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,0,1,0
- PRODUCTVERSION 0,0,1,0
+ FILEVERSION 0,8,0,0
+ PRODUCTVERSION 0,8,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -234,13 +234,14 @@ BEGIN
     BEGIN
         BLOCK "040004e4"
         BEGIN
-            VALUE "FileVersion", "0.0.1"
-            VALUE "ProductVersion", "0.0.1"
-            VALUE "FileDescription", "NeuralAmpModeler"
-            VALUE "InternalName", "NeuralAmpModeler"
-            VALUE "ProductName", "NeuralAmpModeler"
-            VALUE "CompanyName", "StevenAtkinson"
-            VALUE "LegalCopyright", "Copyright 2020 Acme Inc"
+            VALUE "FileVersion", "0.8.0"
+            VALUE "ProductVersion", "0.8.0"
+            VALUE "FileDescription", "CRBN Rig"
+            VALUE "InternalName", "crbn-rig"
+            VALUE "ProductName", "CRBN Rig"
+            VALUE "CompanyName", "GOATi Entertainment Pty Ltd"
+            VALUE "LegalCopyright", "Copyright 2026 GOATi Entertainment Pty Ltd. Based on Neural Amp Modeler by Steven Atkinson."
+            VALUE "OriginalFilename", "crbn-rig.exe"
             VALUE "LegalTrademarks", "VST is a trademark of Steinberg Media Technologies GmbH, Audio Unit is a trademark of Apple, Inc."
         END
     END

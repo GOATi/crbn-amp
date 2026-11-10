@@ -13,3 +13,7 @@ mkcert*
 
 NeuralAmpModeler/*.wav
 NeuralAmpModeler/peaks/
+
+# CRBN Rig: build outputs (icons, the web build, the Hub folder, pictures); never committed
+/dist/
+/.wrangler/

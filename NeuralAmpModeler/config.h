@@ -1,16 +1,26 @@
-#define PLUG_NAME "NeuralAmpModeler"
-#define PLUG_MFR "Steven Atkinson"
+// CRBN Rig (crbn-launcher D-CRBN-021): every name a person reads is the product's; identities follow the app id
+// com.pavillionhub.crbn.amp and never the product name, so a rename never strands anyone's settings.
+#define PLUG_NAME "CRBN Rig"
+#define PLUG_MFR "GOATi Entertainment"
 #define PLUG_VERSION_HEX 0x00000800
 #define PLUG_VERSION_STR "0.8.0"
-#define PLUG_UNIQUE_ID '1YEo'
-#define PLUG_MFR_ID 'SDAa'
-#define PLUG_URL_STR "https://github.com/sdatkinson/NeuralAmpModelerPlugin"
-#define PLUG_EMAIL_STR "spam@me.com"
-#define PLUG_COPYRIGHT_STR "Copyright 2022 Steven Atkinson"
+// New ids (upstream's were '1YEo' and 'SDAa'), so a DAW never takes CRBN Rig for upstream NAM (D-CRBN-002 (a)).
+#define PLUG_UNIQUE_ID 'CRig'
+#define PLUG_MFR_ID 'Goat'
+#define PLUG_URL_STR "https://pavillionhub.com/app/crbn-rig"
+#define PLUG_EMAIL_STR ""
+#define PLUG_COPYRIGHT_STR "Copyright 2026 GOATi Entertainment Pty Ltd. Based on Neural Amp Modeler by Steven Atkinson."
 #define PLUG_CLASS_NAME NeuralAmpModeler
-#define BUNDLE_NAME "NeuralAmpModeler"
-#define BUNDLE_MFR "StevenAtkinson"
+// The identity part of bundle ids, the standalone's settings folder (%LOCALAPPDATA%\CRBNAmp) and its single-instance
+// mutex. One word, because macOS bundle ids cannot hold a space.
+#define BUNDLE_NAME "CRBNAmp"
+#define BUNDLE_MFR "pavillionhub"
 #define BUNDLE_DOMAIN "com"
+// Where Help and the About page's name go.
+#define CRBN_HUB_PAGE_URL "https://pavillionhub.com/app/crbn-rig"
+#define CRBN_HELP_URL "https://pavillionhub.com/help"
+// Captures (amps, pedals, full rigs) and IRs come from TONE3000's library; CRBN Rig plays them and says so.
+#define CRBN_GET_CAPTURES_URL "https://www.tone3000.com"
 
 #define SHARED_RESOURCES_SUBPATH "NeuralAmpModeler"
 
@@ -43,8 +53,8 @@
 
 #define AAX_TYPE_IDS 'ITP1'
 #define AAX_TYPE_IDS_AUDIOSUITE 'ITA1'
-#define AAX_PLUG_MFR_STR "Acme"
-#define AAX_PLUG_NAME_STR "NeuralAmpModeler\nIPEF"
+#define AAX_PLUG_MFR_STR "GOATi Entertainment"
+#define AAX_PLUG_NAME_STR "CRBN Rig\nIPEF"
 #define AAX_PLUG_CATEGORY_STR "Effect"
 #define AAX_DOES_AUDIOSUITE 1
 

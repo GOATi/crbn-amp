@@ -1,0 +1,195 @@
+/* The CRBN suite's looks (D-PHOTOLIVE-006, D-CRBN-019): the shared source every CRBN app vendors (README.md beside
+   this file). Four looks, each one block of tokens on <html data-look>, then the few rules that give it its character;
+   and one block per product on <html data-product> for the brand colour it keeps. An app's own stylesheets use only the
+   tokens. The app's prefs set the fonts, timings and a user-picked --accent inline on <html>, so they win over a
+   look's own. Ported from the Reskin Lab (crbn-photo-live docs/design/2026-10-16-reskin-lab/src/style.css). */
+
+:root {
+  /* Capsule is the default look; these hold until prefs.ts sets data-look (before the first paint). */
+  --bg: #0b0a0c; --chrome: #0b0a0c; --panel: #141317; --panel-2: #1c1a20; --field: #1b191f; --popover: #18161b;
+  --hover: rgba(255, 255, 255, .055); --hover-2: rgba(255, 255, 255, .1);
+  --line: rgba(255, 255, 255, .055); --line-2: rgba(255, 255, 255, .11);
+  --text: #f4f1f6; --text-dim: #b1acb8; --text-faint: #87818f;
+  --accent: #f375b9;
+  --accent-text: color-mix(in oklab, var(--accent) 82%, white);
+  --accent-ink: #1a0b14;
+  /* The product's own colour (D-CRBN-019): fixed, never the user's to change. Where it shows is the app's: its mark,
+     a .brand-strip, the taskbar icon, the Hub card. --accent is the look's and the user's. */
+  --brand: #f375b9; --brand-ink: #1a0b14;
+  --primary-bg: var(--accent);
+  --live: var(--accent-text);
+  --ok: #5fd39a;
+  --warn: #f2c037; --warn-text: #f6d98a; --warn-bg: rgba(242, 192, 55, .08); --warn-line: rgba(242, 192, 55, .4);
+  --bad: #ff5470; --bad-bg: #7a1f30;
+  --sel: color-mix(in oklab, var(--accent) 12%, transparent);
+  --sel-focus: color-mix(in oklab, var(--accent) 24%, transparent);
+  --sel-line: color-mix(in oklab, var(--accent) 40%, transparent);
+  --checker-a: #34313a; --checker-b: #26242b;
+  --r: 14px; --r-sm: 9px; --r-btn: 999px; --r-field: 999px; --r-chip: 999px; --r-thumb: 8px; --r-pop: 16px;
+  --islands: 8px;
+  --font-display: 'Lexend Giga', 'Lexend', sans-serif;
+  --font-ui: 'Poppins', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, Consolas, monospace;
+  --d-scale: .9; --d-track: .24em;
+  --d1: 70ms; --d2: 150ms; --ease-ind: cubic-bezier(.3, 1.45, .5, 1);
+  --fs: 13px; --fs-s: 12px; --fs-xs: 11px;
+  color-scheme: dark;
+}
+:root[data-density='compact'] { --fs: 12px; --fs-s: 11px; --fs-xs: 10.5px; }
+
+/* ================================================================ products (D-CRBN-019): the colour each app keeps */
+:root[data-product='livewire'] { --brand: #f375b9; --brand-ink: #1a0b14; }
+:root[data-product='mixtape'] { --brand: #c8ff3d; --brand-ink: #15200a; }
+:root[data-product='console'] { --brand: #ffb340; --brand-ink: #241600; }
+:root[data-product='press'] { --brand: #5b8cff; --brand-ink: #0a1430; }
+/* Rig's deeper cherry is the one brand with white ink, kept clear of --bad #ff5470 (D-CRBN-021 (b)). */
+:root[data-product='rig'] { --brand: #d92b52; --brand-ink: #ffffff; }
+/* In Capsule, Holo and Daylight the product's brand colour is its default accent, so the apps differ out of the box.
+   Redline keeps forge orange in every product (its block below sets --accent; these rules leave Redline out). The
+   user's own accent is set inline on <html> by the app's prefs and wins over both. */
+:root[data-product='mixtape']:not([data-look='redline']) { --accent: #c8ff3d; --accent-ink: #15200a; }
+:root[data-product='console']:not([data-look='redline']) { --accent: #ffb340; --accent-ink: #241600; }
+:root[data-product='press']:not([data-look='redline']) { --accent: #5b8cff; --accent-ink: #0a1430; }
+/* Rig's cherry is within 4 ΔE (OKLab) of Daylight's and Holo's own --bad, so there it would read as an error: it is the
+   accent in Capsule alone, and Daylight and Holo keep their own accent, as they do for Livewire (D-CRBN-021 (b)). */
+:root[data-product='rig'][data-look='capsule'] { --accent: #d92b52; --accent-ink: #ffffff; }
+.brand-strip { height: 2px; background: var(--brand); flex: none; }
+.brand-ink { color: var(--brand); }
+
+/* ================================================================ Capsule (and Daylight's shapes) */
+:root[data-look='capsule'] { --islands: 8px; }
+
+/* ================================================================ Daylight: Capsule in light */
+:root[data-look='daylight'] {
+  --bg: #e8e6ea; --chrome: #e8e6ea; --panel: #fbfafc; --panel-2: #f1eff3; --field: #f0eef2; --popover: #ffffff;
+  --hover: rgba(30, 10, 30, .05); --hover-2: rgba(30, 10, 30, .09);
+  --line: rgba(30, 10, 30, .07); --line-2: rgba(30, 10, 30, .16);
+  --text: #1b1720; --text-dim: #4f4957; --text-faint: #6f6878;
+  --accent-text: color-mix(in oklab, var(--accent) 58%, black);
+  --live: color-mix(in oklab, var(--accent) 70%, black);
+  --ok: #18965a;
+  --warn: #a86a00; --warn-text: #7a4d00; --warn-bg: #fff4dc; --warn-line: #e8c37a;
+  --bad: #d1243f; --bad-bg: #fbe1e5;
+  --sel: color-mix(in oklab, var(--accent) 16%, transparent);
+  --sel-focus: color-mix(in oklab, var(--accent) 28%, transparent);
+  --sel-line: color-mix(in oklab, var(--accent) 60%, black);
+  --checker-a: #e2dfe5; --checker-b: #f4f2f6;
+  --islands: 8px;
+  color-scheme: light;
+}
+
+/* ================================================================ Holo: the hex cube, alive */
+:root[data-look='holo'] {
+  --bg: #07060a; --chrome: #0c0a10; --panel: #120d17; --panel-2: #1a1320; --field: #150f1b; --popover: #171019;
+  --hover: rgba(120, 220, 255, .07); --hover-2: rgba(120, 220, 255, .12);
+  --line: rgba(130, 200, 255, .09); --line-2: rgba(130, 200, 255, .2);
+  --text: #ebe7f2; --text-dim: #aaa3ba; --text-faint: #8a82a0;
+  --primary-bg: linear-gradient(100deg, var(--accent), color-mix(in oklab, var(--accent) 80%, white));
+  --live: #4fe3ff;
+  --ok: #3ecf8e; --warn: #f2c037; --bad: #e0445a; --bad-bg: #6b1a2a;
+  --sel: rgba(79, 227, 255, .08); --sel-focus: rgba(79, 227, 255, .16); --sel-line: rgba(79, 227, 255, .35);
+  --checker-a: #2a2232; --checker-b: #1d1724;
+  --r: 6px; --r-sm: 4px; --r-btn: 4px; --r-field: 4px; --r-chip: 6px; --r-thumb: 3px; --r-pop: 8px;
+  --islands: 0px;
+}
+:root[data-look='holo'] body {
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='41.57'%3E%3Cpath d='M12 0L24 6.93V20.78L12 27.71L0 20.78V6.93Z M12 27.71V41.57' fill='none' stroke='%2382c8ff' stroke-opacity='.06'/%3E%3C/svg%3E");
+}
+:root[data-look='holo'] .shell-header { background: linear-gradient(180deg, #120c18, #0c0a10); box-shadow: inset 0 -1px 0 rgba(79, 227, 255, .14); }
+:root[data-look='holo'] .shell > .panel { background-color: color-mix(in oklab, var(--panel) 94%, transparent); }
+/* HUD corner ticks on each panel */
+:root[data-look='holo'] .shell > .panel::before,
+:root[data-look='holo'] .shell > .panel::after {
+  content: ''; position: absolute; z-index: 3; width: 9px; height: 9px; pointer-events: none;
+  border: 0 solid var(--live); opacity: .55;
+}
+:root[data-look='holo'] .shell > .panel::before { top: 3px; left: 3px; border-width: 1px 0 0 1px; }
+:root[data-look='holo'] .shell > .panel::after { bottom: 3px; right: 3px; border-width: 0 1px 1px 0; }
+:root[data-look='holo'] button.primary { box-shadow: 0 0 16px color-mix(in oklab, var(--accent) 35%, transparent); }
+:root[data-look='holo'] .brand-name, :root[data-look='holo'] .seg-on { text-shadow: 0 0 10px rgba(79, 227, 255, .45); }
+:root[data-look='holo'] .vrow[aria-selected='true'] .thumb { box-shadow: 0 0 0 1px var(--live), 0 0 12px rgba(79, 227, 255, .4); }
+:root[data-look='holo'] .seg-ind { background: rgba(79, 227, 255, .1); box-shadow: inset 0 0 0 1px rgba(79, 227, 255, .5), 0 0 12px rgba(79, 227, 255, .18); }
+:root[data-look='holo'] .segmented button[aria-pressed='true'] { color: #dff8ff; }
+
+/* ================================================================ Redline: motorsport and forge */
+:root[data-look='redline'] {
+  --bg: #0b0a0a; --chrome: #121110; --panel: #191716; --panel-2: #22201f; --field: #100f0e; --popover: #1d1b1a;
+  --hover: rgba(255, 255, 255, .05); --hover-2: rgba(255, 255, 255, .09);
+  --line: #2a2725; --line-2: #3e3936;
+  --text: #f3eee9; --text-dim: #bdb3ab; --text-faint: #8f857d;
+  --accent: #ff3200;
+  --accent-text: color-mix(in oklab, var(--accent) 75%, white);
+  --accent-ink: #160805;
+  --primary-bg: linear-gradient(100deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 85%, #ff9a70) 45%, #f375b9 130%);
+  --live: #ff7a1a;
+  --ok: #6fdc6a; --warn: #ffb020; --warn-text: #ffd27a; --warn-bg: rgba(255, 176, 32, .07); --warn-line: rgba(255, 176, 32, .4);
+  --bad: #ff2a3d; --bad-bg: #6e1018;
+  --sel: color-mix(in oklab, var(--accent) 10%, transparent);
+  --sel-focus: color-mix(in oklab, var(--accent) 20%, transparent);
+  --sel-line: color-mix(in oklab, var(--accent) 50%, transparent);
+  --checker-a: #2e2b29; --checker-b: #211f1d;
+  --r: 2px; --r-sm: 2px; --r-btn: 2px; --r-field: 2px; --r-chip: 2px; --r-thumb: 1px; --r-pop: 3px;
+  --islands: 0px;
+}
+:root[data-look='redline'] .shell-header {
+  background-color: #121110;
+  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .028) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
+  border-bottom: 2px solid var(--accent);
+}
+/* hazard hatching beside the name */
+:root[data-look='redline'] .brand::after {
+  content: ''; width: 28px; height: 12px; margin-left: 4px;
+  background: repeating-linear-gradient(-55deg, #3a3532 0 3px, transparent 3px 7px);
+}
+:root[data-look='redline'] .brand-name, :root[data-look='redline'] .section-title { text-transform: uppercase; }
+:root[data-look='redline'] button.primary {
+  font-family: var(--font-display); font-size: calc(var(--fs-s) * var(--d-scale)); letter-spacing: var(--d-track);
+  text-transform: uppercase; font-weight: 700;
+}
+/* the segmented switch's indicator is an underline, as on the lab's layout switcher */
+:root[data-look='redline'] .segmented { background: transparent; border-color: var(--line-2); }
+:root[data-look='redline'] .seg-ind {
+  top: auto; bottom: 0; height: 3px; border-radius: 0; background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+:root[data-look='redline'] .segmented button[aria-pressed='true'] { color: #fff; }
+
+/* ================================================================ islands: Capsule and Daylight float their panels */
+:root:is([data-look='capsule'], [data-look='daylight']) .shell { padding: 0 var(--islands) var(--islands); }
+:root:is([data-look='capsule'], [data-look='daylight']) .shell-header { background: transparent; border-bottom: 0; }
+:root:is([data-look='capsule'], [data-look='daylight']) .shell > .panel { border-radius: 16px; overflow: hidden; }
+:root:is([data-look='capsule'], [data-look='daylight']) .shell > .textures { margin-right: 2px; }
+:root:is([data-look='capsule'], [data-look='daylight']) .shell > .editor { margin-left: 2px; }
+:root:is([data-look='capsule'], [data-look='daylight']) .shell.collapsed > .editor { margin-left: var(--islands); }
+:root:is([data-look='capsule'], [data-look='daylight']) .splitter { background: transparent; border-radius: 999px; }
+:root:is([data-look='capsule'], [data-look='daylight']) button.primary { box-shadow: 0 2px 12px color-mix(in oklab, var(--accent) 30%, transparent); }
+/* Push live: round on one end, nearly square on the other, like the CarbonLinear site's header buttons */
+:root:is([data-look='capsule'], [data-look='daylight']) button.push { border-radius: 999px 6px 6px 999px; }
+:root:is([data-look='capsule'], [data-look='daylight']) .vrow { border-radius: 10px; }
+
+/* ================================================================ motion */
+:root[data-motion='off'] *, :root[data-motion='off'] *::before, :root[data-motion='off'] *::after { transition: none !important; animation: none !important; }
+
+/* A new look wipes over the old one (prefs.ts starts a View Transition in the new look's motion). */
+::view-transition-group(root) { animation-duration: var(--vt-dur, 200ms); } /* the browser's own default is 250 ms */
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) { animation: vt-wipe var(--vt-dur, 200ms) cubic-bezier(.4, 0, .2, 1) both; }
+:root[data-vt='arc']::view-transition-new(root) { animation-name: vt-arc; }
+:root[data-vt='pop']::view-transition-new(root) { animation-name: vt-pop; animation-timing-function: cubic-bezier(.3, 1.3, .5, 1); }
+:root:is([data-vt='snap'], [data-vt='slide'])::view-transition-new(root) { animation-name: vt-slide; }
+:root[data-vt='glitch']::view-transition-new(root) { animation-name: vt-glitch; animation-timing-function: linear; }
+@keyframes vt-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes vt-arc { from { clip-path: inset(0 100% 0 0); filter: brightness(2.2) saturate(1.3); } 70% { filter: brightness(1.2); } to { clip-path: inset(0 0 0 0); filter: none; } }
+@keyframes vt-pop { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes vt-slide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes vt-glitch {
+  0% { clip-path: inset(0 0 70% 0); transform: translateX(-8px); }
+  30% { clip-path: inset(30% 0 0 0); transform: translateX(6px); }
+  60% { clip-path: inset(0 0 25% 0); transform: translateX(-3px); }
+  100% { clip-path: inset(0 0 0 0); transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(root) { animation: none; }
+}
