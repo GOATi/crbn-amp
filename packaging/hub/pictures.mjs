@@ -32,7 +32,7 @@ const pieces = [
   ['cover', 'crbn-rig-cover.png', 600, 840],
   ['logo', 'crbn-rig-logo.png', 800, 240, true],
   ['desktop', 'crbn-rig-shot-2-desktop.png', 1920, 1080],
-  ['looks', 'crbn-rig-shot-3-looks.png', 1920, 1080],
+  ['looks', 'crbn-rig-shot-3-looks-2.png', 1920, 1080],
 ]
 try {
   for (const [piece, name, width, height, transparent] of pieces) {
