@@ -56,3 +56,4 @@ Hub never offers a web version that does not answer. `display: public` waits for
 | Date | What |
 |---|---|
 | 2026-11-10 | Store words and pictures applied (record version 1 -> 3, 18 of 18 fields read back). Desktop 0.8.0 from `e45dc24` published: manifest `3c4b2b2ab168a9df55cb2be9c817c15adda45c9a`, 8 chunks, 1.8 MB sent; confirmed (CDN serves it; PatcherCli 5 of 5 files byte-identical). Unsigned (dev) |
+| 2026-11-10 | The web version live at `https://rig.carbonlinear.com`: build `20261110-0832-b65358a-0b49ab75`, then `20261110-0855-e386b16-e2b3bf59` (the layout fix at laptop widths); `web/check.mjs --url` 45 of 45 files byte-identical. Roll back with `--promote-only=20261110-0832-b65358a-0b49ab75`. `links.tool` applied (record version 3 -> 5, 19 of 19 fields read back) |
