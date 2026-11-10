@@ -17,7 +17,8 @@ Based on [Neural Amp Modeler](https://github.com/sdatkinson/NeuralAmpModelerPlug
 | The web version | `node web/build.mjs`, then `node web/check.mjs` (emscripten SDK 6.0.13) |
 | The placeholder icon | `node packaging/icons/render.mjs` |
 
-The libraries (iPlug2, NeuralAmpModelerCore, AudioDSPTools, Eigen) are git submodules; see `UPSTREAM.md`. Contributors
+The libraries (iPlug2, NeuralAmpModelerCore, AudioDSPTools, Eigen) are vendored into this repo at pinned upstream
+commits; see `UPSTREAM.md` and `vendor.json`. Contributors
 and sessions start at `CLAUDE.md`.
 
 ## Rough edges, from upstream

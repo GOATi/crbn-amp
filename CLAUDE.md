@@ -24,7 +24,7 @@ put the same page on the desktop (`docs/PLAN.md`).
 | What | Where |
 |---|---|
 | The plug-in / standalone (C++) | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp`, `NeuralAmpModelerControls.h`, `config.h`, `Colors.h`, `resources/`) |
-| Upstream's libraries (submodules; never edited here) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/` |
+| Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/` |
 | The web version | `web/` (`src/` the page, `engine/` the C++ glue compiled to wasm, `build.mjs`, `check.mjs`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
 | The Hub folder | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/` |
@@ -53,5 +53,7 @@ put the same page on the desktop (`docs/PLAN.md`).
   the plug-in ids are `'CRig'` / `'Goat'`, never upstream's; the C++ names and `###NeuralAmpModeler###` stay.
 - **Rig's cherry `#d92b52` is the accent in Capsule only** (it sits near Daylight's and Holo's error reds), and a clip
   or error mark never relies on colour alone (D-CRBN-021 (b)).
-- **Don't edit the submodules.** A change there cannot be committed until the owner decides mirror or vendor.
+- **The vendored libraries are ours to fix, carefully.** A change to `iPlug2/`, `NeuralAmpModelerCore/`,
+  `AudioDSPTools/` or `eigen/` is a reviewed commit, named in its message; the change list shows it under its own
+  heading. Prefer a fix in this repo's own files when one will do. Never re-vendor from upstream without the owner.
 - Sessions push to `main` (D-CRBN-006). Never push to, or open anything on, sdatkinson's repos.

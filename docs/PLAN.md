@@ -16,8 +16,6 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Open questions for the owner
 
-- **The submodules:** mirror iPlug2, NAM Core, AudioDSPTools and Eigen under GOATi, or vendor them into this repo
-  (`UPSTREAM.md`)? Either lets a fix to them be committed and stops a fresh clone fetching from upstream.
 - **TONE3000:** its API can let a person sign in and pick tones inside our page (P3). Using it means TONE3000's terms
   for API clients.
 - **The microphone in the desktop Hub's view:** its tool view grants no audio input yet, so "Play my guitar" there

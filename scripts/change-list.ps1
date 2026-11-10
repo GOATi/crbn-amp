@@ -29,9 +29,17 @@ $head = Invoke-Git @('rev-parse', '--verify', "$Commit^{commit}")
 $dirty = @(Invoke-Git @('status', '--porcelain', '--untracked-files=no', '--ignore-submodules=dirty')).Count -gt 0
 # -M: a renamed file is listed once, with its old path. core.quotepath off keeps non-ASCII names readable.
 $rows = Invoke-Git @('-c', 'core.quotepath=off', 'diff', '--name-status', '-M', $base, $head)
+# The vendored libraries (vendor.json, D-RIG-001): their files arrived as upstream's own blobs, so they are listed as
+# vendored at their upstream commits, not as GOATi's additions, and the submodule pointers they replaced are not
+# "removed". A change to one of their files after vendoring is listed under its own heading.
+$vendorFile = Join-Path $Root 'vendor.json'
+$vendored = if (Test-Path $vendorFile) { (Get-Content $vendorFile -Raw | ConvertFrom-Json).libraries } else { @() }
+$vendorPaths = @($vendored | ForEach-Object { $_.path })
+$inVendored = { param($p) foreach ($v in $vendorPaths) { if ($p -eq $v -or $p -eq '.gitmodules' -or $p.StartsWith("$v/")) { return $true } } return $false }
 $changed = @(); $removed = @(); $added = @()
 foreach ($row in $rows) {
   $f = $row -split "`t"
+  if ($vendorPaths.Count -and (& $inVendored $f[-1])) { continue }
   switch -Regex ($f[0]) {
     '^M' { $changed += $f[1] }
     '^R' { $changed += "$($f[2])  (was $($f[1]))" }
@@ -39,6 +47,12 @@ foreach ($row in $rows) {
     '^D' { $removed += $f[1] }
     '^[AC]' { $added += $f[-1] }
   }
+}
+# Changes to vendored files since the commit that vendored them (the first that added vendor.json).
+$vendorChanged = @()
+$vendorCommit = @(Invoke-Git @('log', '--diff-filter=A', '--format=%H', $head, '--', 'vendor.json')) | Select-Object -Last 1
+if ($vendorCommit -and $vendorPaths.Count) {
+  $vendorChanged = @(Invoke-Git (@('-c', 'core.quotepath=off', 'diff', '--name-status', '-M', $vendorCommit, $head, '--') + $vendorPaths) | ForEach-Object { ($_ -split "`t")[-1] })
 }
 $lines = @(
   'CRBN Rig: files changed from the original'
@@ -53,6 +67,13 @@ $lines += ''
 $lines += "Changed ($($changed.Count)):"; $lines += ($changed | Sort-Object | ForEach-Object { "  $_" }); $lines += ''
 $lines += "Removed ($($removed.Count)):"; $lines += ($removed | Sort-Object | ForEach-Object { "  $_" }); $lines += ''
 $lines += "Added by GOATi ($($added.Count)):"; $lines += ($added | Sort-Object | ForEach-Object { "  $_" })
+if ($vendored.Count) {
+  $lines += ''
+  $lines += "Libraries vendored from their upstreams ($($vendored.Count)), each trimmed to what builds, every kept file upstream's own when vendored:"
+  foreach ($v in $vendored) { $lines += "  $($v.path)/  $($v.upstream) at $($v.commit), $($v.kept) of $($v.of) files (left out: $($v.leftOut))" }
+  $lines += ''
+  $lines += "Changed in the vendored libraries since they were vendored ($($vendorChanged.Count)):"; $lines += ($vendorChanged | Sort-Object | ForEach-Object { "  $_" })
+}
 $text = ($lines -join "`r`n") + "`r`n"
 if ($Out) {
   $dir = Split-Path -Parent $Out

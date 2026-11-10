@@ -10,11 +10,15 @@ rest of the CRBN suite it is not an ArtCraft fork, so "storytold" in the suite's
 | What | Where it came from | Commit |
 |---|---|---|
 | The plug-in (this repo's own tree) | sdatkinson/NeuralAmpModelerPlugin `main` | `fee982a86096ea17e7a6b004577207ab7c460e0c` (2026-11-03, "Update pull request template to simplify checklist") |
-| `iPlug2/` (submodule) | sdatkinson/iPlug2, Steven Atkinson's fork of iPlug2 | `de5a4fb14fd964247f0c70f2c90b32876a3bfc7c` (2026-08-09) |
-| `NeuralAmpModelerCore/` (submodule) | sdatkinson/NeuralAmpModelerCore, v0.6.0 | `0b3d3c97b0859a3a8c92a8628c4dd89a25eb5842` (2026-09-18) |
-| `AudioDSPTools/` (submodule) | sdatkinson/AudioDSPTools, v0.1.2 | `e19ef4b5b3bf2171c431847563acde29eedf85c0` (2026-08-09) |
-| `eigen/` (submodule) | gitlab.com/libeigen/eigen, 5.0.1 | `bc3b39870ecb690a623a3f49149a358b95c5781d` (2025-11-08) |
-| `NeuralAmpModelerCore/Dependencies/` (its own submodules) | AudioDSPTools v0.1.1 `0827c6c2`, Eigen 5.0.1 `bc3b3987`; nlohmann/json vendored in its tree | - |
+| `iPlug2/` (vendored) | sdatkinson/iPlug2, Steven Atkinson's fork of iPlug2 | `de5a4fb14fd964247f0c70f2c90b32876a3bfc7c` (2026-08-09) |
+| `NeuralAmpModelerCore/` (vendored) | sdatkinson/NeuralAmpModelerCore, v0.6.0 | `0b3d3c97b0859a3a8c92a8628c4dd89a25eb5842` (2026-09-18) |
+| `AudioDSPTools/` (vendored) | sdatkinson/AudioDSPTools, v0.1.2 | `e19ef4b5b3bf2171c431847563acde29eedf85c0` (2026-08-09) |
+| `eigen/` (vendored) | gitlab.com/libeigen/eigen, 5.0.1 | `bc3b39870ecb690a623a3f49149a358b95c5781d` (2025-11-08) |
+| `NeuralAmpModelerCore/Dependencies/` | its own submodules (AudioDSPTools v0.1.1, Eigen 5.0.1) left out, the top-level copies used; nlohmann/json kept from its tree | - |
+
+The four libraries were git submodules until 2026-11-10, then **vendored** (D-RIG-001): each at the commit above,
+trimmed to what builds, and every kept file entered from upstream's own objects, so each blob id and file mode is
+upstream's (`vendor.json` lists what was kept and left out). Their own histories are not in this repo.
 
 The repo was forked with upstream's whole history, so `git log fee982a` is upstream's log. GOATi's commits start after it.
 There is no baseline tag yet (sessions never push tags, D-CRBN-006); `scripts/change-list.ps1` names the commit.
@@ -24,11 +28,11 @@ There is no baseline tag yet (sessions never push tags, D-CRBN-006); `scripts/ch
 - **Upstream is frozen.** `main` never merges upstream. Nothing is pushed to, opened on, or asked of sdatkinson's repos.
   An upstream change reaches `main` only by a reviewed cherry-pick (a security or crash fix, say) or a deliberate
   re-fork from a newer point, on the owner's word. This clone has no `upstream` remote.
-- **The submodules still point at upstream's URLs** (sdatkinson's GitHub, Eigen's GitLab). They are checked out on
-  Box-C and nothing is fetched at build time, but a fresh `git submodule update` fetches from upstream, and a change to
-  a submodule cannot be committed here. Mirroring them under GOATi or vendoring them into this repo is the owner's open
-  question (D-CRBN-021 (g)). Until then, changes go in this repo's own files (the single-instance fix in
-  `NeuralAmpModeler.cpp` works around iPlug2's `WinMain` rather than editing it).
+- **The libraries are this repo's own files now** (D-RIG-001): a clone never reaches upstream, and a fix to iPlug2,
+  NAM Core, AudioDSPTools or Eigen is an ordinary reviewed commit here, which `MODIFIED-FILES.txt` then lists under
+  "Changed in the vendored libraries". Taking a newer upstream is a deliberate re-vendor on the owner's word, recorded
+  in `vendor.json` and here. (The single-instance fix in `NeuralAmpModeler.cpp` predates this and works around
+  iPlug2's `WinMain` rather than editing it.)
 - **Licence.** Everything here is MIT (the plug-in, NAM Core, AudioDSPTools, iPlug2, WDL's zlib-style terms) or
   MPL-2.0 shipped unmodified (Eigen), with the third-party notices upstream keeps in
   `NeuralAmpModeler/installer/ThirdPartyNotices.txt` (CRBN Rig adds its header and the embedded fonts' licences). Every
