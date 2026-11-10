@@ -3,6 +3,10 @@
 **Status:** the brief, from the owner's picks of 2026-11-10 (crbn-launcher D-RIG-006). Not started. The next session
 reads this, puts the open choices at the end to the owner in the picker, then builds in the order below.
 
+**How it looks** is decided in the Rig Lab (D-RIG-007, `docs/design/2026-11-10-rig-lab/lab.html`): the mark, the
+finishes, the layout and each feature below drawn three ways, with the owner's picks in its db. Upstream's IGraphics
+drawing is dropped from the pass entirely (no Old Skool look, unlike Console's), so the desktop gets this page through U2.
+
 ## What the owner asked for, in his words
 
 > Finding and switching captures.

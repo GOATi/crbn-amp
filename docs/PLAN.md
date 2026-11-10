@@ -26,6 +26,12 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-004): the logo and UI pass (D-RIG-007). The Rig Lab
+  (https://claude.ai/artifact/4fhxsEhpxxczgnWoAYR89v, source `docs/design/2026-11-10-rig-lab/lab.html`): three marks,
+  the finishes (cherry, gold, rose gold) and how far they reach, and seven areas of Rig's own page around P3's features,
+  mocked live from the owner's picks. Upstream's drawing is in none of it, at the owner's word. The build waits on his
+  picks.
+
 - 2026-11-10 (SYNC:RIG-003): the owner's picks D-RIG-001..006. The libraries vendored exactly (1913 files, every blob
   upstream's); Rig's accent tweed gold in Holo and Daylight (looks `42b1a2c`), live on the web version; the desktop
   build signed (manifest `5735d60d…`), submitted, approved by the owner and public on dev; the knock-out search; the
