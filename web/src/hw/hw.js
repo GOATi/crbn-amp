@@ -587,21 +587,56 @@ function salvGZ (kit) {
 // called "blurry and stretched", #3 and #5, were the two whose amp turned its sheet a quarter (only 768 pixels across
 // an 814-pixel face, the paint's runs lying sideways), at 1.31 and 1.33.
 const SHEET_ZOOM_MAX = 1.2
-// A crop's quarter turn and scale. The random draws are R1's, in R1's order, so a crop the rules leave alone is the
-// one it always was. A sheet turns a quarter only where, turned, it still spans the piece without magnifying; and no
-// crop magnifies past the cap, unless the piece is so large that none could.
-function cropOf (w, h, iw, ih, R) {
+// The rows of a sheet its photograph smears, as fractions of its height: Rust and orange (Total Textures met007) was
+// stretched across rows 296 to 440 of 768 to make it tile, and that band is the "stretched" look the owner saw in #3
+// and #5 (turned a quarter, it ran down their faces). Measured: detail runs about twice as strongly down those rows
+// as across them, and nowhere else on the four sheets passes 1.2.
+const SHEET_SOFT = { orange: [296 / 768, 440 / 768] }
+// A piece's crop of a sheet: its quarter turn, scale, offset and flips. The random draws are R1's, in R1's order, so
+// a crop the rules leave alone is the one it always was.
+// - A sheet turns a quarter only where, turned, it still spans the piece without magnifying.
+// - No crop magnifies past the cap, unless the piece is so large that none could.
+// - A crop that would show a sheet's smeared rows moves to the nearest clean rows above or below them, magnifying
+//   only as far as it must to fit there and never past the cap; where it cannot fit, it stays as it was.
+function cropOf (w, h, img, R, soft) {
+  const iw = img.naturalWidth, ih = img.naturalHeight
   const quarter = R() < .35 && Math.max(w / ih, h / iw) <= 1, cw = quarter ? ih : iw, ch = quarter ? iw : ih
-  const cover = Math.max(w / cw, h / ch), sc = Math.min(cover * (1.05 + R() * .85), Math.max(SHEET_ZOOM_MAX, cover * 1.05))
-  return { quarter, cw, ch, sc }
+  const cover = Math.max(w / cw, h / ch), rz = R()
+  let sc = Math.min(cover * (1.05 + rz * .85), Math.max(SHEET_ZOOM_MAX, cover * 1.05))
+  const rx = R(), ry = R(), fx = R() < .5 ? -1 : 1, fy = R() < .5 ? -1 : 1, half = R() < .5
+  let ox = (w - cw * sc) * rx, oy = (h - ch * sc) * ry
+  if (soft) {
+    // the piece's axis the sheet's rows run along (down it, or across it when turned), which way they run, and the
+    // first sheet row it shows
+    const L = quarter ? w : h, s = (quarter ? -fy : fy) * (half ? -1 : 1), b0 = soft[0] * ih, b1 = soft[1] * ih, room = Math.max(b0, ih - b1)
+    const c0 = quarter ? ox + cw * sc / 2 : oy + ch * sc / 2
+    const lo = s > 0 ? ih / 2 - c0 / sc : ih / 2 + (c0 - L) / sc
+    let win = L / sc, a = null
+    if (lo + win > b0 && lo < b1) {
+      if (win <= room) {
+        // it fits clean rows as it is: the nearest, above or below
+        const up = win <= b0 ? b0 - win : null, down = b1 + win <= ih ? b1 : null
+        a = up === null ? down : down === null ? up : lo - up <= down - lo ? up : down
+      } else if (L / room <= SHEET_ZOOM_MAX) {
+        // only magnified: as little as it must, with a little of its own zoom on top, placed by its own draw
+        sc = Math.min(SHEET_ZOOM_MAX, L / room * (1.05 + rz * .3)); ox = (w - cw * sc) * rx; oy = (h - ch * sc) * ry; win = L / sc
+        const spans = [[0, b0], [b1, ih]].filter(([p, q]) => q - p >= win)
+        let t = ry * spans.reduce((n, [p, q]) => n + q - p - win, 0)
+        for (const [i, [p, q]] of spans.entries()) { const free = q - p - win; if (t <= free || i === spans.length - 1) { a = p + Math.min(t, free); break } t -= free }
+      }
+    }
+    if (a !== null) {
+      const c = s > 0 ? (ih / 2 - a) * sc : L + (a - ih / 2) * sc
+      if (quarter) ox = c - cw * sc / 2; else oy = c - ch * sc / 2
+    }
+  }
+  return { iw, ih, cw, ch, sc, ox, oy, fx, fy, turn: (quarter ? Math.PI / 2 : 0) + (half ? Math.PI : 0) }
+}
+function drawCrop (g, img, p) {
+  g.save(); g.translate(p.ox + p.cw * p.sc / 2, p.oy + p.ch * p.sc / 2); g.rotate(p.turn); g.scale(p.fx * p.sc, p.fy * p.sc); g.drawImage(img, -p.iw / 2, -p.ih / 2); g.restore()
 }
 // A sheet's crop, as on the faceplates: its own scale, offset, quarter turn and flips.
-function sheetCrop (g, w, h, img, R) {
-  const iw = img.naturalWidth, ih = img.naturalHeight, { quarter, cw, ch, sc } = cropOf(w, h, iw, ih, R)
-  const ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
-  const fx = R() < .5 ? -1 : 1, fy = R() < .5 ? -1 : 1, turn = (quarter ? Math.PI / 2 : 0) + (R() < .5 ? Math.PI : 0)
-  g.save(); g.translate(ox + cw * sc / 2, oy + ch * sc / 2); g.rotate(turn); g.scale(fx * sc, fy * sc); g.drawImage(img, -iw / 2, -ih / 2); g.restore()
-}
+function sheetCrop (g, w, h, img, R, soft) { drawCrop(g, img, cropOf(w, h, img, R, soft)) }
 // Expanded metal, drawn straight into its canvas: the strands carry the scrap's paint and rust, cast a shadow on the
 // glow behind, and catch its light on their lower edges. A torn spot or two.
 const SALV_BOLTS = [1, 2, 3, 4].map(n => '<i class="salv-bolt b' + n + '" aria-hidden="true"></i>').join('')
@@ -689,7 +724,7 @@ function metalPaint (g, w, h, kind, R) {
   for (let i = 0, n = w * h / 25; i < n; i++) { g.fillStyle = R() < .5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.1)'; g.fillRect(R() * w, R() * h, 1, 1) }
 }
 // The grille, drawn straight into its canvas: its metal, its shadow cast on the glow behind, its edges lit by the glow.
-function meshTex (cv, w, h, img, seed, tint, glow) {
+function meshTex (cv, w, h, img, seed, tint, glow, soft) {
   const R = mulberry(seed ^ 0x3e11), k = Math.min(2, window.devicePixelRatio || 1)
   cv.width = Math.round(w * k); cv.height = Math.round(h * k)
   const g = cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height)
@@ -701,7 +736,7 @@ function meshTex (cv, w, h, img, seed, tint, glow) {
   m.globalCompositeOperation = 'source-over'
   const [sk, s] = layer()
   if (SALV_METAL !== 'scrap' && METAL[SALV_METAL]) metalPaint(s, w, h, SALV_METAL, R)
-  else if (img) sheetCrop(s, w, h, img, R)
+  else if (img) sheetCrop(s, w, h, img, R, soft)
   else { s.fillStyle = '#6d6a64'; s.fillRect(0, 0, w, h) }
   if (tint && SALV_METAL === 'scrap') { s.globalCompositeOperation = 'color'; s.globalAlpha = .55; s.fillStyle = tint; s.fillRect(0, 0, w, h); s.globalAlpha = 1 }
   s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'destination-in'; s.drawImage(mk, 0, 0)
@@ -746,12 +781,12 @@ function paintSalvage (el) {
   const key = `${w}x${h}:${tint}:${img ? sheet : 'drawn:' + finFor(kitOf(hw))}:${el.__seed}` + (isMesh ? `:${SALV_MESH}:${SALV_METAL}:${SALV_GLOW}` : '')
   if (el.__sk === key) return
   el.__sk = key
-  if (isMesh) { meshTex(el, w, h, img, el.__seed, tint, !hw.classList.contains('cab')); return }
+  if (isMesh) { meshTex(el, w, h, img, el.__seed, tint, !hw.classList.contains('cab'), SHEET_SOFT[sheet]); return }
   let r = null
   // the words' colour comes from the metal behind the controls, not the whole sheet
   const ui = el.querySelector('.ui, .cplate'), er = el.getBoundingClientRect(), ur = ui && ui.getBoundingClientRect()
   const reg = ur && er.width ? [(ur.left - er.left) / er.width, (ur.top - er.top) / er.height, ur.width / er.width, ur.height / er.height] : null
-  if (img) r = photoTex(w, h, img, el.__seed, tint, reg)
+  if (img) r = photoTex(w, h, img, el.__seed, tint, reg, SHEET_SOFT[sheet])
   if (r) {
     el.style.backgroundImage = r.url; el.style.backgroundSize = r.size || '100% 100%'; el.style.backgroundPosition = r.pos || '0 0'
     el.style.setProperty('--ink', r.light ? '#17130e' : '#f5f0e6')
@@ -784,13 +819,11 @@ function inkEach (el, c) {
     }
   } catch (err) {}
 }
-function photoTex (w, h, img, seed, tint, reg) {
-  const R = mulberry(seed ^ 0x5a17), iw = img.naturalWidth, ih = img.naturalHeight
-  const { quarter, cw, ch, sc } = cropOf(w, h, iw, ih, R), ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
-  const fx = R() < .5 ? -1 : 1, fy = R() < .5 ? -1 : 1, turn = (quarter ? Math.PI / 2 : 0) + (R() < .5 ? Math.PI : 0)
+function photoTex (w, h, img, seed, tint, reg, soft) {
+  const R = mulberry(seed ^ 0x5a17), p = cropOf(w, h, img, R, soft), iw = p.iw, sc = p.sc
   const k = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k)
   const g = c.getContext('2d'); g.scale(k, k)
-  g.save(); g.translate(ox + cw * sc / 2, oy + ch * sc / 2); g.rotate(turn); g.scale(fx * sc, fy * sc); g.drawImage(img, -iw / 2, -ih / 2); g.restore()
+  drawCrop(g, img, p)
   if (tint) { g.globalCompositeOperation = 'color'; g.globalAlpha = .55; g.fillStyle = tint; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1 }
   let gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.08)'); gr.addColorStop(.45, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.24)'); g.fillStyle = gr; g.fillRect(0, 0, w, h)
   gr = g.createLinearGradient(0, 0, w, h * .4); gr.addColorStop(.3, 'rgba(255,255,255,0)'); gr.addColorStop(.46, 'rgba(255,255,255,.07)'); gr.addColorStop(.62, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h)

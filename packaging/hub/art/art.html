@@ -122,6 +122,20 @@
   <div class="desk" style="left:700px;top:246px;width:1120px"><img src="/dist/shots/desktop.png" alt=""></div>
 </section>
 
+<!-- Salvage, cycling (D-RIG-018 (e), build plan R1c): one frame per ?f=, the store's second picture once joined
+     (packaging/hub/salvage-frames.mjs). Each frame is one of the owner's good Salvage amps (SYNC:RIG-018) with its
+     cabinet, as the web version draws them at 3x with the demo riff playing, and the choices that made it. -->
+<section id="salvage">
+  <div style="position:absolute;inset:0;background:radial-gradient(900px 460px at 70% 48%, rgba(255, 140, 60, .16), transparent 70%)"></div>
+  <div style="position:absolute;left:110px;top:270px;width:500px">
+    <div class="word" style="font-size:24px;color:var(--text-dim)">Salvage</div>
+    <div class="tag" style="font-size:52px;margin-top:22px;line-height:1.12">No two alike.</div>
+    <div class="sub" style="font-size:25px;margin-top:22px;line-height:1.5">Every Salvage rig is cut fresh from photographs of real scrap metal. Choose the sheet, the grille, its metal, the glow and the words, or press Shuffle for a new cut.</div>
+  </div>
+  <div class="flat" style="left:660px;top:330px"><img id="salv-amp" alt="" style="width:930px"><img id="salv-cab" alt="" style="width:224px"></div>
+  <div id="salv-choices" style="position:absolute;left:660px;top:742px;width:1160px"></div>
+</section>
+
 <section id="looks">
   <div style="position:absolute;left:0;right:0;top:56px;text-align:center">
     <div class="tag" style="font-size:44px">Four looks, one chain.</div>
@@ -140,6 +154,14 @@
   // ?desk=<file.png> frames another desktop capture from dist/shots (desktop-shot.mjs --out), to compare kits.
   const desk = new URLSearchParams(location.search).get('desk')
   if (/^[\w-]+\.png$/.test(desk ?? '')) for (const img of document.querySelectorAll('.desk img')) img.src = `/dist/shots/${desk}`
+  // ?f=<n>&c=<choices, · between>&s=1 for a Salvage frame: its gear from dist/shots/salvage-<n>-amp.png and -cab.png,
+  // its choices as pills, and Shuffle lit when the frame is a new cut of the same choices.
+  if (piece === 'salvage') {
+    const q = new URLSearchParams(location.search), f = q.get('f')
+    if (/^\d$/.test(f ?? '')) { document.getElementById('salv-amp').src = `/dist/shots/salvage-${f}-amp.png`; document.getElementById('salv-cab').src = `/dist/shots/salvage-${f}-cab.png` }
+    const pill = (t, lit) => `<span class="pill"${lit ? ' style="border-color:rgba(255,150,70,.8);color:#ffd2ad;background:rgba(255,140,60,.14)"' : ''}>${t.replace(/[&<>]/g, '')}</span>`
+    document.getElementById('salv-choices').innerHTML = (q.get('c') ?? '').split('·').filter(Boolean).map((t) => pill(t.trim())).join('') + pill('Shuffle', q.get('s') === '1')
+  }
 </script>
 </body>
 </html>
