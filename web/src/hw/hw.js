@@ -581,10 +581,24 @@ function salvGZ (kit) {
   const stamp = [...'SALVAGE'].map((c, i) => `<b style="--r:${[-2, 1.5, -1, 2, -1.5, 1, -2][i]}deg;--y:${[1, -.5, 0, 1, -1, .5, -.5][i]}px">${c}</b>`).join('')
   return `<i class="salv-glow" data-glow="${SALV_GLOW}" aria-hidden="true"></i><canvas class="salv-mesh" aria-hidden="true"></canvas>${SALV_BOLTS}<div class="logo-box"><span class="salv-plate"><span class="logo">CRBN RIG</span><span class="salv-name"><span class="vh">Salvage</span><span aria-hidden="true" style="display:contents">${stamp}</span></span><i class="rv"></i><i class="rv"></i><i class="rv"></i><i class="rv"></i></span><span class="sub">${kit.capture}</span></div>`
 }
+// How far a crop may magnify its sheet, in the page's pixels per sheet pixel: 1.5 screen pixels at 125% (D-RIG-019 (c),
+// build plan R1c). It is a measure of the page, not the screen, so a seed crops the same at every scale (the store's
+// pictures are shot at 3x). The owner's eight amps of SYNC:RIG-018: the six he kept magnify 0.84 to 1.15; the two he
+// called "blurry and stretched", #3 and #5, were the two whose amp turned its sheet a quarter (only 768 pixels across
+// an 814-pixel face, the paint's runs lying sideways), at 1.31 and 1.33.
+const SHEET_ZOOM_MAX = 1.2
+// A crop's quarter turn and scale. The random draws are R1's, in R1's order, so a crop the rules leave alone is the
+// one it always was. A sheet turns a quarter only where, turned, it still spans the piece without magnifying; and no
+// crop magnifies past the cap, unless the piece is so large that none could.
+function cropOf (w, h, iw, ih, R) {
+  const quarter = R() < .35 && Math.max(w / ih, h / iw) <= 1, cw = quarter ? ih : iw, ch = quarter ? iw : ih
+  const cover = Math.max(w / cw, h / ch), sc = Math.min(cover * (1.05 + R() * .85), Math.max(SHEET_ZOOM_MAX, cover * 1.05))
+  return { quarter, cw, ch, sc }
+}
 // A sheet's crop, as on the faceplates: its own scale, offset, quarter turn and flips.
 function sheetCrop (g, w, h, img, R) {
-  const iw = img.naturalWidth, ih = img.naturalHeight, quarter = R() < .35, cw = quarter ? ih : iw, ch = quarter ? iw : ih
-  const sc = Math.max(w / cw, h / ch) * (1.05 + R() * .85), ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
+  const iw = img.naturalWidth, ih = img.naturalHeight, { quarter, cw, ch, sc } = cropOf(w, h, iw, ih, R)
+  const ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
   const fx = R() < .5 ? -1 : 1, fy = R() < .5 ? -1 : 1, turn = (quarter ? Math.PI / 2 : 0) + (R() < .5 ? Math.PI : 0)
   g.save(); g.translate(ox + cw * sc / 2, oy + ch * sc / 2); g.rotate(turn); g.scale(fx * sc, fy * sc); g.drawImage(img, -iw / 2, -ih / 2); g.restore()
 }
@@ -772,8 +786,7 @@ function inkEach (el, c) {
 }
 function photoTex (w, h, img, seed, tint, reg) {
   const R = mulberry(seed ^ 0x5a17), iw = img.naturalWidth, ih = img.naturalHeight
-  const quarter = R() < .35, cw = quarter ? ih : iw, ch = quarter ? iw : ih
-  const sc = Math.max(w / cw, h / ch) * (1.05 + R() * .85), ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
+  const { quarter, cw, ch, sc } = cropOf(w, h, iw, ih, R), ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
   const fx = R() < .5 ? -1 : 1, fy = R() < .5 ? -1 : 1, turn = (quarter ? Math.PI / 2 : 0) + (R() < .5 ? Math.PI : 0)
   const k = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k)
   const g = c.getContext('2d'); g.scale(k, k)
@@ -1393,6 +1406,69 @@ function loadSheets () {
 
 let AMP_HW = null, SALV_SEED = 1
 
+// ---- players' own art: the templates (lab 2665-2718, D-RIG-010 (f))
+const mixHex = (a, b, p) => { const A = hex2rgb(a), B = hex2rgb(b), m = (x, y) => Math.round(x * p + y * (1 - p)); return '#' + [m(A.r, B.r), m(A.g, B.g), m(A.b, B.b)].map(n => n.toString(16).padStart(2, '0')).join('') }
+const KNOB_NAMES = Object.fromEntries(B_OPTS.knob[1])
+function tplDefs (art) { const d = document.querySelector('#hw-defs defs'); return d ? [...d.children].filter(n => /Gradient$/.test(n.tagName) && art.includes('url(#' + n.id + ')')).map(n => n.outerHTML).join('') : '' }
+function flatFin (svg, fin) { return svg.replace(/style="(fill|stroke):color-mix\(in oklab, var\(--fin\) (\d+)%, (white|black)\)"/g, (_, a, p, w) => a + '="' + mixHex(fin, w === 'white' ? '#ffffff' : '#000000', p / 100) + '"') }
+function knobArt (knob, fin) {
+  if (knob === 'obsidian') return OB_BASE + `<path d="M0,-34 L0,-24" stroke="${mixHex(fin, '#ffffff', .55)}" stroke-width="2.6" stroke-linecap="round"/>` + OB_GLASS
+  if (knob === 'spinner') return flatFin(SPIN_FINS, fin) + SPIN_CONE
+  if (knob === 'gem') {
+    let s = GEM
+    ;[[.55, '#ffffff'], [.85, '#ffffff'], [1, '#ffffff'], [.6, '#000000'], [.38, '#000000'], [.75, '#000000']].forEach(([p, w], k) => { s = s.replace(`class="f${k}"`, `fill="${mixHex(fin, w, p)}"`) })
+    return s.replace('class="tb"', `fill="${mixHex(fin, '#0c0c10', .3)}" stroke="rgba(255,255,255,.35)" stroke-width="1"`).replace('class="pt"', 'fill="#ffffff"')
+  }
+  return `<circle r="47" fill="#0e0f12"/><path d="${OB_TICKS}" stroke="rgba(255,255,255,.14)" stroke-width="1.2"/><circle r="40" fill="url(#tpl-cap)"/><circle r="40" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1"/><path d="M0,-37 L0,-21" stroke="${mixHex(fin, '#ffffff', .6)}" stroke-width="3.6" stroke-linecap="round"/>`
+}
+const TPL_CAP = '<radialGradient id="tpl-cap" cx=".42" cy=".34" r=".75"><stop offset="0" stop-color="#4a4d55"/><stop offset=".55" stop-color="#17181c"/><stop offset="1" stop-color="#050506"/></radialGradient>'
+const TPL_INK = 'fill="#19b5ff" stroke="none" font-family="sans-serif" font-size="12"'
+function knobTemplate (art, title) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+<title>${title}</title>
+<desc>A CRBN Rig knob template. Draw the knob pointing straight up: that is its middle setting, and the whole picture turns about its centre. Keep it inside the dashed circle. Rig adds the light on top. Hide or delete the guides layer, then import the file in the Rig builder as an SVG or a square PNG.</desc>
+<defs>${tplDefs(art)}${TPL_CAP}</defs>
+<g id="knob" transform="translate(200 200) scale(3.9)">${art}</g>
+<g id="guides" fill="none" stroke="#19b5ff" stroke-width="1.2"><circle cx="200" cy="200" r="196" stroke-dasharray="6 5"/><path d="M200 2 V44" stroke-width="2"/><path d="M190 200 H210 M200 190 V210"/><text x="8" y="18" ${TPL_INK}>pointing up:</text><text x="8" y="32" ${TPL_INK}>the middle setting</text><text x="8" y="380" ${TPL_INK}>dashed: the</text><text x="8" y="394" ${TPL_INK}>knob's edge</text></g>
+</svg>`
+}
+function switchArt (on, fin) {
+  return '<rect x="35" y="95" width="140" height="110" rx="26" fill="#0d0e11" stroke="rgba(255,255,255,.16)" stroke-width="2"/><rect x="55" y="118" width="100" height="64" rx="18" fill="#050507"/>' +
+    (on ? `<rect x="73" y="140" width="64" height="20" rx="5" fill="${fin}" opacity=".6" filter="url(#tpl-glow)"/><rect x="73" y="140" width="64" height="20" rx="5" fill="${mixHex(fin, '#ffffff', .5)}"/>` : '<rect x="73" y="140" width="64" height="20" rx="5" fill="#2a2b30"/>')
+}
+function switchTemplate (withArt, fin, title) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="300" viewBox="0 0 420 300">
+<title>${title}</title>
+<desc>A CRBN Rig switch template: two frames side by side, Off on the left and On on the right, each 210 by 300. Rig shows the left half when the switch is off and the right half when it is on. Hide or delete the guides layer, then import the file in the Rig builder as an SVG or a PNG of the same shape.</desc>
+<defs><filter id="tpl-glow" x="-50%" y="-80%" width="200%" height="260%"><feGaussianBlur stdDeviation="8"/></filter></defs>
+<g id="off">${withArt ? switchArt(false, fin) : ''}</g>
+<g id="on" transform="translate(210 0)">${withArt ? switchArt(true, fin) : ''}</g>
+<g id="guides" fill="none" stroke="#19b5ff" stroke-width="1.2"><rect x="1" y="1" width="208" height="298" stroke-dasharray="6 5"/><rect x="211" y="1" width="208" height="298" stroke-dasharray="6 5"/><text x="10" y="22" ${TPL_INK}>Off</text><text x="220" y="22" ${TPL_INK}>On</text></g>
+</svg>`
+}
+
+/** The Rig builder's parts (D-RIG-009 (c)): each is [label, [[value, name], ...]], the lab's B_OPTS. */
+export const KIT_PARTS = B_OPTS
+/** The templates a player draws their own knob or switch over (D-RIG-010 (f)): 'knob' and 'switch' are the kit's own
+ *  art with guides, 'blank-knob' and 'blank-switch' only the guides. `parts` is the kit's knob and colour. */
+export function artTemplate (which, parts) {
+  const fin = /^#[0-9a-f]{6}$/i.test(parts?.own || '') ? parts.own : BUILDER_BASE.own, knob = KNOB_NAMES[parts?.knob] ? parts.knob : 'halo', kn = KNOB_NAMES[knob]
+  if (which === 'knob') return { name: `crbn-rig-knob-${knob}.svg`, svg: knobTemplate(knobArt(knob, fin), 'CRBN Rig knob template: ' + kn) }
+  if (which === 'switch') return { name: 'crbn-rig-switch-glow.svg', svg: switchTemplate(true, fin, 'CRBN Rig switch template: Glow bar') }
+  if (which === 'blank-knob') return { name: 'crbn-rig-knob-blank.svg', svg: knobTemplate('', 'CRBN Rig knob template') }
+  return { name: 'crbn-rig-switch-blank.svg', svg: switchTemplate(false, fin, 'CRBN Rig switch template') }
+}
+/** A player's kit as the builder draws it: its parts checked against KIT_PARTS (anything else keeps the builder's own),
+ *  and its art as picture URLs. */
+const BUILDER_BASE = Object.freeze({ ...BUILDER, art: {} })
+function ownKit (k) {
+  const kit = { ...BUILDER_BASE }
+  for (const [key, [, opts]] of Object.entries(B_OPTS)) if (opts.some(o => o[0] === k[key])) kit[key] = k[key]
+  const url = u => (typeof u === 'string' && /^(blob:|data:image\/)/.test(u) ? u : null)
+  kit.art = { knob: url(k.art?.knob), sw: url(k.art?.sw) }
+  return kit
+}
+
 /** Salvage's choices for players (D-RIG-012 (b), D-RIG-015): the sheet, the grille, its metal, the glow and the words. */
 export const SALVAGE_CHOICES = {
   sheet: [...SALV_TEX.map(x => [x[0], x[1]]), ['mixed', 'Mixed']], mesh: MESH_TYPES, metal: MESH_METALS, glow: GLOWS, words: WORD_STYLES,
@@ -1400,8 +1476,10 @@ export const SALVAGE_CHOICES = {
 /** His Salvage setup (D-RIG-015 (b)), the default. */
 export const SALVAGE_DEFAULTS = { sheet: 'orange', mesh: 'perf', metal: 'copper', glow: 'valves', words: 'tags' }
 /** The kits a player picks from: the classic ones, then the energy kits; CRBN, the owner's, is the default (D-RIG-009 (b)).
- *  `swatch` is the colour a menu shows for the kit: its own, except Salvage, whose own colours are its photographs. */
-export const KIT_LIST = KITS.map(k => ({ id: k.id, name: k.name, fam: k.fam, own: k.own, swatch: k.id === 'hammer' ? '#a4562a' : k.own }))
+ *  `swatch` is the colour a menu shows for the kit: its own, except Salvage, whose own colours are its photographs.
+ *  An energy kit's `parts` are what the Rig builder starts from when a player builds from it. */
+export const KIT_LIST = KITS.map(k => ({ id: k.id, name: k.name, fam: k.fam, own: k.own, swatch: k.id === 'hammer' ? '#a4562a' : k.own,
+  parts: k.fam === 'new' ? Object.fromEntries(Object.keys(B_OPTS).map(p => [p, k[p]])) : null }))
 export const DEFAULT_KIT = 'crbn'
 
 /**
@@ -1410,7 +1488,7 @@ export const DEFAULT_KIT = 'crbn'
  */
 export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) {
   if (!document.getElementById('hw-defs')) document.body.insertAdjacentHTML('afterbegin', DEFS.replace('<svg ', '<svg id="hw-defs" '))
-  const state = { kit: null, power: true, standby: false, values: {}, capture: ['', ''], ir: ['', ''], slim: false }
+  const state = { kit: null, key: null, power: true, standby: false, values: {}, capture: ['', ''], ir: ['', ''], slim: false }
   const holders = [ampHolder, cabHolder]
   for (const h of holders) HOLDERS.add(h)
   const both = sel => [...$$(sel, ampHolder), ...$$(sel, cabHolder)]
@@ -1438,11 +1516,15 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     collectLive()
   }
 
+  /** Draws a kit: one of the twenty by its id, or a player's own from the builder as an object of its parts and art. */
   function show (id) {
-    const kit = KIT[id] || KIT[DEFAULT_KIT]
-    if (state.kit === kit.id && ampHolder.firstElementChild) return
+    const own = id && typeof id === 'object'
+    const kit = own ? ownKit(id) : KIT[id] || KIT[DEFAULT_KIT]
+    const key = own ? 'builder:' + JSON.stringify(kit) : kit.id
+    if (state.key === key && ampHolder.firstElementChild) return
     forget()
-    state.kit = kit.id
+    if (own) Object.assign(BUILDER, kit)
+    state.kit = kit.id; state.key = key
     ampHolder.innerHTML = ampHTML(kit)
     cabHolder.innerHTML = cabHTML(kit)
     AMP_HW = ampHolder.firstElementChild

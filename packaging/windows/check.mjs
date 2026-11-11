@@ -177,6 +177,18 @@ if (!process.argv.includes('--no-app')) {
     const got = 20 * Math.log10(c.output / b.output)
     check('a cabinet IR scales the sound as the desktop always did', Math.abs(got - expected) < 0.5, `${got.toFixed(2)} dB, expected ${expected.toFixed(2)} at ${rate} Hz`)
 
+    // The Rig builder (R1b): a kit of the player's own, wearing knob art from a file on disk, kept in the app's own
+    // storage (IndexedDB under the app's WebView2 profile) and drawn from a blob on the app's origin.
+    const knobSvg = join(out, 'my-knob.svg')
+    writeFileSync(knobSvg, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><circle cx="200" cy="200" r="190" fill="#fc0"/><rect x="190" y="14" width="20" height="120"/></svg>')
+    await js("document.getElementById('lm-build-new').click(); true")
+    const artInput = await send('DOM.querySelector', { nodeId: (await send('DOM.getDocument')).root.nodeId, selector: '#lm-build input[data-art="knob"]' })
+    await send('DOM.setFileInputFiles', { nodeId: artInput.nodeId, files: [knobSvg] })
+    await until("/^url\\(\"blob:https:\\/\\/crbn-rig\\.example\\//.test(document.querySelector('#hw-amp .kn .art')?.style.backgroundImage ?? '')", 10000, 'the knob art')
+    const built = await js("(() => { const k = JSON.parse(localStorage.getItem('crbn-rig/kits')).kits[0]; return { kit: document.querySelector('#hw-amp .hw').dataset.kit, art: k.art.knob, kept: document.getElementById('lb-art-t').textContent, saveDialog: typeof window.showSaveFilePicker } })()")
+    check('the Rig builder: a kit of your own wears knob art from a file, kept', built.kit === 'builder' && built.art?.length === 32 && /kept with your kit/.test(built.kept), JSON.stringify(built))
+    await js("document.querySelector('#lm-kits-new [data-kit=\"crbn\"]').click(); true")
+
     // Real keys from Windows, through the standalone's own message loop (a dialog's, which can keep arrows and Tab from
     // a child window): a kit knob takes the arrow key, a text field takes typing.
     const launcher = join(root, '..', 'crbn-launcher', 'scripts', 'desktop-host', 'shot.ps1')

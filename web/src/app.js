@@ -9,7 +9,8 @@ import { createDesktopAudio, inDesktopApp } from './audio-desktop.js'
 import { createWebAudio } from './audio-web.js'
 import { DEFAULTS } from './engine.js'
 import { DEFAULT_CUSTOM, FINISHES, HEX_RE, finishHex, finishVars, hex2rgb, hsv2rgb, inkFor, readouts, rgb2hex, rgb2hsv } from './finish.js'
-import { DEFAULT_KIT, KIT_LIST, SALVAGE_CHOICES, SALVAGE_DEFAULTS, createHardware } from './hw/hw.js'
+import { DEFAULT_KIT, KIT_LIST, KIT_PARTS, SALVAGE_CHOICES, SALVAGE_DEFAULTS, artTemplate, createHardware } from './hw/hw.js'
+import { ART_NAME_MAX, ART_TYPES, MAX_KITS, NAME_MAX, artURL, artURLNow, importArt, isOwnId, loadKits, makeKit, readCode, saveKits, sameKit, shareCode, tidyArt } from './kits.js'
 import { applyPrefs, fontOf, loadLooks, loadPrefs, lookList, looks, ownPrefs, sanitize, savePrefs, setEvery, sharesAcrossApps } from './look.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
@@ -476,7 +477,7 @@ const RIG_KEY = 'crbn-rig/rig'
 // own; a v1 finish of 'look' was never a choice a person made, so it becomes the kit's own.
 const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
 const abc = (v) => (/^[abc]$/.test(v) ? v : 'b')
-const kitId = (v) => (KIT_LIST.some((k) => k.id === v) ? v : DEFAULT_KIT)
+const kitId = (v) => (KIT_LIST.some((k) => k.id === v) || (isOwnId(v) && kits.some((k) => k.id === v)) ? v : DEFAULT_KIT)
 const salvOf = (s) => Object.fromEntries(Object.entries(SALVAGE_DEFAULTS).map(([k, d]) => [k, SALVAGE_CHOICES[k].some((c) => c[0] === s?.[k]) ? s[k] : d]))
 function loadRig() {
   let r = {}
@@ -502,7 +503,8 @@ function applyAll() {
   if (hardware) {
     hardware.setSalvage(rig.salv, rig.seed)
     hardware.setFinish(rig.finish === 'own', hex)
-    if (rig.amp === 'b') hardware.show(rig.kit)
+    const own = ownKit()
+    if (rig.amp === 'b') hardware.show(own ? drawnKit(own) : rig.kit)
   }
   // A suite accent the person chose wins over the finish on the controls; the faceplate keeps the finish.
   root.style.setProperty('--accent', accent ?? hex)
@@ -541,9 +543,10 @@ function buildMenu() {
   const kitChip = (k) => `<button type="button" class="lm-chip" data-kit="${k.id}" aria-pressed="false"><i style="background:${k.swatch}"></i>${k.name}</button>`
   $('lm-kits-classic').innerHTML = KIT_LIST.filter((k) => k.fam === 'classic').map(kitChip).join('')
   $('lm-kits-new').innerHTML = KIT_LIST.filter((k) => k.fam === 'new').map(kitChip).join('')
-  for (const id of ['lm-kits-classic', 'lm-kits-new']) {
-    $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-kit]'); if (b) { rig.kit = b.dataset.kit; rig.amp = 'b'; saveRig(); applyAll() } })
+  for (const id of ['lm-kits-classic', 'lm-kits-new', 'lm-kits-mine']) {
+    $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-kit]'); if (b) selectKit(b.dataset.kit) })
   }
+  wireBuilder()
   // Salvage's choices for players (D-RIG-012 (b), D-RIG-015), with Shuffle for new crops.
   const SALV_LABELS = { sheet: 'Sheet', mesh: 'Grille', metal: 'Grille metal', glow: 'Glow', words: 'Words' }
   $('lm-salv').innerHTML = Object.entries(SALV_LABELS).map(([key, label]) =>
@@ -602,8 +605,10 @@ function syncMenu(look, hex, accent) {
   const own = document.querySelector('#lm-finish [data-finish="look"] i')
   if (own) own.style.background = finishHex({ finish: 'look' }, look.id)
   const kitOwn = document.querySelector('#lm-finish [data-finish="own"] i')
-  if (kitOwn) kitOwn.style.background = KIT_LIST.find((k) => k.id === rig.kit)?.swatch ?? hex
-  press('#lm-kits-classic [data-kit], #lm-kits-new [data-kit]',(b) => rig.amp === 'b' && b.dataset.kit === rig.kit)
+  if (kitOwn) kitOwn.style.background = ownKit()?.own ?? KIT_LIST.find((k) => k.id === rig.kit)?.swatch ?? hex
+  press('#lm-kits-classic [data-kit], #lm-kits-new [data-kit], #lm-kits-mine [data-kit]', (b) => rig.amp === 'b' && b.dataset.kit === rig.kit)
+  if (builtFor !== (ownKit()?.id ?? null) || $('lm-build').hidden !== !(ownKit() && rig.amp === 'b')) renderBuilder()
+  else syncBuilder()
   $('lm-salv').hidden = rig.kit !== 'hammer' || rig.amp !== 'b'
   press('#lm-salv [data-salv]', (b) => rig.salv[b.dataset.salv] === b.dataset.val)
   const dot = document.querySelector('#lm-accent [data-finish-dot]')
@@ -624,6 +629,197 @@ function syncMenu(look, hex, accent) {
   if (accent) note.textContent = 'Your accent colours the controls; the finish still colours the faceplate and lamps. Pick “Rig’s finish” under Accent to give the finish the controls too.'
   $('lm-custom').hidden = rig.finish !== 'custom'
   if (rig.finish === 'custom') syncWheel()
+}
+
+// ------------------------------------------------------------------------------------------------- players' own kits
+// The Rig builder (D-RIG-009 (c), D-RIG-010 (f); build plan R1b): a player's kits sit under Yours beside the twenty,
+// each built from the energy kits' parts, kept in this browser (kits.js), shared as a RIG1 code, and wearing their own
+// knob and switch art if they bring it. The builder edits the kit picked; every change is kept as it is made.
+let kits = loadKits(), builtFor = null, kitsTimer = 0, delArmed = 0
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+const ownKit = () => (isOwnId(rig.kit) && kits.find((k) => k.id === rig.kit)) || null
+const drawnKit = (k) => ({ ...k, art: { knob: artURLNow(k.art.knob), sw: artURLNow(k.art.sw) } })
+const artReady = (k) => !k || [k.art.knob, k.art.sw].every((id) => !id || artURLNow(id))
+const knobName = (id) => Object.fromEntries(KIT_PARTS.knob[1])[id]
+const PART_LABEL = { fx: 'Energy', cut: 'Cutouts', mesh: 'Mesh', mat: 'Faceplate', knob: 'Knobs' }
+const ART_ACCEPT = ['.svg', '.png', '.webp', '.jpg', '.jpeg', ...ART_TYPES].join(',')
+const ART_NOTE = 'A knob turns as one picture, pointing straight up at its middle setting. A switch is two frames side by side: Off, then On. SVG, PNG, WebP or JPEG, up to 2 MB.'
+const ART_AWAY = 'This kit came with its maker’s own art, which isn’t on this computer: shared art travels through Pavillion Hub in a later version. Until then it wears the kit’s own knobs and switches.'
+function keepKits(now) {
+  clearTimeout(kitsTimer)
+  if (!now) { kitsTimer = setTimeout(() => keepKits(true), 300); return }
+  if (!saveKits(kits)) toast('This browser won’t keep your kits: they last until you close Rig.')
+}
+function mineChips() {
+  $('lm-kits-mine').innerHTML = kits.map((k) => `<button type="button" class="lm-chip" data-kit="${k.id}" aria-pressed="false"><i style="background:${k.own}"></i>${esc(k.name || 'Unnamed kit')}</button>`).join('')
+  $('lm-kits-mine').hidden = !kits.length
+  $('lm-mine-note').hidden = kits.length > 0
+  $('lm-build-new').disabled = kits.length >= MAX_KITS
+  for (const b of document.querySelectorAll('#lm-kits-mine [data-kit]')) b.setAttribute('aria-pressed', String(rig.amp === 'b' && b.dataset.kit === rig.kit))
+}
+/** Draws a kit picked in the menu; a player's kit waits for its art to come out of this browser's storage first. */
+function selectKit(id) {
+  rig.kit = kitId(id); rig.amp = 'b'; saveRig()
+  const k = ownKit()
+  if (!artReady(k)) {
+    Promise.all([artURL(k.art.knob), artURL(k.art.sw)]).then(() => { if (rig.kit === k.id) { builtFor = null; applyAll() } })
+    return
+  }
+  applyAll()
+}
+function addKit(k) {
+  if (kits.length >= MAX_KITS) { toast(`You have ${MAX_KITS} kits, the most Rig keeps: delete one to make room.`); return false }
+  kits.push(k); keepKits(true); mineChips()
+  return true
+}
+function renderBuilder() {
+  const k = ownKit(), box = $('lm-build')
+  builtFor = k?.id ?? null
+  box.hidden = !k || rig.amp !== 'b'
+  if (!k) { box.innerHTML = ''; return }
+  const opts = (key) => KIT_PARTS[key][1].map(([v, t]) => `<option value="${v}"${k[key] === v ? ' selected' : ''}>${t}</option>`).join('')
+  const has = (p) => Boolean(k.art[p] && artURLNow(k.art[p])), away = (k.art.knob && !has('knob')) || (k.art.sw && !has('sw'))
+  box.innerHTML =
+    '<div class="lb-head"><span>The Rig builder</span></div>' +
+    `<label class="lm-row"><span>Name</span><input class="lm-text" type="text" id="lb-name" maxlength="${NAME_MAX}" value="${esc(k.name)}" placeholder="Name your kit" autocomplete="off" spellcheck="false"></label>` +
+    Object.entries(PART_LABEL).map(([key, label]) => `<label class="lm-row"><span>${label}</span><select data-part="${key}">${opts(key)}</select></label>`).join('') +
+    `<div class="lm-row"><span id="lb-own-l">Colour</span><div class="lm-chips" role="group" aria-labelledby="lb-own-l">${KIT_PARTS.own[1].map(([v, t]) => `<button type="button" class="lm-chip" data-own="${v}" aria-pressed="false"><i style="background:${v}"></i>${t}</button>`).join('')}</div></div>` +
+    '<p class="lm-note" id="lb-own-note" hidden></p>' +
+    '<div class="lm-row"><span>Share</span><div class="lb-share"><button class="btn small" type="button" id="lb-copy">Copy the share code</button><input class="lb-code" id="lb-code" type="text" readonly hidden aria-label="This kit’s share code" spellcheck="false"></div></div>' +
+    '<div class="lb-art"><b>Your own art</b><p class="lm-note">Draw your own knobs and switches: save a template, draw over it in any art app, and import it here as a new version. It is kept with this kit in this browser.</p>' +
+    `<div class="lb-tpl"><select id="lb-tpl" aria-label="The template to start from"><option value="knob">This kit’s knob (${knobName(k.knob)})</option><option value="switch">This kit’s switch (Glow bar)</option><option value="blank-knob">A blank knob</option><option value="blank-switch">A blank switch</option></select>` +
+    '<button class="btn small" type="button" id="lb-tpl-save">Save the template</button><button class="btn small ghost" type="button" id="lb-tpl-copy">Copy it</button></div>' +
+    `<div class="lb-in"><label class="lb-file" data-on="${has('knob')}">${has('knob') ? 'Knob art in use: replace it' : 'Import knob art'}<input type="file" accept="${ART_ACCEPT}" data-art="knob"></label>` +
+    `<label class="lb-file" data-on="${has('sw')}">${has('sw') ? 'Switch art in use: replace it' : 'Import switch art'}<input type="file" accept="${ART_ACCEPT}" data-art="sw"></label></div>` +
+    `<label class="lm-row"><span>Version</span><input class="lm-text" type="text" id="lb-art-name" maxlength="${ART_NAME_MAX}" value="${esc(k.art.name)}" placeholder="e.g. Obsidian, my version" autocomplete="off"></label>` +
+    `<p class="lm-note" id="lb-art-t" aria-live="polite">${away ? ART_AWAY : ART_NOTE}</p>` +
+    `<button class="linkish" type="button" id="lb-art-clear"${k.art.knob || k.art.sw ? '' : ' hidden'}>Back to the kit’s own art</button></div>` +
+    '<div class="lb-foot"><button class="btn small ghost" type="button" id="lb-dup">Make a copy</button><button class="btn small ghost lb-del" type="button" id="lb-del">Delete this kit</button></div>'
+  syncBuilder()
+}
+function syncBuilder() {
+  const k = ownKit(), note = $('lb-own-note')
+  if (!k || !note) return
+  for (const b of document.querySelectorAll('#lm-build [data-own]')) b.setAttribute('aria-pressed', String(b.dataset.own === k.own))
+  note.hidden = rig.finish === 'own'
+  note.textContent = `Rig’s finish (${FINISHES.find((f) => f.id === rig.finish)?.label ?? 'yours'}) colours this kit now. Pick Kit’s own under Rig’s finish to see its own colour.`
+}
+const artStatus = (text) => { const t = $('lb-art-t'); if (t) t.textContent = text }
+async function copyText(text, done) {
+  try { await navigator.clipboard.writeText(text); toast(done, 'info'); return true } catch { return false }
+}
+// A file the page hands the person: the system's Save dialog where the browser has one, else a download.
+async function saveText(name, text, type, what) {
+  if (window.showSaveFilePicker) {
+    try {
+      const h = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: what, accept: { [type]: ['.' + name.split('.').pop()] } }] })
+      const w = await h.createWritable()
+      await w.write(new Blob([text], { type })); await w.close()
+      return 'saved'
+    } catch (e) { if (e?.name === 'AbortError') return 'cancelled' /* a view that refuses the picker downloads instead */ }
+  }
+  try {
+    const a = document.createElement('a'), url = URL.createObjectURL(new Blob([text], { type }))
+    a.href = url; a.download = name; document.body.append(a); a.click(); a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    return 'downloaded'
+  } catch { return 'failed' }
+}
+async function onArt(input) {
+  const k = ownKit(), part = input.dataset.art, file = input.files?.[0]
+  input.value = ''
+  if (!k || !file) return
+  artStatus('Bringing it in…')
+  const r = await importArt(file)
+  if (r.error) { artStatus(r.error); toast(r.error); return }
+  if (ownKit() !== k) return
+  k.art = { ...k.art, [part]: r.id }
+  keepKits(true); builtFor = null; applyAll()
+  const shape = part === 'knob'
+    ? (Math.abs(r.shape - 1) > 0.08 ? ' It isn’t square, so it is drawn fitted inside the knob.' : '')
+    : (Math.abs(r.shape - 1.4) > 0.1 ? ' A switch picture is two frames side by side (420 by 300 in the template); this one is another shape, so its frames may not line up.' : '')
+  artStatus((r.kept ? 'Imported, and kept with your kit.' : 'Imported for this visit: this browser won’t keep it.') + shape)
+}
+function openCode(text) {
+  const k = readCode(text)
+  if (!k) { toast('That isn’t a CRBN Rig kit code. A code starts with RIG1.'); return false }
+  const same = kits.find((x) => sameKit(x, k))
+  if (!same && !addKit(k)) return false
+  $('lm-code-in').value = ''; $('lm-code').hidden = true; $('lm-code-open').setAttribute('aria-expanded', 'false')
+  selectKit((same ?? k).id)
+  const art = k.art.knob || k.art.sw ? ' Its own art travels through Pavillion Hub later; until then it wears the kit’s own knobs and switches.' : ''
+  toast(`Opened “${k.name || 'a kit'}”${same ? ', which you already have' : ''}: it’s under Yours.${art}`, 'info')
+  return true
+}
+function wireBuilder() {
+  mineChips()
+  $('lm-build-new').addEventListener('click', () => {
+    // from the energy kit or the player's kit on the amp, else from CRBN
+    const from = ownKit() ?? KIT_LIST.find((x) => x.id === rig.kit && x.parts)?.parts ?? KIT_LIST.find((x) => x.id === DEFAULT_KIT).parts
+    const k = makeKit(from, kits)
+    if (!addKit(k)) return
+    selectKit(k.id)
+    const name = $('lb-name'); if (name) { name.focus(); name.select() }
+  })
+  $('lm-code-open').addEventListener('click', () => {
+    const f = $('lm-code'), open = f.hidden
+    f.hidden = !open; $('lm-code-open').setAttribute('aria-expanded', String(open))
+    if (open) $('lm-code-in').focus()
+  })
+  $('lm-code').addEventListener('submit', (e) => { e.preventDefault(); openCode($('lm-code-in').value) })
+  const box = $('lm-build')
+  box.addEventListener('input', (e) => {
+    const k = ownKit(); if (!k) return
+    if (e.target.id === 'lb-name') {
+      k.name = e.target.value.slice(0, NAME_MAX); keepKits()
+      const chip = document.querySelector(`#lm-kits-mine [data-kit="${k.id}"]`)
+      if (chip) chip.lastChild.textContent = k.name || 'Unnamed kit'
+    } else if (e.target.id === 'lb-art-name') { k.art = { ...k.art, name: e.target.value.slice(0, ART_NAME_MAX) }; keepKits() }
+  })
+  box.addEventListener('change', (e) => {
+    const k = ownKit(); if (!k) return
+    const part = e.target.dataset?.part
+    if (part && KIT_PARTS[part][1].some((o) => o[0] === e.target.value)) {
+      k[part] = e.target.value; keepKits(true); applyAll()
+      if (part === 'knob') { const o = box.querySelector('#lb-tpl option[value="knob"]'); if (o) o.textContent = `This kit’s knob (${knobName(k.knob)})` }
+    } else if (e.target.dataset?.art) onArt(e.target)
+  })
+  box.addEventListener('click', async (e) => {
+    const k = ownKit(), t = e.target.closest('button'); if (!k || !t) return
+    if (t.dataset.own) {
+      k.own = t.dataset.own; keepKits(true); mineChips(); applyAll()
+    } else if (t.id === 'lb-copy') {
+      const code = shareCode(k), field = $('lb-code')
+      field.value = code; field.hidden = false
+      const art = k.art.knob || k.art.sw ? ' Its own art travels through Pavillion Hub later.' : ''
+      if (!(await copyText(code, `Share code copied: anyone who opens it in CRBN Rig gets this kit.${art}`))) { field.focus(); field.select(); toast('Select the code and copy it.', 'info') }
+    } else if (t.id === 'lb-tpl-save' || t.id === 'lb-tpl-copy') {
+      const { name, svg } = artTemplate($('lb-tpl').value, k)
+      if (t.id === 'lb-tpl-copy') { if (!(await copyText(svg, 'Template copied as SVG text: paste it into a new .svg file.'))) toast('This view won’t copy: use Save the template.'); return }
+      const r = await saveText(name, svg, 'image/svg+xml', 'SVG picture')
+      if (r === 'saved') toast(`Template saved: ${name}`, 'info')
+      else if (r === 'downloaded') toast(`Template downloaded: ${name}`, 'info')
+      else if (r === 'failed' && !(await copyText(svg, 'The file couldn’t be saved here, so the template is copied as SVG text.'))) toast('The template couldn’t be saved or copied here.')
+    } else if (t.id === 'lb-art-clear') {
+      k.art = { knob: null, sw: null, name: k.art.name }
+      keepKits(true); builtFor = null; applyAll()
+      artStatus('Back to the kit’s own knobs and switches.')
+    } else if (t.id === 'lb-dup') {
+      const c = makeKit(k, kits)
+      c.name = `${k.name || 'My kit'} copy`.slice(0, NAME_MAX)
+      if (addKit(c)) { selectKit(c.id); toast(`Made a copy: “${c.name}”.`, 'info') }
+    } else if (t.id === 'lb-del') {
+      if (!delArmed) {
+        delArmed = setTimeout(() => { delArmed = 0; t.removeAttribute('data-armed'); t.textContent = 'Delete this kit' }, 4000)
+        t.dataset.armed = 'true'; t.textContent = 'Delete it: click again'
+        return
+      }
+      clearTimeout(delArmed); delArmed = 0
+      kits = kits.filter((x) => x !== k); keepKits(true)
+      rig.kit = DEFAULT_KIT; saveRig(); mineChips(); applyAll()
+      toast(`Deleted “${k.name || 'Unnamed kit'}”.`, 'info')
+    }
+  })
 }
 
 // the custom colour: a wheel, hue / saturation / brightness and a hex field, with how its text reads and how near it
@@ -716,7 +912,11 @@ async function start() {
     if (HEX_RE.test('#' + f)) { rig.finish = 'custom'; rig.custom = '#' + f.toLowerCase() } else if (FINISHES.some((x) => x.id === f)) rig.finish = f
     keepRig = false
   }
+  // art no kit wears any more is forgotten now, before anything draws; then a player's kit draws with its own art
+  await tidyArt(kits)
   buildMenu()
+  const first = ownKit()
+  if (first) await Promise.all([artURL(first.art.knob), artURL(first.art.sw)])
   for (const el of document.querySelectorAll('.knob[data-param]')) makeKnob(el)
   hardware = createHardware({
     ampHolder: $('hw-amp'), cabHolder: $('hw-cab'), spec: specOf, change: changeSetting,

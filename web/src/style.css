@@ -293,6 +293,30 @@ html[data-host="desktop"] .setup .field[data-desktop] { flex: 1 1 280px; max-wid
 .lm-salv .lm-row > span { padding-top: 4px; }
 .lm-salv .lm-chips { gap: 4px; }
 .lm-note { margin: 0; font-size: var(--fs-xs); color: var(--text-faint); }
+/* players' own kits and the Rig builder (R1b) */
+.lm-mine-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.lm-code { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.lm-text { width: 100%; min-width: 0; padding: 4px 10px; border-radius: var(--r-field); border: 1px solid var(--line-2); background: var(--field); color: var(--text); font: var(--fs-s) var(--font-ui); }
+.lm-code input, .lm-build .lb-code { width: 100%; min-width: 0; padding: 4px 10px; border-radius: var(--r-field); border: 1px solid var(--line-2); background: var(--field); color: var(--text); font: var(--fs-xs) var(--font-mono); }
+.lm-build { display: grid; gap: 8px; padding: 10px; border-radius: var(--r-sm); background: var(--panel-2); }
+.lm-build .lb-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: var(--fs-s); color: var(--text); font-weight: 600; }
+.lm-build .lm-row > label, .lm-build .lm-row > span { min-width: 0; }
+.lm-build .lm-chips { gap: 4px; }
+.lm-build .lm-chip i { width: 14px; height: 14px; }
+.lb-share { display: grid; gap: 6px; min-width: 0; }
+.lb-share .btn { justify-self: start; }
+.lb-art { display: grid; gap: 7px; padding-top: 8px; border-top: 1px solid var(--line); }
+.lb-art > b { font-size: var(--fs-s); color: var(--text); font-weight: 600; }
+.lb-tpl { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 6px; }
+.lb-tpl select { grid-column: 1 / -1; width: 100%; }
+.lb-in { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lb-file { position: relative; display: grid; place-items: center; min-height: 34px; padding: 5px 8px; border: 1px dashed var(--line-2); border-radius: var(--r-sm); font-size: var(--fs-xs); color: var(--text-dim); text-align: center; cursor: pointer; }
+.lb-file:hover { border-color: var(--accent); color: var(--text); }
+.lb-file:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lb-file[data-on='true'] { border-style: solid; color: var(--text); }
+.lb-file input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.lb-foot { display: flex; flex-wrap: wrap; gap: 6px; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--line); }
+.lb-foot .lb-del[data-armed='true'] { color: var(--bad); border-color: var(--bad); }
 .look-menu .toggle.suite b { font-weight: 500; }
 .custom { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; border-radius: var(--r-sm); background: var(--panel-2); }
 .wheel { position: relative; width: 150px; height: 150px; touch-action: none; cursor: crosshair; }

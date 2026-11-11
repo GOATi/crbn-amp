@@ -224,6 +224,20 @@ try {
     <div class="lm-chips" id="lm-kits-classic" role="group" aria-labelledby="lm-hw-h lm-kits-c-l"></div>
     <span class="lm-sub" id="lm-kits-n-l">Energy</span>
     <div class="lm-chips" id="lm-kits-new" role="group" aria-labelledby="lm-hw-h lm-kits-n-l"></div>
+    <!-- Players' own kits (D-RIG-009 (c), D-RIG-010 (f); build plan R1b): built from the energy kits' parts, kept here,
+         shared as RIG1 codes, with their own knob and switch art. app.js draws the chips and the builder. -->
+    <span class="lm-sub" id="lm-kits-m-l">Yours</span>
+    <div class="lm-chips" id="lm-kits-mine" role="group" aria-labelledby="lm-hw-h lm-kits-m-l"></div>
+    <div class="lm-mine-acts">
+      <button class="btn small" id="lm-build-new" type="button">Build a kit</button>
+      <button class="btn small ghost" id="lm-code-open" type="button" aria-expanded="false" aria-controls="lm-code">Open a share code</button>
+    </div>
+    <p class="lm-note" id="lm-mine-note">Build an energy kit from its parts, name it, and share it as a code. Kits you build stay in this browser.</p>
+    <form class="lm-code" id="lm-code" hidden>
+      <input type="text" id="lm-code-in" placeholder="Paste a code: RIG1.…" aria-label="A share code" spellcheck="false" autocomplete="off">
+      <button class="btn small" type="submit">Open</button>
+    </form>
+    <div class="lm-build" id="lm-build" hidden></div>
     <div class="lm-salv" id="lm-salv" hidden></div>
   </section>
 

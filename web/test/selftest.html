@@ -107,6 +107,77 @@ try {
   $d('#lm-salv [data-salv="mesh"][data-val="perf"]').click()
   $d('#lm-kits-new [data-kit="crbn"]').click()
 
+  // 1c. The Rig builder (R1b; D-RIG-009 (c), D-RIG-010 (f)): a player's kit, its RIG1 code, their own art, a reload.
+  // In a block, so its names cannot clash with the module's (RIG-015's pitfall).
+  {
+    const kept = () => JSON.parse(win.localStorage.getItem('crbn-rig/kits') ?? '{"kits":[]}').kits
+    const rigKit = () => JSON.parse(win.localStorage.getItem('crbn-rig/rig')).kit
+    const part = (k, v) => { const s = $d(`#lm-build select[data-part="${k}"]`); s.value = v; s.dispatchEvent(new Event('change', { bubbles: true })) }
+    $d('#lm-build-new').click()
+    const mine = kept()[0]
+    check('Build a kit keeps a kit of yours, draws it, and opens the builder', kept().length === 1 && rigKit() === mine?.id && $d('#hw-amp .hw.k-builder') && $d('#hw-cab .hw.k-builder') && !$d('#lm-build').hidden && $d(`#lm-kits-mine [data-kit="${mine?.id}"]`)?.getAttribute('aria-pressed') === 'true', `${kept().length} kept, ${rigKit()}, ${$d('#hw-amp .hw')?.className}`)
+    part('knob', 'gem'); part('fx', 'storm')
+    $d('#lm-build [data-own="#6aa8ff"]').click()
+    const nm = $d('#lb-name'); nm.value = 'Blue storm'; nm.dispatchEvent(new Event('input', { bubbles: true }))
+    await wait(() => kept()[0].name === 'Blue storm', 3000, 'the name to be kept')
+    check('the builder’s parts redraw the amp, and are kept', $$d('#hw-amp .kn.kn-gem').filter(visible).length === 6 && kept()[0].fx === 'storm' && kept()[0].own === '#6aa8ff' && $d('#hw-amp .hw').style.getPropertyValue('--fin') === '#6aa8ff', `${$$d('#hw-amp .kn.kn-gem').filter(visible).length} gem knobs, ${JSON.stringify(kept()[0])}`)
+
+    // Their own art: a knob turns as one picture, a switch is two frames (Off, then On); Rig's light stays on top.
+    const put = async (which, text) => {
+      const dt = new DataTransfer(); dt.items.add(new File([text], `${which}.svg`, { type: 'image/svg+xml' }))
+      const input = $d(`#lm-build input[data-art="${which}"]`); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+    await put('knob', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><circle cx="200" cy="200" r="190" fill="#fc0"/><rect x="190" y="14" width="20" height="120"/></svg>')
+    await wait(() => /blob:/.test($d('#hw-amp .kn[data-param="inputDB"] .art')?.style.backgroundImage ?? ''), 5000, 'the knob art')
+    const artTurn = () => win.getComputedStyle($d('#hw-amp .kn[data-param="inputDB"] .art')).transform
+    const t0 = artTurn()
+    $d('#hw-amp .kn[data-param="inputDB"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true }))
+    check('their own knob art draws, under Rig’s light, and turns with the knob', artTurn() !== t0 && $d('#hw-amp .kn[data-param="inputDB"] .art').nextElementSibling?.classList.contains('env') && kept()[0].art.knob?.length === 32, `${t0} -> ${artTurn()}`)
+    $d('#hw-amp .kn[data-param="inputDB"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    await put('sw', '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="300"><rect x="40" y="60" width="130" height="180" fill="#333"/><rect x="250" y="60" width="130" height="180" fill="#3f3"/></svg>')
+    await wait(() => $$d('#hw-amp .sw-art').length === 4 && $$d('#hw-cab .sw-art').length === 1, 5000, 'the switch art')
+    const gateArt = () => $d('#hw-amp .sw-art[data-param="gateOn"]'), gatePos = () => win.getComputedStyle(gateArt().firstElementChild).backgroundPosition
+    const on = gatePos(); gateArt().click(); const off = gatePos(); gateArt().click()
+    check('their own switch art shows its Off frame, then its On frame', /^100% 0(px|%)$/.test(on) && /^0(px|%) 0(px|%)$/.test(off) && $d('input[data-param="gateOn"]').checked, `on ${on}, off ${off}`)
+
+    // The template a player draws over: SVG with the kit's own knob and the guides, through the Save dialog.
+    let saved = null
+    win.showSaveFilePicker = async (o) => ({ createWritable: async () => ({ write: async (b) => { saved = { name: o.suggestedName, text: await b.text() } }, close: async () => {} }) })
+    $d('#lb-tpl-save').click()
+    await wait(() => saved, 3000, 'the template to save')
+    const tpl = new win.DOMParser().parseFromString(saved.text, 'image/svg+xml')
+    check('a knob template saves as SVG: the kit’s own knob and the guides', saved.name === 'crbn-rig-knob-gem.svg' && !tpl.querySelector('parsererror') && tpl.querySelector('#knob path') && tpl.querySelector('#guides'), saved.name)
+    delete win.showSaveFilePicker
+
+    // The code: copy it, delete the kit, open the code, and the same kit is back (its name, parts and art ids).
+    $d('#lb-copy').click()
+    await wait(() => $d('#lb-code')?.value.startsWith('RIG1.'), 3000, 'the share code')
+    const code = $d('#lb-code').value, before = kept()[0]
+    $d('#lb-del').click(); $d('#lb-del').click()
+    const gone = kept().length === 0 && rigKit() === 'crbn' && $d('#lm-build').hidden
+    $d('#lm-code-open').click(); $d('#lm-code-in').value = `Here's my kit: ${code} have fun`; $d('#lm-code').requestSubmit()
+    const back = kept()[0], same = back && ['name', 'fx', 'cut', 'mesh', 'mat', 'knob', 'own'].every((k) => back[k] === before[k]) && back.art.knob === before.art.knob && back.art.sw === before.art.sw
+    await wait(() => $d('#hw-amp .kn .art'), 5000, 'the opened kit with its art')
+    check('a RIG1 code round-trips a kit: deleted, then opened from a message', gone && same && rigKit() === back.id && $d('#hw-amp .hw.k-builder'), `${gone}/${same}: ${code.slice(0, 24)}…`)
+    // The Hardware Lab's own encoding (lab.html shareCode): the owner's CRBN, built there, opens here.
+    const lab = 'RIG1.' + win.btoa(unescape(encodeURIComponent(JSON.stringify({ n: 'CRBN', fx: 'circuit', cut: 'honeycomb', mesh: 'perf', mat: 'carbon', knob: 'obsidian', own: '#d92b52' })))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    $d('#lm-code-open').click(); $d('#lm-code-in').value = lab; $d('#lm-code').requestSubmit()
+    const fromLab = kept()[1]
+    $d('#lm-code-open').click(); $d('#lm-code-in').value = 'RIG1.not-a-kit'; $d('#lm-code').requestSubmit()
+    check('a code from the Hardware Lab opens; one that is not a kit is refused', fromLab?.name === 'CRBN' && fromLab.knob === 'obsidian' && kept().length === 2 && $$d('#hw-amp .kn.kn-obsidian').filter(visible).length === 6 && /isn’t a CRBN Rig kit code/.test(doc.getElementById('toast').textContent), `${kept().length} kept; ${doc.getElementById('toast').textContent}`)
+    $d(`#lm-kits-mine [data-kit="${back.id}"]`).click()
+
+    // The kit and its art survive a reload (localStorage and IndexedDB).
+    const id = rigKit()
+    frame.contentWindow.location.reload()
+    await wait(() => frame.contentDocument?.documentElement.dataset.ready === 'true' && frame.contentDocument !== doc, 20000, 'the page to load again')
+    const d2 = frame.contentDocument
+    await wait(() => /blob:/.test(d2.querySelector('#hw-amp .kn .art')?.style.backgroundImage ?? ''), 5000, 'the art after the reload')
+    check('a player’s kit and its own art survive a reload', JSON.parse(frame.contentWindow.localStorage.getItem('crbn-rig/rig')).kit === id && d2.querySelector('#hw-amp .hw.k-builder') && d2.querySelectorAll('#hw-amp .sw-art').length === 4 && d2.getElementById('lb-name')?.value === 'Blue storm', id)
+    frame.contentWindow.localStorage.removeItem('crbn-rig/kits')
+    frame.contentWindow.localStorage.removeItem('crbn-rig/rig')
+  }
+
   // 2. The engine in this browser.
   const rate = 48000
   const wasm = await (await fetch('/rig-engine.wasm')).arrayBuffer()
