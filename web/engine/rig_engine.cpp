@@ -12,8 +12,14 @@
 //
 // Threading: everything here runs on the audio rendering thread, one block at a time. A capture is parsed on that
 // thread when the page sends it (a few milliseconds of silence while it loads, as on the desktop).
+// The desktop app (build plan R2, D-RIG-017) also compiles this file, natively, and its page talks to it from the UI
+// thread while the driver's thread plays: for that, a native build adds rig_stage_model and its kin (the end of this
+// file), which build a capture on the calling thread and hand it to rig_process to swap in. The wasm leaves them out.
 
 #include <algorithm>
+#if !defined(__EMSCRIPTEN__)
+  #include <atomic>
+#endif
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -197,6 +203,45 @@ struct Engine
 
 Engine* gEngine = nullptr;
 std::vector<char> gText; // the capture's JSON, written by the page before rig_load_model
+
+// Builds a capture from its JSON at the engine's rate: the one path rig_load_model and rig_stage_model share.
+std::unique_ptr<ResamplingNAM> BuildModel(const char* text, const size_t bytes)
+{
+  const nlohmann::json config = nlohmann::json::parse(text, text + bytes);
+  std::unique_ptr<nam::DSP> dsp = nam::get_dsp(config);
+  if (dsp->NumInputChannels() != 1 || dsp->NumOutputChannels() != 1)
+    throw std::runtime_error("A capture must have one input and one output channel; this one has "
+                             + std::to_string(dsp->NumInputChannels()) + " in and "
+                             + std::to_string(dsp->NumOutputChannels()) + " out.");
+  auto wrapped = std::make_unique<ResamplingNAM>(std::move(dsp), gEngine->sampleRate);
+  wrapped->Reset(gEngine->sampleRate, kMaxBlock);
+  return wrapped;
+}
+
+#if !defined(__EMSCRIPTEN__)
+// The hand-over between a native host's UI thread and its audio thread. gPending holds a capture built by
+// rig_stage_model, or kClearModel, until rig_process takes it at the start of a block. The capture it replaces goes to
+// gRetired, which rig_collect frees on the UI thread, so the audio thread never frees a model unless two swaps land
+// between collections.
+ResamplingNAM* const kClearModel = reinterpret_cast<ResamplingNAM*>(static_cast<uintptr_t>(1));
+std::atomic<ResamplingNAM*> gPending{nullptr};
+std::atomic<ResamplingNAM*> gRetired{nullptr};
+
+void TakePending()
+{
+  ResamplingNAM* next = gPending.exchange(nullptr, std::memory_order_acq_rel);
+  if (next == nullptr)
+    return;
+  ResamplingNAM* old = gEngine->model.release();
+  if (next != kClearModel)
+  {
+    gEngine->model.reset(next);
+    gEngine->ApplySlim();
+  }
+  if (old != nullptr)
+    delete gRetired.exchange(old, std::memory_order_acq_rel); // nullptr unless rig_collect fell behind
+}
+#endif
 } // namespace
 
 RIG_EXPORT int rig_init(double sampleRate)
@@ -204,6 +249,9 @@ RIG_EXPORT int rig_init(double sampleRate)
   nam::activations::Activation::enable_fast_tanh();
   if (gEngine == nullptr)
     gEngine = new Engine();
+#if !defined(__EMSCRIPTEN__)
+  TakePending(); // a capture staged at the old rate is reset with the rest (a host resets with its audio stopped)
+#endif
   gEngine->Reset(sampleRate);
   return kMaxBlock;
 }
@@ -215,6 +263,9 @@ RIG_EXPORT void rig_process(int nFrames)
 {
   if (gEngine == nullptr || nFrames <= 0)
     return;
+#if !defined(__EMSCRIPTEN__)
+  TakePending();
+#endif
   gEngine->Process(std::min(nFrames, kMaxBlock));
 }
 
@@ -245,15 +296,7 @@ RIG_EXPORT int rig_load_model(int bytes)
     return 1;
   try
   {
-    const nlohmann::json config = nlohmann::json::parse(gText.begin(), gText.begin() + bytes);
-    std::unique_ptr<nam::DSP> dsp = nam::get_dsp(config);
-    if (dsp->NumInputChannels() != 1 || dsp->NumOutputChannels() != 1)
-      throw std::runtime_error("A capture must have one input and one output channel; this one has "
-                               + std::to_string(dsp->NumInputChannels()) + " in and "
-                               + std::to_string(dsp->NumOutputChannels()) + " out.");
-    auto wrapped = std::make_unique<ResamplingNAM>(std::move(dsp), gEngine->sampleRate);
-    wrapped->Reset(gEngine->sampleRate, kMaxBlock);
-    gEngine->model = std::move(wrapped);
+    gEngine->model = BuildModel(gText.data(), static_cast<size_t>(bytes));
     gEngine->ApplySlim();
     gEngine->lastError.clear();
     std::vector<char>().swap(gText);
@@ -309,3 +352,68 @@ RIG_EXPORT float rig_take_input_peak()
   gEngine->inputPeak = 0.0f;
   return p;
 }
+
+#if !defined(__EMSCRIPTEN__)
+// ---- a native host's capture hand-over (the desktop app, R2) -------------------------------------------------------
+// Builds a capture from its JSON on the calling thread, at the engine's rate, and leaves it for rig_process to swap in
+// at the start of its next block. Returns 0 with `info` filled (the Info values, kInfoLatencyFrames + 1 of them), or 1
+// with `error` filled (NUL-terminated, at most errorBytes). A capture staged and not yet taken is replaced. Call it
+// from one thread, never while rig_init runs (a host resets with its audio stopped).
+RIG_EXPORT int rig_stage_model(const char* text, int bytes, double* info, char* error, int errorBytes)
+{
+  std::string why;
+  if (gEngine == nullptr || text == nullptr || bytes <= 0)
+    why = "The engine is not running.";
+  else
+  {
+    try
+    {
+      std::unique_ptr<ResamplingNAM> m = BuildModel(text, static_cast<size_t>(bytes));
+      if (info != nullptr)
+      {
+        info[kInfoLoaded] = 1.0;
+        info[kInfoHasLoudness] = m->HasLoudness() ? 1.0 : 0.0;
+        info[kInfoLoudness] = m->HasLoudness() ? m->GetLoudness() : 0.0;
+        info[kInfoHasInputLevel] = m->HasInputLevel() ? 1.0 : 0.0;
+        info[kInfoInputLevel] = m->HasInputLevel() ? m->GetInputLevel() : 0.0;
+        info[kInfoHasOutputLevel] = m->HasOutputLevel() ? 1.0 : 0.0;
+        info[kInfoOutputLevel] = m->HasOutputLevel() ? m->GetOutputLevel() : 0.0;
+        info[kInfoModelSampleRate] = m->GetEncapsulatedSampleRate();
+        info[kInfoSlimmable] = m->GetSlimmableModel() ? 1.0 : 0.0;
+        info[kInfoLatencyFrames] = static_cast<double>(m->GetLatency());
+      }
+      ResamplingNAM* was = gPending.exchange(m.release(), std::memory_order_acq_rel);
+      if (was != kClearModel)
+        delete was; // staged and never taken
+      return 0;
+    }
+    catch (const std::exception& e)
+    {
+      why = e.what();
+    }
+    catch (...)
+    {
+      why = "The capture could not be read.";
+    }
+  }
+  if (error != nullptr && errorBytes > 0)
+  {
+    const size_t n = std::min(why.size(), static_cast<size_t>(errorBytes - 1));
+    std::memcpy(error, why.data(), n);
+    error[n] = '\0';
+  }
+  return 1;
+}
+
+// Clears the capture at the start of rig_process's next block (a capture staged and not yet taken is dropped).
+RIG_EXPORT void rig_stage_clear_model()
+{
+  ResamplingNAM* was = gPending.exchange(kClearModel, std::memory_order_acq_rel);
+  if (was != kClearModel)
+    delete was;
+}
+
+// Frees the capture rig_process last replaced; call it from the thread that stages (the desktop's UI, about 50 times
+// a second).
+RIG_EXPORT void rig_collect() { delete gRetired.exchange(nullptr, std::memory_order_acq_rel); }
+#endif

@@ -17,6 +17,8 @@
 <!-- The saved look and drawings before the first paint, so the page never flashes another (look.js keeps them). -->
 <script>
 try {
+  // Inside the desktop app (D-RIG-017) the page is crbn-rig.exe's window: data-host shows the app's words, not the site's.
+  if (window.chrome && window.chrome.webview) document.documentElement.dataset.host = 'desktop'
   var h = document.documentElement, c = document.cookie.split('; ').filter(function (x) { return x.indexOf('crbn-look=') === 0 })[0]
   var s = c ? JSON.parse(decodeURIComponent(c.slice(10))) : null
   var p = s && s.every ? s.prefs : JSON.parse(localStorage.getItem('crbn-rig/prefs') || 'null') || { look: localStorage.getItem('crbn-rig/look') }
@@ -57,7 +59,8 @@ try {
     <button class="btn look-btn" id="look-open" type="button" aria-expanded="false" aria-controls="look-menu">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.3 0 1.8-1 1.3-2-.6-1.2.2-2.5 1.5-2.5H17a4 4 0 0 0 4-4C21 7 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.2" r="1.2"/><circle cx="15" cy="7.6" r="1.2"/></svg>Look
     </button>
-    <a class="btn ghost" id="desktop-link" href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Desktop app</a>
+    <a class="btn ghost" id="desktop-link" href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener" data-web>Desktop app</a>
+    <a class="btn ghost" id="web-link" href="https://rig.carbonlinear.com" target="_blank" rel="noopener" data-desktop>Web version</a>
     <button class="btn ghost" id="about-open" type="button">About</button>
   </nav>
 </header>
@@ -111,12 +114,14 @@ try {
       <div class="start-words">
         <h1 id="start-title">Plug in. Play.</h1>
         <p>Your guitar through captures of real pedals, amps and cabinets: <code>.nam</code> captures, like the thousands
-          shared on TONE3000, and <code>.wav</code> cabinet IRs. Everything runs here in your browser.</p>
+          shared on TONE3000, and <code>.wav</code> cabinet IRs. Everything runs here <span data-web>in your
+          browser</span><span data-desktop>on your computer, through your audio interface</span>.</p>
       </div>
       <div class="start-actions">
         <div class="row">
           <button class="btn primary" id="play-guitar" type="button">Play my guitar</button>
           <button class="btn" id="play-demo" type="button" aria-pressed="false">Hear the demo riff</button>
+          <button class="btn" id="audio-settings" type="button" data-desktop>Audio settings&hellip;</button>
         </div>
         <p class="hint">Use headphones. With a laptop's own microphone and speakers, the sound feeds back.</p>
         <!-- Shown when Pavillion Hub's own view refuses the input (its tool view grants no microphone yet). -->
@@ -178,9 +183,13 @@ try {
     </div>
 
     <div class="setup">
-      <label class="field"><span>Input</span>
+      <label class="field" data-web><span>Input</span>
         <select id="input-device" disabled><option value="">After you start</option></select>
       </label>
+      <div class="field" data-desktop><span>Audio device</span>
+        <div class="device-row"><output id="desktop-device">The audio driver</output>
+          <button class="btn small" id="audio-settings-2" type="button">Audio settings&hellip;</button></div>
+      </div>
       <div class="field"><span>Output level</span>
         <div class="segmented" role="radiogroup" aria-label="Output level mode" data-param="outputMode">
           <button type="button" role="radio" data-value="0" title="No adjustment">Raw</button>
@@ -272,12 +281,15 @@ try {
     <h2 id="about-title"><span class="crbn">CRBN</span> <span class="brand-ink">Rig</span></h2>
     <p class="dim" id="about-build"></p>
     <p>Play your guitar through captures of real gear. CRBN Rig is by GOATi Entertainment, part of the CRBN suite, and
-      is also a desktop app on <a href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Pavillion Hub</a>
-      with lower latency through your audio interface.</p>
+      <span data-web>is also a desktop app on <a href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Pavillion Hub</a>
+      with lower latency through your audio interface.</span><span data-desktop>comes from
+      <a href="https://pavillionhub.com/app/crbn-rig" target="_blank" rel="noopener">Pavillion Hub</a>; its web version is
+      at <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</span></p>
     <p>Based on Neural Amp Modeler by Steven Atkinson. It plays NAM captures, such as those shared on
       <a href="https://www.tone3000.com" target="_blank" rel="noopener">TONE3000</a>; captures and IRs belong to their
       authors and are not part of CRBN Rig. The demo riff and example capture come from Neural Amp Modeler Core.</p>
-    <p>Your files stay in your browser: nothing you load is uploaded.</p>
+    <p>Your files stay <span data-web>in your browser</span><span data-desktop>on this computer</span>: nothing you load
+      is uploaded.</p>
     <ul class="notices">
       <li><a href="LICENSE.txt" target="_blank">Licence (MIT, Neural Amp Modeler)</a></li>
       <li><a href="ThirdPartyNotices.txt" target="_blank">Third-party notices</a></li>

@@ -32,6 +32,18 @@
       "kept": 19,
       "of": 31,
       "leftOut": "tools/, build files, .github/, and its own submodule Dependencies/eigen"
+    },
+    {
+      "//": "D-RIG-017 (2026-11-11): the WebView2 SDK for the desktop app's page (build plan R2), downloaded once from nuget.org and checked against its catalog hash. Kept byte for byte (.gitattributes): build/native/include/WebView2.h as include/, build/native/x64/WebView2Loader.dll as x64/ (Microsoft-signed, loaded at run time, shipped beside crbn-rig.exe), LICENSE.txt (BSD 3-clause) and NOTICE.txt.",
+      "path": "WebView2",
+      "upstream": "https://www.nuget.org/packages/Microsoft.Web.WebView2",
+      "commit": "version 1.0.4314.35",
+      "version": "1.0.4314.35",
+      "published": "2026-10-23",
+      "sha512": "cOaiVqP3BmQHMnxGpZzANM22tUXgycrisyJHjIGNzIaMsm8iXj7Kx+ceYg+RbYwJtzT009qfcFTocvVLY+ekMw==",
+      "kept": 4,
+      "of": 90,
+      "leftOut": "WebView2EnvironmentOptions.h, the WinRT interop headers, the static and import loader libraries, the x86 and arm64 loaders, the .NET and WinRT assemblies, the build targets and tools"
     }
   ]
 }

@@ -26,6 +26,12 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-016): R2a is built (crbn-launcher D-RIG-017). `crbn-rig.exe` draws Rig's page in WebView2, over
+  `rig_engine.cpp` compiled in, with Rig's own host and the WebView2 SDK alone (version 1.0.4314.35, vendored as
+  `WebView2/`). Upstream's IGraphics UI and DSP chain are gone. The page has two audio backends, one per build.
+  `packaging/windows/check.mjs` passes 21/21 (the exe's engine bit-identical to the parity harness), `web/check.mjs`
+  30/30, and `web/engine/test.mjs` all cases. R2b (signing, publishing, the store's desktop screenshot) needs a
+  SimplySign session.
 - 2026-11-11 (SYNC:RIG-015): R1 is built and published (crbn-launcher D-RIG-016). All twenty hardware kits draw the
   web version's amp and cabinet as its Hardware drawing, with CRBN the default. Every control is bound to the
   settings, and the energy kits answer the input level. Salvage's sheets come from GOATi's texture library, Power

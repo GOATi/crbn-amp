@@ -2,13 +2,14 @@
 // (D-RIG-008): the amp's faceplate, LED meters and the Amp front layout by default, each a person's choice in the look
 // menu with Rig's finish (finish.js) and the suite's look (look.js, D-CRBN-023 / D-CRBN-024).
 //
-//   source (the guitar through getUserMedia, or the demo riff) -> AudioWorkletNode 'crbn-rig' (rig-processor.js: input
-//   gain, gate, capture, EQ, DC blocker, output gain) -> ConvolverNode (the cabinet IR, scaled and truncated as the
-//   desktop's ImpulseResponse does) -> AnalyserNode (the output meter) -> the speakers.
+// The same page is the desktop app's window (D-RIG-017, build plan R2). Its audio is one of two backends with the same
+// calls: audio-web.js in a browser (the engine in an AudioWorklet, Web Audio around it), or audio-desktop.js inside
+// crbn-rig.exe (the engine compiled into the app, through the audio driver).
+import { createDesktopAudio, inDesktopApp } from './audio-desktop.js'
+import { createWebAudio } from './audio-web.js'
 import { DEFAULTS } from './engine.js'
 import { DEFAULT_CUSTOM, FINISHES, HEX_RE, finishHex, finishVars, hex2rgb, hsv2rgb, inkFor, readouts, rgb2hex, rgb2hsv } from './finish.js'
 import { DEFAULT_KIT, KIT_LIST, SALVAGE_CHOICES, SALVAGE_DEFAULTS, createHardware } from './hw/hw.js'
-import { scaledIR } from './ir.js'
 import { applyPrefs, fontOf, loadLooks, loadPrefs, lookList, looks, ownPrefs, sanitize, savePrefs, setEvery, sharesAcrossApps } from './look.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
@@ -29,8 +30,8 @@ for (const [k, v] of Object.entries(loadSettings())) if (k in PAGE_DEFAULTS && N
 let saveTimer = 0
 function setSetting(name, value) {
   settings[name] = value
-  if (ENGINE_PARAMS.includes(name)) node?.port.postMessage({ type: 'param', name, value })
-  if (name === 'irOn') route()
+  if (ENGINE_PARAMS.includes(name)) audio.setParam(name, value)
+  if (name === 'irOn') audio.setIROn(value > 0.5)
   reflect(name)
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => saveSettings(settings), 300)
@@ -132,7 +133,7 @@ function setPower(on) {
   power = on
   hardware?.setPower(on)
   if (!on) {
-    resumeWith = demoSource ? 'demo' : micSource ? 'guitar' : null
+    resumeWith = audio.source
     stopAll()
   } else if (resumeWith) {
     const what = resumeWith
@@ -143,71 +144,42 @@ function setPower(on) {
 function setStandby(on) {
   standby = on
   hardware?.setStandby(on)
-  if (outGain) {
-    const g = outGain.gain, t = ctx.currentTime
-    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(on ? 0 : 1, t + 0.02)
-  }
+  audio.setStandby(on)
   updateStatus()
 }
 // Playing turns the amp on.
 function powerUp() { if (!power) { power = true; resumeWith = null; hardware?.setPower(true) } }
 
-// ------------------------------------------------------------------------------------------------- the audio graph
-let ctx = null, node = null, convolver = null, analyser = null, outGain = null
-let micStream = null, micSource = null, demoSource = null, demoBuffer = null
-let wasmBytes = null
-let messageId = 0
-const waiting = new Map()
+// ------------------------------------------------------------------------------------------------- the audio
+// One backend or the other (above), with the same calls; the page keeps what the person chose and sends it.
+const audio = inDesktopApp()
+  ? createDesktopAudio({ onChange: () => updateStatus() })
+  : createWebAudio({ onError: (text) => toast(text), onChange: () => updateStatus() })
+const desktop = audio.kind === 'desktop'
+let metersRunning = false
 
 async function ensureAudio() {
-  if (ctx) { if (ctx.state === 'suspended') await ctx.resume(); return }
-  ctx = new AudioContext({ latencyHint: 'interactive' })
-  wasmBytes ??= await (await fetch('rig-engine.wasm')).arrayBuffer()
-  await ctx.audioWorklet.addModule('rig-processor.js')
-  node = new AudioWorkletNode(ctx, 'crbn-rig', {
-    numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
-    processorOptions: { wasm: wasmBytes.slice(0) },
-  })
-  node.port.onmessage = (e) => onWorklet(e.data)
-  for (const name of ENGINE_PARAMS) node.port.postMessage({ type: 'param', name, value: settings[name] })
-  convolver = new ConvolverNode(ctx, { disableNormalization: true })
-  analyser = new AnalyserNode(ctx, { fftSize: 1024 })
-  analyser.connect(ctx.destination)
-  outGain = new GainNode(ctx, { gain: standby ? 0 : 1 })
-  outGain.connect(analyser)
-  route()
+  const first = await audio.start(Object.fromEntries(ENGINE_PARAMS.map((name) => [name, settings[name]])))
+  if (!first) return
+  audio.setIROn(settings.irOn > 0.5)
+  audio.setStandby(standby)
   if (capture.bytes) {
     const result = await sendCapture()
     if (!result.ok) { toast(`${capture.name}: ${result.error}`); await clearCapture() }
   }
-  if (ir.bytes) { try { await prepareIR() } catch { toast(`${ir.name}: not a WAV the browser can read.`); await clearIR() } }
-  ctx.onstatechange = updateStatus
-  requestAnimationFrame(meterLoop)
+  if (ir.bytes) {
+    try { await prepareIR(); showIR() } catch (err) { toast(`${ir.name}: ${desktop ? err?.message : 'not a WAV the browser can read.'}`); await clearIR() }
+  }
+  if (!metersRunning) { metersRunning = true; requestAnimationFrame(meterLoop) }
 }
-
-function route() {
-  if (!node) return
-  node.disconnect(); convolver.disconnect()
-  if (settings.irOn > 0.5 && convolver.buffer) { node.connect(convolver); convolver.connect(outGain) }
-  else node.connect(outGain)
-}
-
-function onWorklet(m) {
-  if (m.type === 'meter') meters.input(m.input, m.raw)
-  else if (m.type === 'capture') { waiting.get(m.id)?.(m); waiting.delete(m.id) }
-  else if (m.type === 'error') toast(`The engine could not start: ${m.error}`)
-  else if (m.type === 'log') console.debug('[engine]', m.line)
-}
-
-const ask = (msg, transfer) => new Promise((ok) => { const id = ++messageId; waiting.set(id, ok); node.port.postMessage({ ...msg, id }, transfer) })
 
 // ------------------------------------------------------------------------------------------------- playing
 async function playGuitar() {
   powerUp()
   try {
     await ensureAudio()
-    stopDemo()
-    await openMic($('input-device').value || undefined)
+    const device = await audio.playGuitar($('input-device').value || undefined)
+    if (!desktop) await listDevices(device)
   } catch (err) {
     if (err?.name === 'NotAllowedError' && hubApp) {
       // The Hub's tool view grants no microphone yet (its TOOL_PERMISSIONS): offer the two places that can hear it.
@@ -219,28 +191,13 @@ async function playGuitar() {
         : `Your input could not be opened: ${err?.message ?? err}`)
     }
   }
+  syncDemoButton()
   updateStatus()
-}
-
-async function openMic(deviceId) {
-  closeMic()
-  // Guitar wants the raw signal: no echo cancelling, noise suppression or automatic gain.
-  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0, ...(deviceId ? { deviceId: { exact: deviceId } } : {}) }
-  micStream = await navigator.mediaDevices.getUserMedia({ audio })
-  micSource = new MediaStreamAudioSourceNode(ctx, { mediaStream: micStream })
-  micSource.connect(node)
-  await listDevices(micStream.getAudioTracks()[0]?.getSettings().deviceId)
-}
-
-function closeMic() {
-  micSource?.disconnect(); micSource = null
-  for (const t of micStream?.getTracks() ?? []) t.stop()
-  micStream = null
 }
 
 async function listDevices(current) {
   const sel = $('input-device')
-  const inputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput')
+  const inputs = await audio.listInputs()
   sel.innerHTML = ''
   for (const d of inputs) {
     const o = document.createElement('option')
@@ -252,44 +209,52 @@ async function listDevices(current) {
 }
 
 async function toggleDemo() {
-  if (demoSource) { stopDemo(); updateStatus(); return }
+  if (audio.source === 'demo') { audio.stopDemo(); syncDemoButton(); updateStatus(); return }
   powerUp()
   try {
     await ensureAudio()
-    closeMic()
     if (!capture.bytes) await loadExample()
-    demoBuffer ??= await ctx.decodeAudioData(await (await fetch('demo/di.wav')).arrayBuffer())
-    demoSource = new AudioBufferSourceNode(ctx, { buffer: demoBuffer, loop: true })
-    demoSource.connect(node)
-    demoSource.start()
-    $('play-demo').setAttribute('aria-pressed', 'true')
-    $('play-demo').textContent = 'Stop the demo riff'
+    await audio.playDemo()
   } catch (err) {
     toast(`The demo could not play: ${err?.message ?? err}`)
   }
+  syncDemoButton()
   updateStatus()
 }
 
-function stopDemo() {
-  if (!demoSource) return
-  try { demoSource.stop() } catch { /* already stopped */ }
-  demoSource.disconnect(); demoSource = null
-  $('play-demo').setAttribute('aria-pressed', 'false')
-  $('play-demo').textContent = 'Hear the demo riff'
+function syncDemoButton() {
+  const on = audio.source === 'demo'
+  $('play-demo').setAttribute('aria-pressed', String(on))
+  $('play-demo').textContent = on ? 'Stop the demo riff' : 'Hear the demo riff'
 }
 
-function stopAll() { stopDemo(); closeMic(); ctx?.suspend(); updateStatus() }
+function stopAll() { audio.stop(); syncDemoButton(); updateStatus() }
 
 function updateStatus() {
-  const playing = Boolean(ctx && ctx.state === 'running' && (micSource || demoSource))
+  const playing = audio.running
   $('status').classList.toggle('live', playing)
   $('stop').hidden = !playing
-  $('start').classList.toggle('compact', Boolean(ctx))
-  if (ctx && ctx.state === 'suspended' && (micSource || demoSource)) ctx.resume().then(updateStatus)
-  if (!playing) { hardware?.level(0, false); $('status-text').textContent = power ? 'Not playing' : 'Off'; return }
-  const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000)
-  const what = demoSource ? 'Demo riff' : 'Live'
-  $('status-text').textContent = `${what} · ${standby ? 'Standby · ' : ''}${(ctx.sampleRate / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ms ? `about ${ms} ms out` : 'low latency'}`
+  $('start').classList.toggle('compact', audio.started)
+  audio.wake()?.then(updateStatus)
+  if (desktop) showDriver()
+  if (!playing) {
+    hardware?.level(0, false)
+    // On the desktop, a driver that is not running is said in words (no device, or the device is in use).
+    const silent = desktop && audio.started && audio.describe() && !audio.describe().running
+    $('status-text').textContent = !power ? 'Off' : silent ? 'No sound from the audio device: open Audio settings' : 'Not playing'
+    return
+  }
+  const ms = audio.latencyMs()
+  const what = audio.source === 'demo' ? 'Demo riff' : 'Live'
+  $('status-text').textContent = `${what} · ${standby ? 'Standby · ' : ''}${(audio.sampleRate / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ms ? `about ${ms} ms out` : 'low latency'}`
+}
+
+// The desktop app's audio device, as its Audio settings left it (the driver's own list, not the browser's).
+function showDriver() {
+  const d = audio.describe()
+  if (!d) return
+  const device = d.input && d.output && d.input !== d.output ? `${d.input} in, ${d.output} out` : d.input || d.output || 'No device'
+  $('desktop-device').textContent = `${device} · ${d.driver}${d.buffer ? ` · ${d.buffer} samples` : ''}`
 }
 
 // ------------------------------------------------------------------------------------------------- the capture
@@ -307,11 +272,11 @@ async function useCapture(name, bytes, { remember = true, example = false } = {}
   const previous = { ...capture }
   Object.assign(capture, { name, bytes, meta, info: null, example })
   showCapture('Loading…')
-  if (node) {
+  if (audio.started) {
     const result = await sendCapture()
     if (!result.ok) {
       Object.assign(capture, previous)
-      if (previous.bytes) await sendCapture(); else node.port.postMessage({ type: 'clearCapture', id: 0 })
+      if (previous.bytes) await sendCapture(); else audio.clearCapture()
       showCapture()
       throw new Error(result.error)
     }
@@ -321,8 +286,7 @@ async function useCapture(name, bytes, { remember = true, example = false } = {}
 }
 
 async function sendCapture() {
-  const bytes = capture.bytes.slice(0)
-  const result = await ask({ type: 'capture', bytes: bytes.buffer }, [bytes.buffer])
+  const result = await audio.loadCapture(capture.bytes)
   if (result.ok) {
     capture.info = result.info
     $('slim').hidden = !result.info?.slimmable
@@ -370,7 +334,7 @@ function showCapture(note) {
   if (gear) lines.push(gear)
   if (m.modeled_by) lines.push(`Captured by ${m.modeled_by}`)
   if (capture.example) lines.push('From Neural Amp Modeler Core: drop your own capture to replace it')
-  if (capture.info?.sampleRate && ctx && Math.abs(capture.info.sampleRate - ctx.sampleRate) > 1) lines.push(`Recorded at ${capture.info.sampleRate / 1000} kHz, resampled`)
+  if (capture.info?.sampleRate && audio.sampleRate && Math.abs(capture.info.sampleRate - audio.sampleRate) > 1) lines.push(`Recorded at ${capture.info.sampleRate / 1000} kHz, resampled`)
   $('capture-meta').textContent = lines.join(' · ')
   $('amp-sub').textContent = [note, gear, ...chips, m.modeled_by && `captured by ${m.modeled_by}`].filter(Boolean).join(' · ')
   hardware?.setCapture(note ? `${name} · ${note}` : name, $('amp-sub').textContent)
@@ -378,7 +342,7 @@ function showCapture(note) {
 
 async function clearCapture() {
   Object.assign(capture, { name: '', bytes: null, meta: null, info: null, example: false })
-  if (node) node.port.postMessage({ type: 'clearCapture', id: 0 })
+  if (audio.started) audio.clearCapture()
   showCapture()
   await forgetFile('capture')
 }
@@ -387,19 +351,16 @@ async function clearCapture() {
 const ir = { name: '', bytes: null, seconds: 0 }
 
 async function prepareIR() {
-  const decoded = await ctx.decodeAudioData(ir.bytes.slice(0).buffer)
-  convolver.buffer = scaledIR(decoded, ctx.sampleRate)
-  ir.seconds = decoded.duration
-  route()
+  ir.seconds = (await audio.loadIR(ir.bytes)).seconds
 }
 
 async function useIR(name, bytes, { remember = true } = {}) {
   const previous = { ...ir }
   Object.assign(ir, { name, bytes })
-  if (ctx) {
-    try { await prepareIR() } catch {
+  if (audio.started) {
+    try { await prepareIR() } catch (err) {
       Object.assign(ir, previous); showIR()
-      throw new Error('This file is not a WAV the browser can read.')
+      throw new Error(desktop ? err?.message : 'This file is not a WAV the browser can read.')
     }
   }
   showIR()
@@ -420,7 +381,7 @@ function showIR() {
 
 async function clearIR() {
   Object.assign(ir, { name: '', bytes: null, seconds: 0 })
-  if (convolver) { convolver.buffer = null; route() }
+  audio.clearIR()
   showIR()
   await forgetFile('ir')
 }
@@ -497,19 +458,13 @@ function meterOf(id) {
   }
 }
 let meterIn = null, meterOut = null
-const meters = { inPeak: 0, inRaw: 0, input(p, raw) { this.inPeak = Math.max(this.inPeak, p); this.inRaw = Math.max(this.inRaw, raw) } }
-let scratch = null
 function meterLoop() {
+  const m = audio.takeMeters()
   // The input clips when the source itself does (the interface or file at full scale).
-  meterIn(meters.inPeak, meters.inRaw >= 0.999)
+  meterIn(m.input, m.raw >= 0.999)
   // The energy and the kits' lamps follow the input's level (D-RIG-009 (e)).
-  hardware?.level(meters.inPeak, Boolean(ctx.state === 'running' && (micSource || demoSource)))
-  meters.inPeak = 0; meters.inRaw = 0
-  scratch ??= new Float32Array(analyser.fftSize)
-  analyser.getFloatTimeDomainData(scratch)
-  let p = 0
-  for (const v of scratch) { const a = Math.abs(v); if (a > p) p = a }
-  meterOut(p, p >= 0.999)
+  hardware?.level(m.input, audio.running)
+  meterOut(m.output, m.output >= 0.999)
   requestAnimationFrame(meterLoop)
 }
 
@@ -553,6 +508,14 @@ function applyAll() {
   root.style.setProperty('--accent', accent ?? hex)
   root.style.setProperty('--accent-ink', inkFor(accent ?? hex))
   syncMenu(look, hex, accent)
+  if (desktop) titleBar()
+}
+// The desktop app's title bar takes the page's ground: dark or light, and its colour where Windows 11 allows it.
+function titleBar() {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(getComputedStyle(document.body).backgroundColor)
+  if (!m) return
+  const [r, g, b] = m.slice(1, 4).map(Number)
+  audio.setTitleBar(0.2126 * r + 0.7152 * g + 0.0722 * b < 128, rgb2hex(r, g, b))
 }
 function commitPrefs() { if (keepPrefs) savePrefs(prefs, every); applyAll() }
 
@@ -773,8 +736,16 @@ async function start() {
   $('play-guitar').addEventListener('click', playGuitar)
   $('play-demo').addEventListener('click', toggleDemo)
   $('stop').addEventListener('click', stopAll)
-  $('input-device').addEventListener('change', () => { if (micStream) openMic($('input-device').value).catch((e) => toast(String(e?.message ?? e))) })
-  navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (micStream) listDevices($('input-device').value) })
+  $('input-device').addEventListener('change', () => {
+    if (audio.hasGuitarInput) audio.playGuitar($('input-device').value).then(listDevices).catch((e) => toast(String(e?.message ?? e)))
+  })
+  navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (!desktop && audio.hasGuitarInput) listDevices($('input-device').value) })
+  if (desktop) {
+    // The desktop app (D-RIG-017): Audio settings is the driver's own dialog, and the mark's link stays on the page
+    // (the app serves index.html by name).
+    for (const id of ['audio-settings', 'audio-settings-2']) $(id).addEventListener('click', () => audio.openAudioSettings())
+    document.querySelector('a.mark').setAttribute('href', 'index.html')
+  }
   for (const id of ['about-open', 'about-open-2']) $(id).addEventListener('click', () => $('about').showModal())
   if (hubApp) {
     const openApp = (e) => { e?.preventDefault(); window.open(`pavillion://app/${hubApp}`) }
@@ -797,6 +768,10 @@ async function start() {
   if (c) { try { await useCapture(c.name, new Uint8Array(c.bytes), { remember: false }) } catch { await forgetFile('capture') } }
   const i = await recallFile('ir')
   if (i) { try { await useIR(i.name, new Uint8Array(i.bytes), { remember: false }) } catch { await forgetFile('ir') } }
+  // The desktop app's engine starts with the page, so the capture, IR and status are there at once. It waits for Play
+  // my guitar, as the web version does but with no permission to ask: until R3's squeal guard, a laptop's own
+  // microphone and speakers must not feed back the moment the app opens.
+  if (desktop) await ensureAudio()
   showCapture(); showIR(); updateStatus()
   root.dataset.ready = 'true'
 }

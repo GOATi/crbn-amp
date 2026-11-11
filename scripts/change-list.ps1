@@ -48,11 +48,14 @@ foreach ($row in $rows) {
     '^[AC]' { $added += $f[-1] }
   }
 }
-# Changes to vendored files since the commit that vendored them (the first that added vendor.json).
+# Changes to vendored files since the commit that vendored each library (the first that added a file under its path;
+# the four of D-RIG-001 came in one commit, the WebView2 SDK of D-RIG-017 later).
 $vendorChanged = @()
-$vendorCommit = @(Invoke-Git @('log', '--diff-filter=A', '--format=%H', $head, '--', 'vendor.json')) | Select-Object -Last 1
-if ($vendorCommit -and $vendorPaths.Count) {
-  $vendorChanged = @(Invoke-Git (@('-c', 'core.quotepath=off', 'diff', '--name-status', '-M', $vendorCommit, $head, '--') + $vendorPaths) | ForEach-Object { ($_ -split "`t")[-1] })
+foreach ($v in $vendorPaths) {
+  $since = @(Invoke-Git @('log', '--diff-filter=A', '--format=%H', $head, '--', $v)) | Select-Object -Last 1
+  if ($since) {
+    $vendorChanged += @(Invoke-Git @('-c', 'core.quotepath=off', 'diff', '--name-status', '-M', $since, $head, '--', $v) | ForEach-Object { ($_ -split "`t")[-1] })
+  }
 }
 $lines = @(
   'CRBN Rig: files changed from the original'
@@ -70,7 +73,10 @@ $lines += "Added by GOATi ($($added.Count)):"; $lines += ($added | Sort-Object |
 if ($vendored.Count) {
   $lines += ''
   $lines += "Libraries vendored from their upstreams ($($vendored.Count)), each trimmed to what builds, every kept file upstream's own when vendored:"
-  foreach ($v in $vendored) { $lines += "  $($v.path)/  $($v.upstream) at $($v.commit), $($v.kept) of $($v.of) files (left out: $($v.leftOut))" }
+  foreach ($v in $vendored) {
+    $at = if ($v.version) { "version $($v.version)" } else { $v.commit }
+    $lines += "  $($v.path)/  $($v.upstream) at $at, $($v.kept) of $($v.of) files (left out: $($v.leftOut))"
+  }
   $lines += ''
   $lines += "Changed in the vendored libraries since they were vendored ($($vendorChanged.Count)):"; $lines += ($vendorChanged | Sort-Object | ForEach-Object { "  $_" })
 }

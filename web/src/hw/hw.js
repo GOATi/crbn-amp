@@ -1469,7 +1469,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     for (const [p, v] of Object.entries(state.values)) reflect(p, v)
     setPower(state.power); setStandby(state.standby)
     setCapture(...state.capture); setIR(...state.ir); setSlim(state.slim)
-    if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => { for (const s of SURFACES) layoutHW(s.hw); for (const el of $(SALV_SEL)) scheduleSalvage(el) })
+    if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => { for (const s of SURFACES) layoutHW(s.hw); for (const el of $$(SALV_SEL)) scheduleSalvage(el) })
     wake(); startLoop()
   }
 

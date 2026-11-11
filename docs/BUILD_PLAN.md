@@ -12,7 +12,8 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 ## Where the push stands (2026-11-11)
 
 - **Desktop app** on the dev Hub: signed, reviewed, public. It still draws upstream's IGraphics UI, which the owner
-  dropped from Rig (D-RIG-007 (a)); its new stompbox icon ships with its next build.
+  dropped from Rig (D-RIG-007 (a)); its new stompbox icon ships with its next build. (Later the same day, R2a built
+  the app on Rig's page, D-RIG-017; R2b publishes it.)
 - **Web version** at `https://rig.carbonlinear.com`: the owner's lab picks are live (D-RIG-008): the stompbox mark;
   the Amp front layout, faceplate and LED meters by default, with the other drawings as player's choices; the finishes
   (the look's own, cherry, gold, rose gold `#f29077`, Custom with a colour wheel); Livewire's look menu with the suite
@@ -39,7 +40,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 |---|---|---|---|
 | R1 | Rig's hardware: the kits (built, SYNC:RIG-015) | Done: the Hardware Lab (D-RIG-009..015), the texture library (D-RIG-016) | The 20 kits on the page, CRBN the default, published |
 | R1b | The Rig builder, RIG1 codes, players' own art | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
-| R2 | The desktop on the page (U2) | His word on vendoring the WebView2 SDK and WIL; a SimplySign session at the end | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
+| R2 | The desktop on the page (U2): R2a built (SYNC:RIG-016, D-RIG-017), R2b next | R2a: done (the WebView2 SDK alone, D-RIG-017). R2b: a SimplySign session | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1) | Nothing new (D-RIG-008 (e): guard on by default) | Both builds; no false trips on real playing |
 | R4 | The library (U3) | Nothing new | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
@@ -49,7 +50,9 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R9 | Release and store | A SimplySign session; his look at the new pictures | Signed release, web promoted, store refreshed |
 
 R1 can be skipped or moved if the owner prefers to go straight to R2. It is first because he asked for it
-("then I follow up on these details with the following session").
+("then I follow up on these details with the following session"). After R1 he took R2 before R1b (D-RIG-017 (a)):
+R1b only adds to the page, so it lands in both builds whenever it comes, and can fill a gap while R2b waits for a
+SimplySign session.
 
 ### R1. The look's details (the owner's follow-up)
 
@@ -152,6 +155,55 @@ the plug-in, so every later feature is built once (D-RIG-008 (e)). Upstream's IG
   - Publish to dev and confirm (`packaging/hub/confirm.ps1`).
   - Retake the store's desktop screenshot and upload it under a new name.
   - Update `packaging/hub/README.md`.
+
+### R2a, as built (2026-11-11, SYNC:RIG-016, D-RIG-017)
+
+- **The owner's word** (D-RIG-017 (b)): the WebView2 SDK alone, with Rig's own host instead of iPlug2's
+  `IPlug/Extras/WebView`. That version loads from `file://` (the page's modules and fetches are refused there), cuts
+  messages to the page at 1,024 characters, and needs WIL. `WebView2/` holds version 1.0.4314.35, four files byte for
+  byte (`vendor.json`, `UPSTREAM.md`). Nothing in `iPlug2/` changed.
+- **The app** (`NeuralAmpModeler/`):
+  - `NeuralAmpModeler.cpp` is a thin host now. Its DSP is `rig_engine.cpp` through `RigDesktop.cpp`, and its window
+    is the page through `RigWebView.cpp`. The message list heads `NeuralAmpModeler.cpp`.
+  - Upstream's IGraphics UI and DSP chain are gone, with `NeuralAmpModelerControls.h`, `Colors.h`,
+    `Unserialization.cpp` and the fonts and pictures in `main.rc`. The app builds with `NO_IGRAPHICS`.
+  - The window is resizable and opens at 1280 x 800 (or nine tenths of the screen). The page is served from `web\`
+    beside the exe as `https://crbn-rig.example/`, and its storage lives in `%LOCALAPPDATA%\CRBNAmp\WebView2`. With no
+    WebView2 runtime, or no `web\` folder, the window says what to do and keeps the File menu.
+  - `crbn-rig.exe --render <capture> <in.f32> <out.f32> <rate> [block]` renders as `web/engine/native_render.cpp` does,
+    and exits with code 3 beside a running copy.
+- **The engine:** a native build of `rig_engine.cpp` adds `rig_stage_model`, `rig_stage_clear_model` and
+  `rig_collect`. The UI thread builds a capture, `rig_process` swaps it in, and the UI thread frees what it replaced.
+  The wasm build leaves them out.
+- **The page:**
+  - `web/src/audio-web.js` (the web graph, moved out of `app.js` unchanged) and `audio-desktop.js` (messages) answer the
+    same calls.
+  - `index.html` marks the desktop app (`data-host="desktop"`) before the first paint. `[data-web]` and
+    `[data-desktop]` words and buttons show by host: "Web version" for "Desktop app", and "Audio settings…" (iPlug2's
+    driver dialog) for the input list. The status line and the "Audio device" field come from the driver.
+  - Captures go as their JSON text. An IR and the demo riff are decoded by the page at their own rate, and the
+    engine resamples and scales them as the desktop always did.
+  - **Nothing plays until "Play my guitar"** (no permission to ask): until R3's squeal guard, a laptop's microphone
+    and speakers must not feed back when the app opens.
+- **R1's slip fixed:** `hw.js` called `$` for `$$` when fonts loaded late, which the desktop's first start showed.
+- **The checks:**
+  - `node packaging/windows/check.mjs`, 21 checks:
+    - `--render` equals the parity harness, bit for bit (four cases);
+    - the page from its folder in Rig's look, with the desktop's words;
+    - the driver's status reaches the page;
+    - the demo riff through the native engine, with both meters moving;
+    - Output -40 to -30 dB measures +10.00 dB;
+    - Standby silences the output while the input is still heard;
+    - a unit-impulse IR measures -17.27 dB (-17.26 expected at 44.1 kHz);
+    - real arrow keys and typing reach the page;
+    - Audio settings opens the driver's dialog;
+    - no page errors;
+    - a clean exit.
+  - It plays the riff quietly through the default device for about ten seconds, with a throwaway WebView2 profile in
+    `dist/desktop-check`.
+  - `node web/check.mjs` 30/30, and `node web/engine/test.mjs` all cases (most bit-identical).
+- **Not yet:** R2b (signing, publishing, the store's desktop screenshot). The VST3, AAX and macOS projects still name
+  the removed files (P4). The desktop page doesn't read the suite look file (D-CRBN-024's desktop half) yet.
 
 ### R3. Power, auto-off and the squeal guard (U1)
 

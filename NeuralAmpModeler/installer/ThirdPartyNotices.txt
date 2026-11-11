@@ -7,8 +7,10 @@ to upstream's files are listed in MODIFIED-FILES.txt beside this file. CRBN Rig
 plays captures (.nam) and impulse responses made by others, such as those on
 TONE3000; they are the property of their authors and are not part of CRBN Rig.
 
-The notices below come from upstream and are kept whole; the two fonts the
-application embeds are added at the end.
+The notices below come from upstream and are kept whole; the two fonts upstream's
+drawing embedded are added at the end. CRBN Rig's window is now its own page,
+whose fonts carry their licences in its folder (look/fonts/LICENSES.md and
+hw/fonts/LICENSES.md).
 
 This product includes open-source and third-party software. The notices below
 are provided for the Neural Amp Modeler plug-ins and standalone application,

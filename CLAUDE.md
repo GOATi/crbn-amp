@@ -12,23 +12,24 @@ CRBN Rig is GOATi's fork of Steven Atkinson's **Neural Amp Modeler** plug-in (MI
 plays captures of real gear (pedals, amp heads, full rigs; `.nam` files, most of them from TONE3000) and cabinet
 impulse responses (`.wav`). It reaches Pavillion Hub both ways:
 
-- **the desktop app**: the iPlug2 standalone, `crbn-rig.exe`, installed and updated by the Hub as a folder;
+- **the desktop app**: the iPlug2 standalone, `crbn-rig.exe`, installed and updated by the Hub as a folder; since R2a
+  (D-RIG-017) its window is the same page in WebView2, over the same engine compiled in;
 - **the web version**: our own page in the suite's looks (`web/`), with NAM's core compiled to WebAssembly in an
   AudioWorklet, at `https://rig.carbonlinear.com` (public but unlisted).
 
-The owner intends a UX of our own, replacing upstream's. The web page is its seed; iPlug2's WebView2 editor can later
-put the same page on the desktop (`docs/PLAN.md`).
+The owner intends a UX of our own, replacing upstream's. The page is it, in both builds: every feature is built once,
+in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 
 ## Where things are
 
 | What | Where |
 |---|---|
-| The plug-in / standalone (C++) | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp`, `NeuralAmpModelerControls.h`, `config.h`, `Colors.h`, `resources/`) |
-| Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/` |
-| The web version | `web/` (`src/` the page, `engine/` the C++ glue compiled to wasm, `build.mjs`, `check.mjs`) |
+| The standalone (C++): a thin host since R2a (D-RIG-017), Rig's page over Rig's engine | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp` the host and its message list, `RigWebView.cpp` the WebView2 host, `RigDesktop.cpp` the engine's threads, IR, Standby, riff and meters, `config.h`, `resources/`) |
+| Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001), and the WebView2 SDK (D-RIG-017) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/`, `WebView2/` |
+| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends; `engine/` the engine both builds run, compiled to wasm and into the app; `build.mjs`, `check.mjs`) |
 | Rig's hardware: the kits on the amp and cabinet (D-RIG-009..016), ported from the Hardware Lab | `web/src/hw/` (`hw.js`, `hw.css`, `tex/` Salvage's sheets, `fonts/`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
-| The Hub folder | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/` |
+| The Hub folder, and the desktop app's check | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/`; `packaging/windows/check.mjs` |
 | The Hub record and store page | `packaging/hub/` (`words.json`, `pictures.json`, `README.md`) |
 | The web host | `hosting/` (the r2-host-kit, `wrangler.jsonc`, `publish.json`, `README.md`) |
 | The placeholder icon | `packaging/icons/` (`node packaging/icons/render.mjs`) |
@@ -38,8 +39,13 @@ put the same page on the desktop (`docs/PLAN.md`).
 
 ## Build and check (Box-C)
 
-- **Desktop:** `pwsh packaging/windows/package.ps1` (Visual Studio 18, toolset v145; about a minute). `-SkipBuild` to
-  re-package, `-Sign` with the owner's SimplySign session open.
+- **Desktop:** `pwsh packaging/windows/package.ps1` (Visual Studio 18, toolset v145, then `node web/build.mjs` for the
+  page; a minute or two). `-SkipBuild` to re-package, `-Sign` with the owner's SimplySign session open. Then `node
+  packaging/windows/check.mjs` (21 checks): `crbn-rig.exe --render` against the parity harness, then the app itself
+  under a throwaway WebView2 profile with DevTools on loopback (the page, the driver's status, the riff through the
+  native engine, Output, Standby, an IR, real keys, Audio settings, a clean exit). It plays the riff quietly through
+  the default device and will not run beside an open CRBN Rig. `CRBN_RIG_DEVTOOLS=1` gives a release build its
+  developer tools.
 - **Web:** `node web/build.mjs` (emscripten SDK 6.0.13 at `%LOCALAPPDATA%\emsdk`), then `node web/check.mjs`
   (headless Edge on loopback: the page paints in Rig's look, and the engine plays the example capture through the real
   AudioWorklet, equal to the engine run directly). `node web/engine/test.mjs` plays every NAM Core example capture
@@ -55,7 +61,8 @@ put the same page on the desktop (`docs/PLAN.md`).
 
 - **Names a person reads say CRBN Rig; identities keep theirs.** The app id is `com.pavillionhub.crbn.amp`; the
   settings folder is `%LOCALAPPDATA%\CRBNAmp` (`BUNDLE_NAME`, one word because macOS bundle ids cannot hold a space);
-  the plug-in ids are `'CRig'` / `'Goat'`, never upstream's; the C++ names and `###NeuralAmpModeler###` stay.
+  the plug-in ids are `'CRig'` / `'Goat'`, never upstream's; the C++ names stay, and so does `###NeuralAmpModeler###`
+  when P4 brings a saved state back (R2a removed upstream's).
 - **Rig's cherry `#d92b52` is the accent in Capsule only** (it sits near Daylight's and Holo's error reds), and a clip
   or error mark never relies on colour alone (D-CRBN-021 (b)).
 - **The vendored libraries are ours to fix, carefully.** A change to `iPlug2/`, `NeuralAmpModelerCore/`,

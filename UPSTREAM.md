@@ -15,10 +15,17 @@ rest of the CRBN suite it is not an ArtCraft fork, so "storytold" in the suite's
 | `AudioDSPTools/` (vendored) | sdatkinson/AudioDSPTools, v0.1.2 | `e19ef4b5b3bf2171c431847563acde29eedf85c0` (2026-08-09) |
 | `eigen/` (vendored) | gitlab.com/libeigen/eigen, 5.0.1 | `bc3b39870ecb690a623a3f49149a358b95c5781d` (2025-11-08) |
 | `NeuralAmpModelerCore/Dependencies/` | its own submodules (AudioDSPTools v0.1.1, Eigen 5.0.1) left out, the top-level copies used; nlohmann/json kept from its tree | - |
+| `WebView2/` (vendored, D-RIG-017) | Microsoft's WebView2 SDK, the NuGet package `Microsoft.Web.WebView2` (BSD 3-clause) | version `1.0.4314.35` (2026-10-23), package SHA-512 in `vendor.json` |
 
 The four libraries were git submodules until 2026-11-10, then **vendored** (D-RIG-001): each at the commit above,
 trimmed to what builds, and every kept file entered from upstream's own objects, so each blob id and file mode is
 upstream's (`vendor.json` lists what was kept and left out). Their own histories are not in this repo.
+
+The WebView2 SDK came later (D-RIG-017, 2026-11-11, build plan R2): downloaded once from nuget.org on the owner's word,
+checked against the catalog's SHA-512, and trimmed to four files kept byte for byte (`.gitattributes`): `WebView2.h`, the
+x64 `WebView2Loader.dll` (Microsoft-signed; the app loads it at run time and ships it beside `crbn-rig.exe`), and the
+package's `LICENSE.txt` and `NOTICE.txt`. The desktop app's page is hosted by Rig's own `NeuralAmpModeler/RigWebView.cpp`,
+so iPlug2's `IPlug/Extras/WebView` and the Windows Implementation Library it needs are not used.
 
 The repo was forked with upstream's whole history, so `git log fee982a` is upstream's log. GOATi's commits start after it.
 There is no baseline tag yet (sessions never push tags, D-CRBN-006); `scripts/change-list.ps1` names the commit.
@@ -45,4 +52,5 @@ There is no baseline tag yet (sessions never push tags, D-CRBN-006); `scripts/ch
 
 The C++ class `NeuralAmpModeler`, the projects (`NeuralAmpModeler-app.vcxproj` and the rest), the source file names and
 the saved-state header `###NeuralAmpModeler###` keep upstream's names (D-CRBN-002 (e)); every word a person reads says
-CRBN Rig.
+CRBN Rig. Since R2a (D-RIG-017) the class is a thin host for Rig's page and engine, and upstream's IGraphics drawing,
+DSP chain and saved state are gone. The header comes back with the state when P4 brings the plug-in formats.
