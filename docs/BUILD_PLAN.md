@@ -39,7 +39,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | # | Session | Needs from the owner first | Done when |
 |---|---|---|---|
 | R1 | Rig's hardware: the kits (built, SYNC:RIG-015) | Done: the Hardware Lab (D-RIG-009..015), the texture library (D-RIG-016) | The 20 kits on the page, CRBN the default, published |
-| R1b | The Rig builder, RIG1 codes, players' own art | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
+| R1b | The Rig builder, RIG1 codes, players' own art (built, SYNC:RIG-019) | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
 | R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e)) | His look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
 | R2 | The desktop on the page (U2): built and shipped (SYNC:RIG-016, RIG-017; D-RIG-017, D-RIG-018) | Done: the WebView2 SDK alone (D-RIG-017); his SimplySign session (R2b) | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1) | Nothing new (D-RIG-008 (e): guard on by default) | Both builds; no false trips on real playing |
@@ -122,6 +122,38 @@ kit.
   goati-sync `proposals/`.
 - **Checks:** a code round-trips a kit; imported art draws and turns; the builder's kit survives a reload.
 
+### R1b, as built (2026-11-11, SYNC:RIG-019)
+
+- **Where:** the look menu, under Rig's hardware. "Yours" holds the player's kits beside the twenty, with Build a kit
+  and Open a share code. The builder opens below them whenever one of the player's kits is on the amp, and the page's
+  own amp is its preview.
+- **Kits** (`web/src/kits.js`):
+  - Build a kit starts from the energy kit on the amp, or the player's kit, or CRBN. A part the builder does not
+    offer (Valve's knobs) takes CRBN's.
+  - Each kit is named "My kit", "My kit 2" and so on, kept in `localStorage['crbn-rig/kits']`, up to 50. Every
+    change is kept as it is made, with no Keep button.
+  - The builder has name, energy, cutouts, mesh, faceplate, knobs and colour (`hw.js` `KIT_PARTS`, the lab's
+    `B_OPTS`), Make a copy, and Delete (two clicks).
+  - A note says when Rig's finish, not the kit's colour, is colouring it.
+- **RIG1 codes:** the lab's own format, so a code made in the Hardware Lab opens in Rig. A code is found anywhere in
+  the pasted text, and opening one adds the kit under Yours.
+- **Players' own art:**
+  - Templates (`hw.js` `artTemplate`, the lab's): the kit's knob or switch with guides, or a blank. They are saved
+    through the system's Save dialog where there is one (Edge and the desktop app's WebView2 both have it), else
+    downloaded, or copied as SVG text.
+  - Import: SVG, PNG, WebP or JPEG up to 2 MB, which must decode as a picture. It is kept in IndexedDB (`store.js`,
+    database version 2, an `art` store) under the first 32 hex digits of its SHA-256, and drawn from a blob URL.
+  - A knob turns as one picture under Rig's light; a switch shows its Off, then its On frame.
+  - The share code carries the art's ids. Someone opening a code without the pictures sees the kit's own knobs and
+    switches, with a note.
+  - Art no kit wears is forgotten when Rig next starts, so a kit deleted and reopened from its code in the same
+    visit keeps its art.
+- **Checks:** `web/check.mjs` 38 (8 new: build, parts, knob art turns, switch frames, the template, a code round
+  trip, a lab code and a refused one, a reload). `packaging/windows/check.mjs` 22 (new: a kit of your own wears
+  knob art set from a file, in the app).
+- **Sharing art through the Hub:** the proposal for the Hub lane is goati-sync
+  `proposals/2026-11-11-crbn-rig-kit-art-store.md`.
+
 ### R1c. The store's skins (D-RIG-018 (e))
 
 The owner, at R2b: "Salvage looks really awesome, and so I want it to be prominant both in screenshots, and on the app
@@ -150,7 +182,24 @@ art are the customising this section shows. It can be the end of R1b's session i
     crop like these, which is the fix below.
   - #7, `blue, woven, steel, embers, paint, 88649`: "the paint flakes are too big". He would use it only scaled down
     3x. Its sheet (Total Textures `mis008`) is 1200x900 at its largest, so it cannot be: it waits for a better sheet.
-- **Salvage's sheets: fix the soft crops in R1b or R1c, then new sheets when he has them.**
+- **Salvage's soft crops: fixed at R1b (SYNC:RIG-019).** The cause was two things, both now handled in `hw.js`
+  `cropOf`:
+  - The quarter turn: #3 and #5 were the only two of the eight whose amp turned its sheet. That left 768 pixels
+    across an 814-pixel face, magnified 1.31 and 1.33 page pixels per sheet pixel; the six kept magnify 0.84 to
+    1.15.
+  - The orange sheet itself: rows 296 to 440 of its 768 are smeared, stretched to make it tile. Detail runs twice as
+    strongly down those rows as across them; nothing else on the four sheets passes 1.2. Turned, that band ran down
+    #3's and #5's faces.
+
+  The rules now:
+  - A sheet turns only where, turned, it still spans the piece without magnifying.
+  - No crop magnifies past 1.2 page pixels per sheet pixel (1.5 screen pixels at 125%).
+  - A crop moves off a sheet's smeared rows (`SHEET_SOFT`) to the nearest clean ones.
+
+  The random draws keep R1's order, so #2's and #4's amps (the cover's among them), #6 and #8 are unchanged. #1, #3
+  and #5 moved onto clean rows, and the orange cabinets now magnify about as their amps do. Replayed over 90,000
+  random crops, none shows the band or passes the cap.
+- **Salvage's sheets: new ones when he has them.**
   - The four sheets are 1024x768, from 1200x900 originals: `\\GOATi-SV22\Art_Resources\Textures_Sets\Total Textures
     Volumes\Disk2_Aged_Stressed\maps_hi`.
   - `photoTex` (`web/src/hw/hw.js`) magnifies each crop a random 1.05 to 1.9 times beyond covering the piece.
@@ -189,6 +238,12 @@ art are the customising this section shows. It can be the end of R1b's session i
       store pictures.
     - Keep an eye on the size: the store loads the file on its page.
   - Its place in `pictures.json` `storeMedia` is second. Use new file names, since the CDN keeps a name for a day.
+  - **Made at R1b's end (SYNC:RIG-019):** `node packaging/hub/salvage-frames.mjs` makes
+    `crbn-rig-shot-2b-salvage-1.png`: five frames of 1920x1080, 2 s each, 3.1 MB. The frames are his good amps in
+    the order #2, #6, #1, #8, #4, each amp and its cabinet shot at 3x as his eight were. `art.html?piece=salvage`
+    frames them with the words "No two alike.", the amp's choices as pills, and Shuffle lit on the two new cuts of
+    his setup. `words.json` has the skins section, second on the page; it also fixes "File > Preferences" (gone
+    since R2a) to "Audio settings".
 - **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
   `packaging/hub/words.json` `page`. It covers:
   - the twenty kits, CRBN the default;

@@ -45,6 +45,9 @@ node packaging/hub/desktop-shot.mjs        # the desktop capture, dist/shots/des
 node packaging/hub/gear-shots.mjs          # the gear for the hero, card and cover, dist/shots/gear-*.png: the CRBN amp
                                            # and cabinet, and the cover's stack (CRBN, Salvage, Compact, Rack), at 3x
                                            # with the riff lit; --salvage= for another Salvage (docs/BUILD_PLAN.md R1c)
+node packaging/hub/salvage-frames.mjs      # the store's second picture: Salvage cycling through the owner's five good
+                                           # amps, one animated PNG into dist/hub-listing/ (R1c); look at its frames in
+                                           # dist/shots/salvage-frame-*.png first
 node packaging/hub/pictures.mjs                                            # -> dist/hub-listing/
 #   --only=desktop renders that piece alone and leaves the rest as uploaded; a changed picture needs a new name;
 #   --only=hero-shots,cover-close --out=dist/hub-preview renders the earlier hero and cover, to compare

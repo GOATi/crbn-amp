@@ -26,11 +26,11 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 |---|---|
 | The standalone (C++): a thin host since R2a (D-RIG-017), Rig's page over Rig's engine | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp` the host and its message list, `RigWebView.cpp` the WebView2 host, `RigDesktop.cpp` the engine's threads, IR, Standby, riff and meters, `config.h`, `resources/`) |
 | Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001), and the WebView2 SDK (D-RIG-017) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/`, `WebView2/` |
-| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends; `engine/` the engine both builds run, compiled to wasm and into the app; `build.mjs`, `check.mjs`) |
+| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends, and `kits.js` the players' own kits from the Rig builder (R1b); `engine/` the engine both builds run, compiled to wasm and into the app; `build.mjs`, `check.mjs`) |
 | Rig's hardware: the kits on the amp and cabinet (D-RIG-009..016), ported from the Hardware Lab | `web/src/hw/` (`hw.js`, `hw.css`, `tex/` Salvage's sheets, `fonts/`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
 | The Hub folder, and the desktop app's check | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/`; `packaging/windows/check.mjs` |
-| The Hub record and store page | `packaging/hub/` (`words.json`, `pictures.json`, `README.md`; `desktop-shot.mjs` the desktop capture, `gear-shots.mjs` the kits' gear for the hero, card and cover, `pictures.mjs` the pictures) |
+| The Hub record and store page | `packaging/hub/` (`words.json`, `pictures.json`, `README.md`; `desktop-shot.mjs` the desktop capture, `gear-shots.mjs` the kits' gear for the hero, card and cover, `salvage-frames.mjs` the cycling Salvage picture, `pictures.mjs` the pictures) |
 | The web host | `hosting/` (the r2-host-kit, `wrangler.jsonc`, `publish.json`, `README.md`) |
 | The placeholder icon | `packaging/icons/` (`node packaging/icons/render.mjs`) |
 | The plan and progress log | `docs/PLAN.md` |
