@@ -2,8 +2,10 @@
 // quantum at a time. Input channels are summed to mono, as the desktop standalone sums its inputs; the mono result is
 // written to every output channel. The page talks to it through the port:
 //   in:  { type: 'param', name, value }   { type: 'capture', id, bytes }   { type: 'clearCapture', id }
-//   out: { type: 'ready', sampleRate }   { type: 'capture', id, ok, info | error }   { type: 'meter', input, raw }
+//   out: { type: 'ready', sampleRate }   { type: 'capture', id, ok, info | error }
+//        { type: 'meter', input, raw, status }   (status: the engine's, what muted the output and why; engine.js)
 //        { type: 'log', line }   { type: 'error', error }
+// Standby, the squeal guard and auto-off are the engine's (build plan R3), set as params like the rest.
 import { createEngine } from './engine.js'
 
 const METER_EVERY = 12 // render quanta between meter messages (about 30 a second at 48 kHz)
@@ -58,7 +60,7 @@ class RigProcessor extends AudioWorkletProcessor {
 
     if (++this.quanta >= METER_EVERY) {
       this.quanta = 0
-      this.port.postMessage({ type: 'meter', input: this.engine.takeInputPeak(), raw: this.rawPeak })
+      this.port.postMessage({ type: 'meter', input: this.engine.takeInputPeak(), raw: this.rawPeak, status: this.engine.status() })
       this.rawPeak = 0
     }
     return true

@@ -1521,7 +1521,7 @@ export const DEFAULT_KIT = 'crbn'
  */
 export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) {
   if (!document.getElementById('hw-defs')) document.body.insertAdjacentHTML('afterbegin', DEFS.replace('<svg ', '<svg id="hw-defs" '))
-  const state = { kit: null, key: null, power: true, standby: false, values: {}, capture: ['', ''], ir: ['', ''], slim: false }
+  const state = { kit: null, key: null, power: true, standby: false, pilot: '', values: {}, capture: ['', ''], ir: ['', ''], slim: false }
   const holders = [ampHolder, cabHolder]
   for (const h of holders) HOLDERS.add(h)
   const both = sel => [...$$(sel, ampHolder), ...$$(sel, cabHolder)]
@@ -1583,6 +1583,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     applyFinish()
     for (const [p, v] of Object.entries(state.values)) reflect(p, v)
     setPower(state.power); setStandby(state.standby)
+    if (state.pilot) setPilot(state.pilot)
     setCapture(...state.capture); setIR(...state.ir); setSlim(state.slim)
     if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => { for (const s of SURFACES) layoutHW(s.hw); for (const el of $$(SALV_SEL)) scheduleSalvage(el) })
     wake(); startLoop()
@@ -1642,6 +1643,11 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     if (AMP_HW) AMP_HW.dataset.standby = String(standby)
     for (const sw of $$('.sw[data-role="standby"]', ampHolder)) { sw.setAttribute('aria-pressed', String(!standby)); const st = sw.parentElement.querySelector('.st'); if (st) st.textContent = STATE_WORD.standby[standby ? 0 : 1] }
     if (!moving()) stillSoon()
+  }
+  /** The pilot's word (build plan R3): On, Standby, Muted (the squeal guard or auto-off) or Off. */
+  function setPilot (word) {
+    state.pilot = word
+    for (const p of $$('[data-pilot]', ampHolder)) p.textContent = word
   }
   function setCapture (name, sub) {
     state.capture = [name, sub]
@@ -1720,7 +1726,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
   }
 
   return {
-    show, reflect, setFinish, setPower, setStandby, setCapture, setIR, setSlim, level, setSalvage,
+    show, reflect, setFinish, setPower, setStandby, setPilot, setCapture, setIR, setSlim, level, setSalvage,
     get kit () { return state.kit },
     /** New crops for every Salvage piece; returns the new seed to keep. */
     shuffle () { SALV_SEED = (Math.random() * 1e9) | 0 || 1; setSalvage(salvCur(), SALV_SEED); return SALV_SEED },

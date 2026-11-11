@@ -2,17 +2,23 @@
 // wraps its C API. It runs inside the AudioWorklet (rig-processor.js) and in Node (web/engine/test.mjs), so it uses
 // nothing either lacks: no TextEncoder or TextDecoder (an AudioWorkletGlobalScope has neither), no fetch.
 
-/** Parameter ids, as rig_engine.cpp numbers them. */
+/** Parameter ids, as rig_engine.cpp numbers them. `standby` and `clearTrip` (any write lifts the guard's or
+ *  auto-off's mute) are the power switch's (build plan R3), sent as the person acts, never kept as settings. */
 export const PARAM = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: 2, eqOn: 3, bass: 4, middle: 5, treble: 6, outputDB: 7,
   outputMode: 8, calibrateInput: 9, inputCalibrationDBu: 10, slim: 11,
+  standby: 12, guardOn: 13, autoOff: 14, clearTrip: 15,
 })
 
-/** The desktop's defaults (NeuralAmpModeler's constructor). */
+/** The settings a person keeps, at their defaults: the desktop's (NeuralAmpModeler's constructor), then the squeal
+ *  guard and auto-off, both on out of the box (D-RIG-008 (e)). */
 export const DEFAULTS = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: -80, eqOn: 1, bass: 5, middle: 5, treble: 5, outputDB: 0,
-  outputMode: 1, calibrateInput: 0, inputCalibrationDBu: 12, slim: 0,
+  outputMode: 1, calibrateInput: 0, inputCalibrationDBu: 12, slim: 0, guardOn: 1, autoOff: 1,
 })
+
+/** Why the engine muted its output (rig_guard.h's Why). */
+export const MUTED = Object.freeze({ 0: null, 1: 'squeal', 2: 'silence', 3: 'hum' })
 
 const INFO = Object.freeze({
   loaded: 0, hasLoudness: 1, loudness: 2, hasInputLevel: 3, inputLevel: 4, hasOutputLevel: 5, outputLevel: 6,
@@ -115,5 +121,10 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
     },
     /** The input peak (after the input gain) since the last call. */
     takeInputPeak() { return x.rig_take_input_peak() },
+    /** The output's fade and what muted it: { muted: 0 none | 1 squeal guard | 2 auto-off on silence | 3 on hum, hz,
+     *  trips (a count since the engine started), seconds (how long it held), at (seconds of audio), gain }. */
+    status() {
+      return { muted: x.rig_status(0), hz: x.rig_status(1), trips: x.rig_status(2), seconds: x.rig_status(3), at: x.rig_status(4), gain: x.rig_status(5) }
+    },
   }
 }

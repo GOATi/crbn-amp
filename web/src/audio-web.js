@@ -2,37 +2,57 @@
 // rig-engine.wasm, and Web Audio does the rest.
 //
 //   source (the guitar through getUserMedia, or the demo riff) -> AudioWorkletNode 'crbn-rig' (rig-processor.js: input
-//   gain, gate, capture, EQ, DC blocker, output gain) -> ConvolverNode (the cabinet IR, scaled and truncated as the
-//   desktop's ImpulseResponse does) -> GainNode (Standby's 20 ms fade) -> AnalyserNode (the output meter) -> speakers.
+//   gain, gate, capture, EQ, DC blocker, output gain, and since build plan R3 Standby's 20 ms fade, the squeal guard
+//   and auto-off) -> ConvolverNode (the cabinet IR, scaled and truncated as the desktop's ImpulseResponse does) ->
+//   AnalyserNode (the output meter) -> speakers.
+//
+// The input device is watched too (auto-off, P3-UX U1): when its track ends or the device leaves the system's list,
+// onInputLost says so, and the page puts the amp in standby.
 //
 // app.js drives this or audio-desktop.js (the desktop app, D-RIG-017) through the same calls.
 import { scaledIR } from './ir.js'
 
-export function createWebAudio({ onError = () => {}, onChange = () => {} } = {}) {
-  let ctx = null, node = null, convolver = null, analyser = null, outGain = null
+export function createWebAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {} } = {}) {
+  let ctx = null, node = null, convolver = null, analyser = null
   let micStream = null, micSource = null, demoSource = null, demoBuffer = null, wasmBytes = null
-  let irOn = true, standby = false, messageId = 0, scratch = null
+  let irOn = true, messageId = 0, scratch = null, status = null
   const waiting = new Map()
   const peaks = { input: 0, raw: 0 }
+  const post = (m) => node?.port.postMessage(m)
 
   const ask = (msg, transfer) => new Promise((ok) => { const id = ++messageId; waiting.set(id, ok); node.port.postMessage({ ...msg, id }, transfer) })
   function route() {
     if (!node) return
     node.disconnect(); convolver.disconnect()
-    if (irOn && convolver.buffer) { node.connect(convolver); convolver.connect(outGain) }
-    else node.connect(outGain)
+    if (irOn && convolver.buffer) { node.connect(convolver); convolver.connect(analyser) }
+    else node.connect(analyser)
   }
   function onWorklet(m) {
-    if (m.type === 'meter') { peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw) }
+    if (m.type === 'meter') { peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); status = m.status ?? status }
     else if (m.type === 'capture') { waiting.get(m.id)?.(m); waiting.delete(m.id) }
     else if (m.type === 'error') onError(`The engine could not start: ${m.error}`)
     else if (m.type === 'log') console.debug('[engine]', m.line)
   }
   function closeMic() {
     micSource?.disconnect(); micSource = null
-    for (const t of micStream?.getTracks() ?? []) t.stop()
+    for (const t of micStream?.getTracks() ?? []) { t.onended = null; t.stop() }
     micStream = null
   }
+  // The input device went away: its track ended (unplugged, or taken by the system), or it left the list of devices.
+  function lost() {
+    if (!micStream) return
+    micSource?.disconnect(); micSource = null
+    micStream = null
+    onInputLost()
+  }
+  navigator.mediaDevices?.addEventListener?.('devicechange', async () => {
+    const track = micStream?.getAudioTracks()[0]
+    if (!track) return
+    const id = track.getSettings().deviceId
+    if (track.readyState === 'ended') { lost(); return }
+    if (!id || id === 'default') return
+    try { if (!(await navigator.mediaDevices.enumerateDevices()).some((d) => d.kind === 'audioinput' && d.deviceId === id)) lost() } catch { /* keep playing */ }
+  })
   function stopDemo() {
     if (!demoSource) return
     try { demoSource.stop() } catch { /* already stopped */ }
@@ -62,8 +82,6 @@ export function createWebAudio({ onError = () => {}, onChange = () => {} } = {})
       convolver = new ConvolverNode(ctx, { disableNormalization: true })
       analyser = new AnalyserNode(ctx, { fftSize: 1024 })
       analyser.connect(ctx.destination)
-      outGain = new GainNode(ctx, { gain: standby ? 0 : 1 })
-      outGain.connect(analyser)
       route()
       ctx.onstatechange = onChange
       return true
@@ -71,7 +89,7 @@ export function createWebAudio({ onError = () => {}, onChange = () => {} } = {})
     /** A suspended context with something to play comes back; resolves when it has. */
     wake() { return ctx && ctx.state === 'suspended' && (micSource || demoSource) ? ctx.resume() : null },
 
-    setParam(name, value) { node?.port.postMessage({ type: 'param', name, value }) },
+    setParam(name, value) { post({ type: 'param', name, value }) },
     async loadCapture(bytes) {
       const copy = bytes.slice(0)
       return ask({ type: 'capture', bytes: copy.buffer }, [copy.buffer])
@@ -86,13 +104,10 @@ export function createWebAudio({ onError = () => {}, onChange = () => {} } = {})
     },
     clearIR() { if (convolver) { convolver.buffer = null; route() } },
     setIROn(on) { irOn = on; route() },
-    setStandby(on) {
-      standby = on
-      if (outGain) {
-        const g = outGain.gain, t = ctx.currentTime
-        g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(on ? 0 : 1, t + 0.02)
-      }
-    },
+    /** Standby: the engine fades the output over 20 ms and keeps listening to the input. */
+    setStandby(on) { post({ type: 'param', name: 'standby', value: on ? 1 : 0 }) },
+    /** The person turned the output back on: the squeal guard's or auto-off's mute lifts. */
+    resume() { post({ type: 'param', name: 'clearTrip', value: 1 }); if (status) status = { ...status, muted: 0 } },
 
     /** The guitar through the browser's input (it asks the person the first time). */
     async playGuitar(deviceId) {
@@ -103,6 +118,8 @@ export function createWebAudio({ onError = () => {}, onChange = () => {} } = {})
       micStream = await navigator.mediaDevices.getUserMedia({ audio })
       micSource = new MediaStreamAudioSourceNode(ctx, { mediaStream: micStream })
       micSource.connect(node)
+      const track = micStream.getAudioTracks()[0]
+      if (track) track.onended = lost
       return micStream.getAudioTracks()[0]?.getSettings().deviceId
     },
     async playDemo() {
@@ -124,7 +141,7 @@ export function createWebAudio({ onError = () => {}, onChange = () => {} } = {})
         analyser.getFloatTimeDomainData(scratch)
         for (const v of scratch) { const a = Math.abs(v); if (a > output) output = a }
       }
-      const m = { input: peaks.input, raw: peaks.raw, output }
+      const m = { input: peaks.input, raw: peaks.raw, output, status }
       peaks.input = 0; peaks.raw = 0
       return m
     },

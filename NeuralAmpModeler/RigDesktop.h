@@ -3,8 +3,8 @@
 // does around it: the input (the driver's, or the demo riff), the cabinet IR, Standby's fade and the meters.
 //
 //   the driver's inputs, summed to mono, or the demo riff -> rig_engine (input gain, gate, capture, EQ, DC blocker,
-//   output gain) -> the cabinet IR (AudioDSPTools' ImpulseResponse, as the desktop always applied it) -> Standby's
-//   20 ms fade -> every output.
+//   output gain, and since build plan R3 Standby's 20 ms fade, the squeal guard and auto-off) -> the cabinet IR
+//   (AudioDSPTools' ImpulseResponse, as the desktop always applied it) -> every output.
 //
 // Threads: the page's messages arrive on the UI thread, the audio on the driver's. The UI thread queues settings and
 // builds captures, IRs and the riff; the audio thread takes them at the start of a block, never waiting (a try-lock
@@ -44,6 +44,12 @@ struct Meters
   float input = 0.0f; // the input after the input gain (the page's input meter and the hardware's energy)
   float raw = 0.0f; // the input before it (a clip at the interface)
   float output = 0.0f; // what goes to the outputs
+  // What muted the output (rig_engine.cpp's Status): 0 nothing, 1 the squeal guard, 2 auto-off on silence, 3 on hum;
+  // the squeal's or the mains' frequency; how many times since the engine started; how long it held.
+  int muted = 0;
+  double hz = 0.0;
+  int trips = 0;
+  double seconds = 0.0;
 };
 
 enum class Source : int
@@ -74,7 +80,8 @@ public:
   bool StageIR(const std::vector<float>& samples, double sampleRate, double& seconds, std::string& error);
   void ClearIR();
   void SetIROn(bool on) { mIROn.store(on); }
-  void SetStandby(bool on) { mStandby.store(on); }
+  // Standby: the engine's parameter, applied at the next block like any other.
+  void SetStandby(bool on);
   void SetSource(Source s);
   Source GetSource() const { return static_cast<Source>(mSource.load()); }
   // The demo riff (the page's demo/di.wav, decoded by the page), resampled to the engine's rate.
@@ -123,10 +130,9 @@ private:
   std::atomic<bool> mDemoRestart{false};
 
   std::atomic<int> mSource{static_cast<int>(Source::kNone)};
-  std::atomic<bool> mStandby{false};
-  double mStandbyGain = 1.0;
-
   std::atomic<float> mPeakIn{0.0f}, mPeakRaw{0.0f}, mPeakOut{0.0f};
+  std::atomic<int> mMuted{0}, mTrips{0};
+  std::atomic<double> mMutedHz{0.0}, mMutedSeconds{0.0};
 
   std::vector<double> mMono, mWet;
   std::array<double*, 1> mMonoPtr{};

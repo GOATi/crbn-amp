@@ -22,14 +22,15 @@ extern "C"
   void rig_stage_clear_model();
   void rig_collect();
   float rig_take_input_peak();
+  double rig_status(int which);
 }
 
 namespace rig
 {
 namespace
 {
-constexpr double kStandbySeconds = 0.02; // Standby's fade (D-RIG-016 (c)), as the web version's GainNode ramps
 constexpr int kInfoCount = 10; // rig_engine.cpp's Info
+constexpr int kParamStandby = 12; // rig_engine.cpp's Param: Standby's fade is the engine's since R3
 
 template <typename T>
 T* ClearMark()
@@ -101,7 +102,6 @@ void Desktop::Reset(double sampleRate)
   mDemoAt = 0;
   BuildDemo();
   Take<std::vector<float>>(mPendingDemo, mDemo, mRetiredDemo);
-  mStandbyGain = mStandby.load() ? 0.0 : 1.0;
   Collect();
 }
 
@@ -171,6 +171,8 @@ void Desktop::ClearIR()
   Stage<dsp::ImpulseResponse>(mPendingIR, ClearMark<dsp::ImpulseResponse>());
 }
 
+void Desktop::SetStandby(bool on) { SetParam(kParamStandby, on ? 1.0 : 0.0); }
+
 void Desktop::SetSource(Source s)
 {
   if (s == Source::kDemo)
@@ -216,6 +218,10 @@ Meters Desktop::TakeMeters()
   m.input = mPeakIn.exchange(0.0f, std::memory_order_relaxed);
   m.raw = mPeakRaw.exchange(0.0f, std::memory_order_relaxed);
   m.output = mPeakOut.exchange(0.0f, std::memory_order_relaxed);
+  m.muted = mMuted.load(std::memory_order_relaxed);
+  m.hz = mMutedHz.load(std::memory_order_relaxed);
+  m.trips = mTrips.load(std::memory_order_relaxed);
+  m.seconds = mMutedSeconds.load(std::memory_order_relaxed);
   return m;
 }
 
@@ -245,9 +251,7 @@ void Desktop::Process(double** inputs, int nInputs, double** outputs, int nOutpu
     mDemoAt = 0;
 
   const Source source = static_cast<Source>(mSource.load(std::memory_order_relaxed));
-  const bool standby = mStandby.load(std::memory_order_relaxed);
   const bool irOn = mIROn.load(std::memory_order_relaxed);
-  const double step = 1.0 / std::max(1.0, kStandbySeconds * mSampleRate);
   float rawPeak = 0.0f, outPeak = 0.0f;
 
   for (int at = 0; at < nFrames;)
@@ -282,13 +286,8 @@ void Desktop::Process(double** inputs, int nInputs, double** outputs, int nOutpu
       wet = mIR->Process(mMonoPtr.data(), 1, static_cast<size_t>(n))[0];
     for (int i = 0; i < n; i++)
     {
-      // Standby: a straight 20 ms fade to silence and back.
-      const double target = standby ? 0.0 : 1.0;
-      if (mStandbyGain < target)
-        mStandbyGain = std::min(target, mStandbyGain + step);
-      else if (mStandbyGain > target)
-        mStandbyGain = std::max(target, mStandbyGain - step);
-      const double v = wet[i] * mStandbyGain;
+      // Standby's fade, the squeal guard and auto-off are the engine's (build plan R3): what it sent is already faded.
+      const double v = wet[i];
       mWet[static_cast<size_t>(i)] = std::isfinite(v) ? v : 0.0;
       outPeak = std::max(outPeak, static_cast<float>(std::fabs(mWet[static_cast<size_t>(i)])));
     }
@@ -300,6 +299,11 @@ void Desktop::Process(double** inputs, int nInputs, double** outputs, int nOutpu
   PeakInto(mPeakIn, rig_take_input_peak());
   PeakInto(mPeakRaw, rawPeak);
   PeakInto(mPeakOut, outPeak);
+  // What muted the output, for the page's banner (rig_engine.cpp's Status).
+  mMuted.store(static_cast<int>(rig_status(0)), std::memory_order_relaxed);
+  mMutedHz.store(rig_status(1), std::memory_order_relaxed);
+  mTrips.store(static_cast<int>(rig_status(2)), std::memory_order_relaxed);
+  mMutedSeconds.store(rig_status(3), std::memory_order_relaxed);
   std::feupdateenv(&fe);
 }
 } // namespace rig

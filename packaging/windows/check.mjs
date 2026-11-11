@@ -8,9 +8,10 @@
 // 2. The app itself (skipped with --no-app): started with a throwaway WebView2 profile in dist/desktop-check and
 //    DevTools on loopback, then driven as a person would: Rig's page in Rig's look from the app's folder, the desktop's
 //    words, the audio driver's status, the demo riff through the native engine with both meters moving, the Output
-//    knob and Standby acting on the sound, a cabinet IR scaling it as the desktop always did, Audio settings opening
-//    the driver's dialog, and a screenshot of the window. The riff plays quietly (Output at -40 and -30 dB) through the
-//    default device for about ten seconds.
+//    knob, Standby and Space acting on the sound, a cabinet IR scaling it as the desktop always did, auto-off tripping
+//    in the native engine and the page saying why, Audio settings opening the driver's dialog, and a screenshot of the
+//    window. Then it opens the app again on the same profile: it was playing the guitar when it closed, so it plays it
+//    at once (R3). The riff and the guitar play quietly (Output at -40 and -30 dB) through the default devices.
 // It will not start beside a running CRBN Rig (one copy runs at a time). Exit code 0 when every check passes.
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -160,6 +161,17 @@ if (!process.argv.includes('--no-app')) {
     await js("document.querySelector('#hw-amp .sw[data-role=\"standby\"]').click()")
     check('Standby silences the output, the input still heard', s.output < 1e-6 && s.input > 0.01, `output ${s.output.toExponential(2)}, input ${s.input.toFixed(3)}`)
 
+    // Space (build plan R3): the power key puts the amp in standby, through the engine's own fade, and says so.
+    const space = "window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true })); true"
+    await js(space)
+    await sleep(200)
+    const sp = await measure(1000)
+    const said = await js("document.getElementById('banner').hidden ? '' : document.getElementById('banner-title').textContent")
+    await js(space)
+    const back = await measure(1000)
+    check('Space puts the amp in standby and says so; Space again brings it back', sp.output < 1e-6 && sp.input > 0.01 && said === 'Standby.' && back.output > 1e-4,
+      `output ${sp.output.toExponential(2)} then ${back.output.toExponential(2)}, "${said}"`)
+
     // A unit impulse at the driver's rate: the cabinet scales the sound by -18 dB and 48 kHz over the rate.
     const rate = status.sampleRate, wav = Buffer.alloc(44 + 128)
     wav.write('RIFF', 0, 'latin1'); wav.writeUInt32LE(36 + 128, 4); wav.write('WAVEfmt ', 8, 'latin1'); wav.writeUInt32LE(16, 16)
@@ -206,7 +218,38 @@ if (!process.argv.includes('--no-app')) {
       const typed = await js("document.getElementById('cu-hex').value")
       check('real typing reaches a text field', typed === '#3fd9e8', typed)
       await js("document.querySelector('#lm-finish [data-finish=\"own\"]').click(); document.getElementById('look-close').click(); true")
+      // The power key (R3), as Windows delivers it: Space, then Space again.
+      await js('document.activeElement?.blur(); true')
+      keys(' ', 'keys-space.png')
+      await sleep(300)
+      const spaced = await js('document.documentElement.dataset.powerState')
+      keys(' ', 'keys-space-2.png')
+      await sleep(300)
+      const unspaced = await js('document.documentElement.dataset.powerState')
+      check('a real Space puts the amp in standby, and back', spaced === 'standby' && unspaced === 'on', `${spaced} -> ${unspaced}`)
     }
+
+    // Auto-off in the app's native engine (build plan R3): the guitar plays, and then the engine hears a pulled jack (a
+    // quiet hiss, contacts scraping near full scale, dead silence), sent as the riff past the page, so the guard and
+    // auto-off listen as they do to the guitar. The page says why, and Turn back on lifts it.
+    await js("document.getElementById('play-guitar').click(); true")
+    await until("document.getElementById('status-text').textContent.startsWith('Live')", 10000, 'the guitar')
+    {
+      const n = rate * 3, jack = new Float32Array(n)
+      let seed = 3
+      for (let i = 0; i < n; i++) {
+        const t = i / rate
+        jack[i] = t < 1 ? ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296 - 0.5) * 0.01 : t < 1.006 ? (i % 2 ? -0.97 : 0.97) : 0
+      }
+      const b64 = Buffer.from(jack.buffer).toString('base64')
+      await js(`chrome.webview.postMessage({ type: 'demo', id: 77, rate: ${rate}, samples: '${b64}' }); chrome.webview.postMessage({ type: 'source', source: 'demo' }); true`)
+    }
+    await until("!document.getElementById('banner').hidden && /^Auto-off/.test(document.getElementById('banner-title').textContent)", 10000, 'auto-off in the app')
+    const offWords = await js("document.getElementById('banner-title').textContent + ' ' + document.getElementById('banner-body').textContent")
+    await js("document.getElementById('banner-on').click(); chrome.webview.postMessage({ type: 'source', source: 'live' }); true")
+    await sleep(300)
+    const liftedOff = await js("document.getElementById('banner').hidden && document.documentElement.dataset.powerState === 'on'")
+    check('auto-off: a pulled jack in the native engine mutes it, the page says why, Turn back on lifts it', liftedOff && /went dead after a loud pop/.test(offWords), offWords)
 
     // The page's look in the screenshot, then Audio settings: iPlug2's own dialog, owned by the app.
     const shot = await send('Page.captureScreenshot', { format: 'png' })
@@ -225,6 +268,42 @@ if (!process.argv.includes('--no-app')) {
     ps(`$p = Get-Process -Id ${app.pid} -ErrorAction SilentlyContinue; if ($p) { [void]$p.CloseMainWindow(); if (-not $p.WaitForExit(10000)) { Stop-Process -Id ${app.pid} -Force } }`)
     const code = await Promise.race([exited, sleep(12000).then(() => 'still running')])
     check('closing the window ends the app cleanly', code === 0, `exit code ${code}`)
+  }
+
+  // Opened again on the same profile: it was playing the guitar when it closed, so it plays the guitar now (the owner's
+  // word in R3, with the squeal guard on), where a first run waits for Play my guitar.
+  const again = spawn(exe, [], {
+    stdio: 'ignore',
+    env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(out, 'profile'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port + 1}` },
+  })
+  let ws2
+  try {
+    let target
+    for (let i = 0; i < 120 && !target; i++) {
+      try { target = (await (await fetch(`http://127.0.0.1:${port + 1}/json`)).json()).find((t) => t.type === 'page' && t.url.startsWith('https://crbn-rig.example/')) } catch { /* not yet */ }
+      if (!target) await sleep(250)
+    }
+    if (!target) throw new Error('the app did not open its page the second time')
+    ws2 = new WebSocket(target.webSocketDebuggerUrl)
+    await new Promise((ok, fail) => { ws2.addEventListener('open', ok); ws2.addEventListener('error', fail) })
+    let id2 = 0
+    const waiting2 = new Map()
+    ws2.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id && waiting2.has(m.id)) { waiting2.get(m.id)(m.result); waiting2.delete(m.id) } })
+    const js2 = (expression) => new Promise((ok) => { const i = ++id2; waiting2.set(i, (r) => ok(r?.result?.value)); ws2.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression, returnByValue: true } })) })
+    let text = ''
+    for (const end = Date.now() + 20000; Date.now() < end; await sleep(200)) {
+      text = (await js2("document.documentElement.dataset.ready === 'true' ? document.getElementById('status-text').textContent : ''")) ?? ''
+      if (text.startsWith('Live')) break
+    }
+    check('opened again after playing, it plays the guitar at once', text.startsWith('Live'), text || 'no status')
+    await js2("document.getElementById('stop').click(); true")
+  } catch (err) {
+    check('the second opening ran to the end', false, err?.message ?? err)
+  } finally {
+    try { ws2?.close() } catch { /* closed */ }
+    const exited = new Promise((ok) => again.once('exit', (code) => ok(code)))
+    ps(`$p = Get-Process -Id ${again.pid} -ErrorAction SilentlyContinue; if ($p) { [void]$p.CloseMainWindow(); if (-not $p.WaitForExit(10000)) { Stop-Process -Id ${again.pid} -Force } }`)
+    await Promise.race([exited, sleep(12000)])
   }
 }
 

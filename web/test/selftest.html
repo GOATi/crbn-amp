@@ -178,6 +178,58 @@ try {
     frame.contentWindow.localStorage.removeItem('crbn-rig/rig')
   }
 
+  // 1d. Power, Standby, the squeal guard and auto-off (build plan R3, P3-UX U1), on the page as the reload left it.
+  {
+    const pd = frame.contentDocument, pw = frame.contentWindow, ph = pd.documentElement
+    const $p = (s) => pd.querySelector(s), shown = (s) => ($p(s)?.getClientRects().length ?? 0) > 0
+    const key = (el) => el.dispatchEvent(new pw.KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }))
+    const pick = (area, v) => $p(`.segmented[data-rig="${area}"] [data-value="${v}"]`).click()
+    const def = ph.dataset.power === 'b' && !shown('.pw-head') && !shown('.pw-big') && $p('#hw-amp [data-pilot]')?.textContent === 'On'
+    pick('power', 'a')
+    const pill = shown('.pw-head .pw-pill') && $p('.pw-pill').dataset.state === 'on' && $p('#pw-guard-word').textContent === 'Squeal guard on'
+    pick('power', 'c')
+    const big = shown('.pw-big') && !shown('.pw-head') && $p('.pw-big .pw-word').textContent === 'On'
+    pick('power', 'b'); pick('amp', 'a')
+    const own = shown('.pw-amp .pw-lamp') && shown('.pw-bat[data-pw="standby"]')
+    pick('amp', 'b')
+    check('Power: the pilot lamp and toggles by default; the header pill and the big button in the look menu', def && pill && big && own, `${def}/${pill}/${big}/${own}`)
+
+    key(pd.body)
+    const stby = ph.dataset.powerState === 'standby' && !$p('#banner').hidden && $p('#banner-title').textContent === 'Standby.' && $p('#hw-amp .hw').dataset.standby === 'true' && $p('#hw-amp [data-pilot]').textContent === 'Standby'
+    key(pd.body)
+    const on = ph.dataset.powerState === 'on' && $p('#banner').hidden && $p('#hw-amp [data-pilot]').textContent === 'On'
+    $p('#look-open').click(); $p('#lm-finish [data-finish="custom"]').click()
+    key($p('#cu-hex'))
+    const typing = ph.dataset.powerState === 'on'
+    $p('#lm-finish [data-finish="own"]').click(); $p('#look-close').click()
+    check('Space puts the amp in standby and says so, brings it back, and is left to a field being typed in', stby && on && typing, `${stby}/${on}/${typing}`)
+
+    const g = $p('input[data-param="guardOn"]'), a = $p('input[data-param="autoOff"]')
+    check('the squeal guard and auto-off are on out of the box (D-RIG-008 (e))', g.checked && a.checked && g.closest('.toggle').querySelector('.tg-state').textContent === 'On', `${g.checked}/${a.checked}`)
+
+    // The guitar is this browser's fake input, playing a pulled jack (web/check.mjs): auto-off trips through the
+    // page's own input and worklet, the banner says why in words, and Turn back on lifts it.
+    let stream = null
+    const gum = pw.navigator.mediaDevices.getUserMedia.bind(pw.navigator.mediaDevices)
+    pw.navigator.mediaDevices.getUserMedia = async (c) => (stream = await gum(c))
+    $p('#play-guitar').click()
+    await wait(() => !$p('#banner').hidden && /^Auto-off/.test($p('#banner-title').textContent), 15000, 'auto-off in the page')
+    const words = `${$p('#banner-title').textContent} ${$p('#banner-body').textContent}`
+    const muted = ph.dataset.powerState === 'muted' && $p('#banner').getAttribute('role') === 'alert' && $p('#hw-amp [data-pilot]').textContent === 'Muted' && /Auto-off/.test($p('#status-text').textContent)
+    $p('#banner-on').click()
+    const lifted = ph.dataset.powerState === 'on' && $p('#banner').hidden
+    check('auto-off: a pulled jack through the page’s input mutes it and says why; Turn back on lifts it', muted && lifted && /went dead after a loud pop/.test(words), words)
+
+    // The input device going away (its track ends): standby, said in words; Turn back on opens the input again.
+    stream.getAudioTracks()[0].dispatchEvent(new pw.Event('ended'))
+    await wait(() => !$p('#banner').hidden && /input device went away/.test($p('#banner-title').textContent), 3000, 'the device banner')
+    const before = stream
+    $p('#banner-on').click()
+    await wait(() => stream !== before && $p('#status-text').textContent.startsWith('Live'), 10000, 'the guitar again')
+    check('auto-off: the input device going away mutes it; Turn back on opens the input again', $p('#banner').hidden || /^Auto-off: the input went dead/.test($p('#banner-title').textContent), $p('#status-text').textContent)
+    $p('#stop').click()
+  }
+
   // 2. The engine in this browser.
   const rate = 48000
   const wasm = await (await fetch('/rig-engine.wasm')).arrayBuffer()
@@ -241,6 +293,42 @@ try {
   const wet = await render(scaledIR(impulse, rate))
   const ratio = rms(wet.out) / rms(dry.out)
   check('the cabinet stage scales by -18 dB as the desktop does', Math.abs(ratio / irGain(rate) - 1) < 0.01, `ratio ${ratio.toFixed(5)}, expected ${irGain(rate).toFixed(5)}`)
+
+  // The squeal guard in a real loop through the worklet (build plan R3): its output, 7 ms later through a band-pass at
+  // 2.4 kHz, back into its input over a guitar's hiss, at a loop gain over 1. It grows into a squeal, and the guard mutes
+  // it and says at what frequency.
+  {
+    const seconds = 3, Q = 128, ctx = new OfflineAudioContext(1, seconds * rate, rate)
+    await ctx.audioWorklet.addModule('/rig-processor.js')
+    const node = new AudioWorkletNode(ctx, 'crbn-rig', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
+      processorOptions: { wasm: wasm.slice(0) },
+    })
+    const replies = []
+    node.port.onmessage = (e) => replies.push(e.data)
+    const hiss = new AudioBuffer({ length: seconds * rate, numberOfChannels: 1, sampleRate: rate }), h = hiss.getChannelData(0)
+    let seed = 7
+    for (let i = 0; i < h.length; i++) h[i] = ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296 - 0.5) * 0.004
+    const src = new AudioBufferSourceNode(ctx, { buffer: hiss })
+    const delay = new DelayNode(ctx, { delayTime: 0.007, maxDelayTime: 0.05 }), band = new BiquadFilterNode(ctx, { type: 'bandpass', frequency: 2400, Q: 8 }), loop = new GainNode(ctx, { gain: 0.7 })
+    src.connect(node); node.connect(delay); delay.connect(band); band.connect(loop); loop.connect(node); node.connect(ctx.destination)
+    src.start(Q / rate)
+    const paused = ctx.suspend(Q / rate).then(async () => {
+      await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
+      const bytes = capture.slice(0)
+      node.port.postMessage({ type: 'capture', id: 1, bytes: bytes.buffer }, [bytes.buffer])
+      await wait(() => replies.some((m) => m.type === 'capture'), 15000, 'the capture in the worklet')
+      await ctx.resume()
+    })
+    const rendered = await ctx.startRendering()
+    await paused
+    await new Promise((r) => setTimeout(r, 300))
+    const st = replies.filter((m) => m.type === 'meter').map((m) => m.status).find((s) => s?.muted === 1)
+    const o = rendered.getChannelData(0), from = Math.min(o.length, Math.round(((st?.at ?? seconds) + 0.15) * rate))
+    let after = 0
+    for (let i = from; i < o.length; i++) after = Math.max(after, Math.abs(o[i]))
+    check('the squeal guard mutes a real feedback loop through the worklet, and says its frequency', st && Math.abs(st.hz - 2400) / 2400 < 0.08 && after === 0, st ? `${st.hz.toFixed(0)} Hz at ${st.at.toFixed(3)} s, then ${after}` : 'no trip')
+  }
 } catch (err) {
   check('the self-test ran to the end', false, err?.stack ?? err)
 }

@@ -3,6 +3,10 @@
 // DirectSound) that its Audio settings pick. This side sends settings, captures and IRs as messages through
 // window.chrome.webview; NeuralAmpModeler.cpp lists them and answers. app.js drives this or audio-web.js through the
 // same calls.
+//
+// Standby, the squeal guard and auto-off are the engine's (build plan R3); its status comes with the meters. When the
+// driver stops delivering audio while the guitar plays (an interface unplugged), onInputLost says so, unless Audio
+// settings was opened in the last 30 s (changing the device or buffer restarts the driver).
 import { PARAM } from './engine.js'
 
 /** True inside the desktop app's WebView2. */
@@ -33,10 +37,10 @@ function base64(floats) {
   return btoa(s)
 }
 
-export function createDesktopAudio({ onError = () => {}, onChange = () => {} } = {}) {
+export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {} } = {}) {
   const view = globalThis.chrome.webview
   const post = (m) => view.postMessage(m)
-  let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady
+  let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, settingsAt = -Infinity
   const ready = new Promise((ok) => { gotReady = ok })
   const waiting = new Map()
   const peaks = { input: 0, raw: 0, output: 0 }
@@ -47,8 +51,11 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {} } =
     if (!m || typeof m !== 'object') return
     if (m.type === 'meter') {
       peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); peaks.output = Math.max(peaks.output, m.output)
+      if ('muted' in m) engine = { muted: m.muted, hz: m.hz, trips: m.trips, seconds: m.seconds }
     } else if (m.type === 'ready' || m.type === 'status') {
+      const was = status?.running
       status = m
+      if (was && !m.running && source === 'guitar' && performance.now() - settingsAt > 30000) onInputLost()
       gotReady(m)
       onChange()
     } else if (waiting.has(m.id)) {
@@ -90,7 +97,9 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {} } =
     },
     clearIR() { post({ type: 'clearIR' }) },
     setIROn(on) { post({ type: 'irOn', on: Boolean(on) }) },
-    setStandby(on) { post({ type: 'standby', on: Boolean(on) }) },
+    setStandby(on) { this.setParam('standby', on ? 1 : 0) },
+    /** The person turned the output back on: the squeal guard's or auto-off's mute lifts. */
+    resume() { this.setParam('clearTrip', 1); if (engine) engine = { ...engine, muted: 0 } },
 
     /** The guitar through the driver's inputs: no permission to ask, the device is the Audio settings' pick. */
     async playGuitar() { source = 'guitar'; post({ type: 'source', source: 'live' }) },
@@ -110,14 +119,14 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {} } =
     async listInputs() { return [] },
 
     takeMeters() {
-      const m = { ...peaks }
+      const m = { ...peaks, status: engine }
       peaks.input = 0; peaks.raw = 0; peaks.output = 0
       return m
     },
     latencyMs() { return status?.latencyMs ? Math.round(status.latencyMs) : 0 },
     /** The driver and its devices, as Audio settings left them. */
     describe() { return status },
-    openAudioSettings() { post({ type: 'audioSettings' }) },
+    openAudioSettings() { settingsAt = performance.now(); post({ type: 'audioSettings' }) },
     /** The window's title bar follows the page's look. */
     setTitleBar(dark, caption) { post({ type: 'chrome', dark: Boolean(dark), caption }) },
   }

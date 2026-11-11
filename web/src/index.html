@@ -50,6 +50,13 @@ try {
     </svg>
     <span class="word"><span class="crbn">CRBN</span><span class="brand-ink">Rig</span></span>
   </a>
+  <!-- Power A, the header pill (build plan R3; D-RIG-008 (d)): shown when picked in the look menu. -->
+  <div class="pw-head" data-power-only="a">
+    <button class="pw-pill" type="button" data-pw-main aria-pressed="true" aria-keyshortcuts="Space">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg><span class="pw-word">On</span>
+    </button>
+    <span class="gchip"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6z"/></svg><span id="pw-guard-word">Squeal guard on</span></span>
+  </div>
   <div class="status" id="status">
     <span class="dot" aria-hidden="true"></span>
     <span id="status-text" role="status">Not playing</span>
@@ -123,7 +130,7 @@ try {
           <button class="btn" id="play-demo" type="button" aria-pressed="false">Hear the demo riff</button>
           <button class="btn" id="audio-settings" type="button" data-desktop>Audio settings&hellip;</button>
         </div>
-        <p class="hint">Use headphones. With a laptop's own microphone and speakers, the sound feeds back.</p>
+        <p class="hint">Use headphones. With a laptop's own microphone and speakers the sound feeds back, and the squeal guard mutes it.</p>
         <!-- Shown when Pavillion Hub's own view refuses the input (its tool view grants no microphone yet). -->
         <div class="row" id="hub-help" hidden>
           <button class="btn" id="hub-open-app" type="button">Open the installed app</button>
@@ -132,7 +139,20 @@ try {
       </div>
     </div>
 
+    <!-- Why the output is quiet (build plan R3): Standby, or the squeal guard or auto-off, in words, with the way back. -->
+    <div class="banner" id="banner" role="status" hidden>
+      <svg class="ic b-warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17.2v.1"/></svg>
+      <svg class="ic b-power" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg>
+      <p><b id="banner-title"></b> <span id="banner-body"></span></p>
+      <button class="btn small" id="banner-on" type="button" aria-keyshortcuts="Space">Turn back on <kbd>Space</kbd></button>
+    </div>
+
     <div class="chain">
+      <!-- Power C, the big button (shown when picked in the look menu). -->
+      <button class="pw-big" type="button" data-pw-main data-power-only="c" aria-pressed="true" aria-keyshortcuts="Space">
+        <span class="pb"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></span>
+        <span class="pw-word">On</span><kbd>Space</kbd>
+      </button>
       <div class="meter" id="meter-in" data-label="In" aria-label="Input level"></div>
 
       <div class="amp" id="amp" data-slot="capture" aria-labelledby="amp-logo">
@@ -141,6 +161,12 @@ try {
             <span class="sec">Amp</span>
             <span class="amp-band-name" id="amp-band-name"></span>
             <ul class="chips" id="amp-chips"></ul>
+            <!-- Power B on the islands and the stripe: a pilot lamp and two toggles (the hardware kits draw their own). -->
+            <div class="pw-amp" data-power-only="b">
+              <span class="pw-lamp" id="pw-jewel"><i></i><b>Pilot</b><small data-pw-word>On</small></span>
+              <button class="pw-bat" type="button" data-pw="power" aria-pressed="true"><i></i><b>Power</b><small>On</small></button>
+              <button class="pw-bat" type="button" data-pw="standby" aria-pressed="true" aria-keyshortcuts="Space"><i></i><b>Standby</b><small>Play</small></button>
+            </div>
           </div>
           <div class="amp-plate">
             <div class="knobs">
@@ -195,6 +221,12 @@ try {
           <button type="button" role="radio" data-value="0" title="No adjustment">Raw</button>
           <button type="button" role="radio" data-value="1" title="Every capture at about the same loudness">Normalized</button>
           <button type="button" role="radio" data-value="2" title="Match the capture's analogue calibration">Calibrated</button>
+        </div>
+      </div>
+      <div class="field protect"><span>Protection</span>
+        <div class="row">
+          <label class="toggle" title="Mutes the output when it feeds back, and says why"><input type="checkbox" data-param="guardOn"><span class="tg" aria-hidden="true"></span><b>Squeal guard</b><small class="tg-state"></small></label>
+          <label class="toggle" title="Standby when the input is unplugged or its device goes away"><input type="checkbox" data-param="autoOff"><span class="tg" aria-hidden="true"></span><b>Auto-off</b><small class="tg-state"></small></label>
         </div>
       </div>
       <details class="calibration">
@@ -265,6 +297,8 @@ try {
       <button type="button" role="radio" data-value="b">Hardware</button><button type="button" role="radio" data-value="a">Islands</button><button type="button" role="radio" data-value="c">Stripe</button></div></div>
     <div class="lm-row"><span id="lm-meters-l">Meters</span><div class="segmented" data-rig="meters" role="radiogroup" aria-labelledby="lm-meters-l">
       <button type="button" role="radio" data-value="b">LED</button><button type="button" role="radio" data-value="a">Bars</button><button type="button" role="radio" data-value="c">VU</button></div></div>
+    <div class="lm-row"><span id="lm-power-l">Power</span><div class="segmented" data-rig="power" role="radiogroup" aria-labelledby="lm-power-l">
+      <button type="button" role="radio" data-value="b">Pilot lamp</button><button type="button" role="radio" data-value="a">Header</button><button type="button" role="radio" data-value="c">Big button</button></div></div>
   </section>
 
   <section class="lm-sec" aria-labelledby="lm-fonts-h">

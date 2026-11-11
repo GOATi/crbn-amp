@@ -26,7 +26,7 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 |---|---|
 | The standalone (C++): a thin host since R2a (D-RIG-017), Rig's page over Rig's engine | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp` the host and its message list, `RigWebView.cpp` the WebView2 host, `RigDesktop.cpp` the engine's threads, IR, Standby, riff and meters, `config.h`, `resources/`) |
 | Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001), and the WebView2 SDK (D-RIG-017) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/`, `WebView2/` |
-| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends, and `kits.js` the players' own kits from the Rig builder (R1b); `engine/` the engine both builds run, compiled to wasm and into the app; `build.mjs`, `check.mjs`) |
+| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends, and `kits.js` the players' own kits from the Rig builder (R1b); `engine/` the engine both builds run, compiled to wasm and into the app, with `rig_guard.h` its squeal guard and auto-off (R3); `build.mjs`, `check.mjs`) |
 | Rig's hardware: the kits on the amp and cabinet (D-RIG-009..016), ported from the Hardware Lab | `web/src/hw/` (`hw.js`, `hw.css`, `tex/` Salvage's sheets, `fonts/`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
 | The Hub folder, and the desktop app's check | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/`; `packaging/windows/check.mjs` |
@@ -41,16 +41,21 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 
 - **Desktop:** `pwsh packaging/windows/package.ps1` (Visual Studio 18, toolset v145, then `node web/build.mjs` for the
   page; a minute or two). `-SkipBuild` to re-package, `-Sign` with the owner's SimplySign session open. Then `node
-  packaging/windows/check.mjs` (21 checks): `crbn-rig.exe --render` against the parity harness, then the app itself
+  packaging/windows/check.mjs` (26 checks): `crbn-rig.exe --render` against the parity harness, then the app itself
   under a throwaway WebView2 profile with DevTools on loopback (the page, the driver's status, the riff through the
-  native engine, Output, Standby, an IR, real keys, Audio settings, a clean exit). It plays the riff quietly through
-  the default device and will not run beside an open CRBN Rig. `CRBN_RIG_DEVTOOLS=1` gives a release build its
-  developer tools.
+  native engine, Output, Standby and Space, an IR, real keys, auto-off in the native engine, Audio settings, a clean
+  exit), then a second opening on the same profile, which plays the guitar at once because it was playing at close
+  (R3). It plays the riff and the guitar input quietly through the default devices and will not run beside an open CRBN
+  Rig. `CRBN_RIG_DEVTOOLS=1` gives a release build its developer tools.
 - **Web:** `node web/build.mjs` (emscripten SDK 6.0.13 at `%LOCALAPPDATA%\emsdk`), then `node web/check.mjs`
-  (headless Edge on loopback: the page paints in Rig's look, and the engine plays the example capture through the real
-  AudioWorklet, equal to the engine run directly). `node web/engine/test.mjs` plays every NAM Core example capture
-  through the wasm engine and the same source built with MSVC and compares them sample by sample (most are
-  bit-identical). `node web/shots.mjs` takes the store screenshots, one per look. `node web/probe.mjs <steps.json>`
+  (headless Edge on loopback: the page paints in Rig's look, the engine plays the example capture through the real
+  AudioWorklet, equal to the engine run directly, the squeal guard mutes a real feedback loop through the worklet, and
+  auto-off trips through the page's own input, Edge's fake microphone playing a pulled jack). `node web/engine/test.mjs`
+  plays every NAM Core example capture through the wasm engine and the same source built with MSVC and compares them
+  sample by sample (most are bit-identical), then the squeal guard's and auto-off's cases (`web/engine/scenarios.mjs`:
+  feedback loops, pulled jacks, and long notes, chords, sweeps and the riff that must trip nothing) in both builds.
+  NAM Core's example clip, the page's "demo riff", is a second of silence and a second of a 220 Hz sine.
+  `node web/shots.mjs` takes the store screenshots, one per look. `node web/probe.mjs <steps.json>`
   runs script, CPU measures and clipped screenshots against `dist/web` in headless Edge; `--clashes` lists class names
   the hardware kits share with the page's stylesheet.
 - **Hosting:** `hosting/README.md` (`node hosting/kit/publish.mjs --promote` from a clean `main`).

@@ -6,9 +6,11 @@
 //   input gain (+ input calibration) -> noise gate trigger -> the capture (resampled to its own rate, as the desktop
 //   does) -> noise gate gain -> tone stack (bass, middle, treble) -> DC blocker (5 Hz high-pass) -> output gain
 //   (raw, normalized to -18 dB, or calibrated).
-// The cabinet IR is applied after this by the page's ConvolverNode, scaled and truncated as AudioDSPTools'
-// ImpulseResponse does; it is linear, so it commutes with the DC blocker and the output gain. The final clamp to
-// [-1, 1] is the audio device's.
+// Then the output's fade (build plan R3): Standby, the squeal guard and auto-off (rig_guard.h) fade it out over 20 ms,
+// and back in. The cabinet IR is applied after this, by the page's ConvolverNode in a browser and by AudioDSPTools'
+// ImpulseResponse in the desktop app, scaled and truncated as the desktop always did; it is linear, so it commutes with
+// the DC blocker, the output gain and the fade (its tail rings out after a fade, as a cabinet's would). The final clamp
+// to [-1, 1] is the audio device's.
 //
 // Threading: everything here runs on the audio rendering thread, one block at a time. A capture is parsed on that
 // thread when the page sends it (a few milliseconds of silence while it loads, as on the desktop).
@@ -34,6 +36,7 @@
 #include "../../NeuralAmpModeler/ToneStack.h"
 #include "../../AudioDSPTools/dsp/NoiseGate.h"
 #include "../../AudioDSPTools/dsp/RecursiveLinearFilter.h"
+#include "rig_guard.h"
 
 // Exported from the wasm; plain C linkage when web/engine/test.mjs builds this file natively for the parity check.
 #if defined(__clang__) || defined(__GNUC__)
@@ -47,6 +50,7 @@ namespace
 // The worklet's render quantum is 128 frames; the engine accepts up to this many per call.
 constexpr int kMaxBlock = 1024;
 constexpr double kDCBlockerFrequency = 5.0;
+constexpr double kFadeSeconds = 0.02; // Standby's and the guard's fade (D-RIG-016 (c))
 
 // Parameter ids, shared with rig-processor.js.
 enum Param : int
@@ -63,6 +67,10 @@ enum Param : int
   kCalibrateInput,
   kInputCalibrationDBu,
   kSlim,
+  kStandby, // 1: the output fades out; the input stays open (build plan R3)
+  kGuardOn, // the squeal guard, on by default (D-RIG-008 (e))
+  kAutoOff, // muted on the signature of a pulled jack
+  kClearTrip, // any write: the person turned the output back on, so the guard's or auto-off's mute lifts
   kNumParams
 };
 
@@ -81,12 +89,23 @@ enum Info : int
   kInfoLatencyFrames,
 };
 
+// What rig_status reports about the output's fade.
+enum Status : int
+{
+  kStatusMuted = 0, // rig_guard::Why: 0 none, 1 the squeal guard, 2 auto-off on silence, 3 auto-off on hum
+  kStatusHz, // the squeal's frequency, or the mains frequency
+  kStatusTrips, // how many times the guard or auto-off has muted the output since rig_init
+  kStatusSeconds, // how long the squeal held, or how long after the spike auto-off tripped
+  kStatusTripAt, // when it last tripped, in seconds of audio since rig_init
+  kStatusGain, // the fade's gain now, 0 to 1
+};
+
 double DBToAmp(const double db) { return std::pow(10.0, db / 20.0); }
 
 struct Engine
 {
   double sampleRate = 48000.0;
-  double params[kNumParams] = {0.0, 1.0, -80.0, 1.0, 5.0, 5.0, 5.0, 0.0, 1.0, 0.0, 12.0, 0.0};
+  double params[kNumParams] = {0.0, 1.0, -80.0, 1.0, 5.0, 5.0, 5.0, 0.0, 1.0, 0.0, 12.0, 0.0, 0.0, 1.0, 1.0, 0.0};
 
   std::unique_ptr<ResamplingNAM> model;
   dsp::noise_gate::Trigger gateTrigger;
@@ -105,6 +124,15 @@ struct Engine
   float inputPeak = 0.0f; // after the input gain, since the last read
   std::string lastError;
 
+  // The output's fade, and what muted it (rig_guard.h).
+  rig_guard::SquealGuard squeal;
+  rig_guard::UnplugWatch unplug;
+  rig_guard::Trip muted;
+  double fade = 1.0;
+  int trips = 0;
+  double tripAt = 0.0;
+  uint64_t frames = 0; // audio since rig_init
+
   Engine()
   {
     in.assign(kMaxBlock, 0.0);
@@ -117,6 +145,11 @@ struct Engine
   void Reset(const double sr)
   {
     sampleRate = sr;
+    squeal.Reset(sampleRate);
+    unplug.Reset(sampleRate);
+    muted = rig_guard::Trip{};
+    fade = params[kStandby] > 0.5 ? 0.0 : 1.0;
+    frames = 0;
     toneStack.Reset(sampleRate, kMaxBlock);
     ApplyToneStack();
     if (model)
@@ -193,11 +226,43 @@ struct Engine
     stage = highPass.Process(stage, 1, nFrames);
 
     const double outGain = OutputGain();
+    const bool standby = params[kStandby] > 0.5;
+    const bool guardOn = params[kGuardOn] > 0.5, autoOff = params[kAutoOff] > 0.5;
+    const double step = 1.0 / std::max(1.0, kFadeSeconds * sampleRate);
     for (int i = 0; i < nFrames; i++)
     {
-      const double v = outGain * stage[0][i];
-      outBlock[i] = std::isfinite(v) ? static_cast<float>(v) : 0.0f;
+      // A straight 20 ms fade to silence while in standby or muted, and back.
+      const double target = standby || muted.why != rig_guard::kNone ? 0.0 : 1.0;
+      fade = fade < target ? std::min(target, fade + step) : std::max(target, fade - step);
+      // The guard hears what leaves (so a muted output cannot keep it tripping) beside what arrived. Neither it nor
+      // auto-off listens in standby, when the output is quiet by choice and cables may be changing, nor once muted, until
+      // the person says. While it asks whether a tone is a loop, it dips the output 4 dB for 50 ms (rig_guard.h).
+      const bool listening = !standby && muted.why == rig_guard::kNone;
+      double v = outGain * stage[0][i] * fade * (listening && guardOn ? squeal.Dip() : 1.0);
+      if (!std::isfinite(v))
+        v = 0.0;
+      outBlock[i] = static_cast<float>(v);
+      if (listening)
+      {
+        rig_guard::Trip t;
+        if ((guardOn && squeal.Push(static_cast<double>(inBlock[i]), static_cast<double>(outBlock[i]), t))
+            || (autoOff && unplug.Push(static_cast<double>(inBlock[i]), t)))
+        {
+          muted = t;
+          trips++;
+          tripAt = static_cast<double>(frames + static_cast<uint64_t>(i) + 1) / sampleRate;
+        }
+      }
     }
+    frames += static_cast<uint64_t>(nFrames);
+  }
+
+  // The person turned the output back on: the mute lifts, and the guard and auto-off start listening afresh.
+  void ClearTrip()
+  {
+    muted = rig_guard::Trip{};
+    squeal.Clear();
+    unplug.Clear();
   }
 };
 
@@ -278,6 +343,13 @@ RIG_EXPORT void rig_set_param(int id, double value)
     gEngine->ApplyToneStack();
   if (id == kSlim)
     gEngine->ApplySlim();
+  if (id == kClearTrip)
+    gEngine->ClearTrip();
+  // Turned off, or in standby: they forget what they were hearing, and start afresh when they listen again.
+  if ((id == kGuardOn && value < 0.5) || (id == kStandby && value > 0.5))
+    gEngine->squeal.Clear();
+  if ((id == kAutoOff && value < 0.5) || (id == kStandby && value > 0.5))
+    gEngine->unplug.Clear();
 }
 
 // A buffer the page writes the capture's text into, then calls rig_load_model with its length.
@@ -339,6 +411,24 @@ RIG_EXPORT double rig_info(int which)
     case kInfoModelSampleRate: return m ? m->GetEncapsulatedSampleRate() : 0.0;
     case kInfoSlimmable: return m && m->GetSlimmableModel() ? 1.0 : 0.0;
     case kInfoLatencyFrames: return m ? static_cast<double>(m->GetLatency()) : 0.0;
+    default: return 0.0;
+  }
+}
+
+// The output's fade and what muted it (the Status values).
+RIG_EXPORT double rig_status(int which)
+{
+  if (gEngine == nullptr)
+    return 0.0;
+  const Engine& e = *gEngine;
+  switch (which)
+  {
+    case kStatusMuted: return static_cast<double>(e.muted.why);
+    case kStatusHz: return e.muted.hz;
+    case kStatusTrips: return static_cast<double>(e.trips);
+    case kStatusSeconds: return e.muted.seconds;
+    case kStatusTripAt: return e.tripAt;
+    case kStatusGain: return e.fade;
     default: return 0.0;
   }
 }

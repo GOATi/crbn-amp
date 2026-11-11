@@ -253,11 +253,55 @@ select:disabled { color: var(--text-faint); }
 .m-vu .vp { fill: var(--plate-ink); }
 .m-vu text { fill: var(--plate-ink); font: 700 6.5px var(--font-display); letter-spacing: .1em; }
 
+/* ---------------------------------------------------------------- power (build plan R3, P3-UX U1)
+   Drawn as picked (D-RIG-008 (d)): B, a pilot lamp and toggles on the amp (the default; the hardware kits draw their
+   own), A, a pill in the header beside the guard's state, or C, a big button at the start of the chain. Each says On,
+   Standby, Muted or Off in words; Muted, when the squeal guard or auto-off muted the output, is also dashed. */
+:root:not([data-power='a']) [data-power-only='a'], :root:not([data-power='b']) [data-power-only='b'],
+:root:not([data-power='c']) [data-power-only='c'] { display: none !important; }
+kbd { font: 500 10px/1 var(--font-mono); padding: 2px 5px; border-radius: 4px; border: 1px solid var(--line-2); border-bottom-width: 2px; color: var(--text-dim); background: var(--field); white-space: nowrap; }
+.pw-head { display: flex; align-items: center; gap: 10px; }
+.pw-pill { display: inline-flex; align-items: center; gap: 7px; border-radius: var(--r-btn); padding: 4px 13px 4px 10px; font: 600 var(--fs-xs) var(--font-ui); border: 1px solid var(--line-2); background: var(--field); color: var(--text-dim); cursor: pointer; white-space: nowrap; }
+.pw-pill[data-state='on'] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.pw-pill[data-state='muted'] { border: 1px dashed var(--bad); color: var(--text); }
+.pw-pill .ic { width: 15px; height: 15px; }
+.gchip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-dim); white-space: nowrap; }
+.gchip .ic { width: 14px; height: 14px; }
+.pw-big { flex: none; display: grid; justify-items: center; align-content: center; gap: 6px; padding: 0 4px; background: none; border: 0; color: var(--text); font: 600 var(--fs-xs) var(--font-ui); cursor: pointer; }
+.pw-big .pb { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; border: 3px solid var(--accent); background: radial-gradient(circle at 50% 40%, var(--panel-2), var(--field)); color: var(--accent-text); box-shadow: 0 0 22px color-mix(in oklab, var(--accent) 40%, transparent); }
+:root[data-look='redline'] .pw-big .pb { border-radius: 4px; }
+.pw-big .pb .ic { width: 26px; height: 26px; stroke-width: 2.4; }
+.pw-big:not([data-state='on']) .pb { border-color: var(--line-2); color: var(--text-faint); box-shadow: none; }
+.pw-big[data-state='muted'] .pb { border: 3px dashed var(--bad); color: var(--bad); }
+.pw-big:focus-visible { outline: none; }
+.pw-big:focus-visible .pb { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pw-amp { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.pw-lamp { display: grid; justify-items: center; gap: 3px; }
+.pw-lamp i { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .9) 0 8%, var(--fin) 40%, color-mix(in oklab, var(--fin) 45%, black) 100%); box-shadow: 0 0 0 2px #5c5560, 0 0 0 3px #1a181c, 0 0 14px 3px color-mix(in oklab, var(--fin) 70%, transparent); }
+.pw-lamp.off i { background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .35) 0 8%, color-mix(in oklab, var(--fin) 25%, #241f22) 50%, #141114 100%); box-shadow: 0 0 0 2px #5c5560, 0 0 0 3px #1a181c; }
+.pw-lamp b, .pw-bat b { font: 600 calc(8.5px * var(--d-scale)) / 1.1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; white-space: nowrap; }
+.pw-lamp small, .pw-bat small { font-size: 10px; line-height: 1; opacity: .85; white-space: nowrap; }
+.pw-bat { display: grid; justify-items: center; gap: 3px; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; }
+.pw-bat i { position: relative; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fbfbfb, #a3a3a8 60%, #5d5d63); box-shadow: 0 1px 2px rgba(0, 0, 0, .5); margin-top: 9px; margin-bottom: 1px; }
+.pw-bat i::after { content: ''; position: absolute; left: 5.5px; width: 5px; height: 14px; border-radius: 3px; background: linear-gradient(90deg, #8f8f95, #f4f4f6 50%, #9a9aa0); bottom: 6px; box-shadow: 0 1px 1px rgba(0, 0, 0, .35); }
+.pw-bat[aria-pressed='false'] i::after { bottom: auto; top: 6px; }
+.pw-bat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+/* the banner: why the output is quiet, in words, and the way back */
+.banner { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; padding: 9px 12px; margin-bottom: 12px; border-radius: var(--r-sm); background: var(--panel-2); border: 1px solid var(--line-2); border-left: 4px solid var(--text-faint); }
+.banner[data-kind='muted'] { border-left: 4px dashed var(--bad); background: color-mix(in oklab, var(--bad) 9%, var(--panel-2)); }
+.banner p { margin: 0; flex: 1 1 260px; font-size: var(--fs-s); color: var(--text-dim); }
+.banner b { color: var(--text); font-weight: 600; }
+.banner > .ic { width: 18px; height: 18px; }
+.banner[data-kind='muted'] .b-power, .banner:not([data-kind='muted']) .b-warn { display: none; }
+.banner .b-warn { color: var(--bad); }
+.banner .btn kbd { margin-left: 2px; }
+
 /* setup under the chain */
 .setup { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .setup .field:first-child { flex: 1 1 220px; max-width: 360px; }
 html[data-host="desktop"] .setup .field[data-desktop] { flex: 1 1 280px; max-width: 520px; }
 .device-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.protect .row { gap: 6px 16px; min-height: 30px; }
 .device-row output { color: var(--text); font-size: var(--fs-s); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .calibration summary { cursor: pointer; color: var(--text-dim); font-size: var(--fs-s); padding: 4px 0; }
 .calibration[open] { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; flex-basis: 100%; }
@@ -371,6 +415,7 @@ dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 }
 @media (max-width: 640px) {
   header.bar { gap: 10px; }
+  .pw-head .gchip { display: none; }
   .actions { width: 100%; justify-content: space-between; }
   .status { order: 3; width: 100%; margin-right: 0; }
   .rig-page { padding-inline: 10px; }

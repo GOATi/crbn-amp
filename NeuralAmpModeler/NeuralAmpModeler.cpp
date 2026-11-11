@@ -6,8 +6,11 @@
 //                {type:'source', source: 'live' | 'demo' | 'none'}  {type:'demo', id, rate, samples}
 //                {type:'audioSettings'}  {type:'chrome', dark, caption}
 //   app -> page  {type:'ready' | 'status', sampleRate, running, driver, input, output, buffer, latencyMs, ...}
-//                {type:'meter', input, raw, output}  {type:'capture', id, ok, info | error}  {type:'ir', id, ok, ...}
+//                {type:'meter', input, raw, output, muted, hz, trips, seconds}  {type:'capture', id, ok, info | error}
+//                {type:'ir', id, ok, ...}
 //                {type:'demo', id, ok, error}
+// `muted` is what muted the output, if anything (the squeal guard or auto-off, rig_engine.cpp's Status), with its
+// frequency; `trips` counts them, so the page sees each one. Standby, the guard and auto-off are engine parameters.
 // `samples` are float32 little-endian in base64: an IR's first channel, or the riff, at its own rate, decoded by the
 // page as the web version decodes them.
 #include <algorithm>
@@ -302,9 +305,11 @@ void NeuralAmpModeler::OnIdle()
   {
     mMetersAt = now;
     const rig::Meters m = mEngine.TakeMeters();
-    char json[160];
-    std::snprintf(json, sizeof json, "{\"type\":\"meter\",\"input\":%.6g,\"raw\":%.6g,\"output\":%.6g}", m.input, m.raw,
-                  m.output);
+    char json[256];
+    std::snprintf(json, sizeof json,
+                  "{\"type\":\"meter\",\"input\":%.6g,\"raw\":%.6g,\"output\":%.6g,\"muted\":%d,\"hz\":%.6g,\"trips\":%d,"
+                  "\"seconds\":%.6g}",
+                  m.input, m.raw, m.output, m.muted, m.hz, m.trips, m.seconds);
     Post(json);
   }
 }

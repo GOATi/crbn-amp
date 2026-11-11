@@ -7,7 +7,7 @@
 // crbn-rig.exe (the engine compiled into the app, through the audio driver).
 import { createDesktopAudio, inDesktopApp } from './audio-desktop.js'
 import { createWebAudio } from './audio-web.js'
-import { DEFAULTS } from './engine.js'
+import { DEFAULTS, MUTED } from './engine.js'
 import { DEFAULT_CUSTOM, FINISHES, HEX_RE, finishHex, finishVars, hex2rgb, hsv2rgb, inkFor, readouts, rgb2hex, rgb2hsv } from './finish.js'
 import { DEFAULT_KIT, KIT_LIST, KIT_PARTS, SALVAGE_CHOICES, SALVAGE_DEFAULTS, artTemplate, createHardware } from './hw/hw.js'
 import { ART_NAME_MAX, ART_TYPES, MAX_KITS, NAME_MAX, artURL, artURLNow, importArt, isOwnId, loadKits, makeKit, readCode, saveKits, sameKit, shareCode, tidyArt } from './kits.js'
@@ -33,6 +33,7 @@ function setSetting(name, value) {
   settings[name] = value
   if (ENGINE_PARAMS.includes(name)) audio.setParam(name, value)
   if (name === 'irOn') audio.setIROn(value > 0.5)
+  if (name === 'guardOn' || name === 'autoOff') { syncProtection(); syncPower() }
   reflect(name)
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => saveSettings(settings), 300)
@@ -112,9 +113,7 @@ function reflect(name) {
 
 // ------------------------------------------------------------------------------------------------- Rig's hardware
 // The kit drawn on the amp and the cabinet (hw/hw.js). Its knobs take each setting's range from the page's own knob,
-// and its Power and Standby switches are the page's (R1; R3 moves standby into the engine, with auto-off and the
-// squeal guard): Power off stops what is playing and Power on brings it back; Standby fades the output out over 20 ms
-// and leaves the input open.
+// and its Power and Standby switches are the amp's (below).
 let hardware = null
 const specs = {}
 function specOf(name) {
@@ -128,7 +127,17 @@ function changeSetting(name, value) {
   const sp = specOf(name)
   setSetting(name, sp ? Math.min(sp.max, Math.max(sp.min, Math.round(value / sp.step) * sp.step)) : value)
 }
+// ------------------------------------------------------------------------------------------------- power (U1)
+// The amp's power and standby (build plan R3, P3-UX U1), drawn as the person picked (D-RIG-008 (d)): a pilot lamp and
+// Power and Standby toggles on the amp (B, the default; on the hardware they are the kit's own), a pill in the header
+// (A), or a big button at the start of the chain (C), with Space as the key for each. Power off stops what is playing,
+// and on again resumes it. Standby is the engine's: the output fades out over 20 ms and the input stays open. The
+// squeal guard and auto-off (the engine's too, rig_guard.h) mute the output the same way and the banner says why, in
+// words; one click, or Space, brings the output back. Auto-off also mutes when the input device goes away.
 let power = true, standby = false, resumeWith = null
+let muted = null // why the output is muted, { why: 'squeal' | 'silence' | 'hum' | 'device', hz, seconds }, or null
+let lifted = null // the engine's trip count when the person last turned the output back on, until it says unmuted
+let lastStatus = null // the engine's last status (engine.js status())
 function setPower(on) {
   if (on === power) return
   power = on
@@ -136,26 +145,138 @@ function setPower(on) {
   if (!on) {
     resumeWith = audio.source
     stopAll()
-  } else if (resumeWith) {
-    const what = resumeWith
-    resumeWith = null
-    if (what === 'demo') toggleDemo(); else playGuitar()
+  } else {
+    liftMute()
+    if (resumeWith) {
+      const what = resumeWith
+      resumeWith = null
+      if (what === 'demo') toggleDemo(); else playGuitar()
+    }
   }
+  syncPower()
 }
+/** The person's Standby switch. Taking the amp out of standby also lifts a mute. */
 function setStandby(on) {
   standby = on
-  hardware?.setStandby(on)
+  if (!on) liftMute()
   audio.setStandby(on)
+  syncPower()
+  updateStatus()
+}
+function liftMute() {
+  const was = muted
+  muted = null
+  audio.resume?.()
+  lifted = lastStatus?.trips ?? 0
+  // An input device that went away is opened again (the default one, in a browser).
+  if (was?.why === 'device' && !desktop && power) playGuitar()
+}
+/** "Turn back on": the banner's button, the pill, the big button and Space. */
+function turnBackOn() {
+  if (!power) { setPower(true); return }
+  setStandby(false)
+}
+function powerKey() {
+  if (!power) setPower(true)
+  else if (muted || standby) turnBackOn()
+  else setStandby(true)
+}
+// What the engine or the input device muted the output for, said in the banner.
+function setMuted(m) {
+  muted = m
+  syncPower()
   updateStatus()
 }
 // Playing turns the amp on.
-function powerUp() { if (!power) { power = true; resumeWith = null; hardware?.setPower(true) } }
+function powerUp() { if (!power) { power = true; resumeWith = null; hardware?.setPower(true); syncPower() } }
+
+const hzWords = (hz) => (hz >= 1000 ? `${(hz / 1000).toFixed(1).replace(/\.0$/, '')} kHz` : `${Math.round(hz)} Hz`)
+function bannerWords() {
+  if (!muted) return { title: 'Standby.', body: 'The output faded out; the input stays open, so you can change cables safely.' }
+  if (muted.why === 'squeal') {
+    return { title: 'The squeal guard muted the output.', body: `A feedback tone at ${hzWords(muted.hz)} held for ${Math.round(muted.seconds * 1000)} ms. Turn down, or move away from the speaker, then turn back on.` }
+  }
+  if (muted.why === 'silence') return { title: 'Auto-off: the input went dead after a loud pop.', body: 'That is how a cable pulled from the interface sounds. Plug back in, then turn back on.' }
+  if (muted.why === 'hum') return { title: `Auto-off: the input turned to ${Math.round(muted.hz)} Hz mains hum after a loud pop.`, body: 'That is how a cable pulled from the guitar sounds. Plug back in, then turn back on.' }
+  return desktop
+    ? { title: 'Auto-off: the audio device stopped.', body: 'Plug your interface back in, or pick it in Audio settings, then turn back on.' }
+    : { title: 'Auto-off: your input device went away.', body: 'It was unplugged, or another app took it. Plug it back in, then turn back on.' }
+}
+const STATE_WORDS = { on: 'On', standby: 'Standby', muted: 'Muted', off: 'Off' }
+function powerState() { return !power ? 'off' : muted ? 'muted' : standby ? 'standby' : 'on' }
+// Every power drawing, the kit's switches and pilot, and the banner, from one state.
+function syncPower() {
+  const st = powerState(), word = STATE_WORDS[st]
+  root.dataset.powerState = st
+  hardware?.setPower(power)
+  hardware?.setStandby(standby || Boolean(muted))
+  hardware?.setPilot(word)
+  for (const b of document.querySelectorAll('[data-pw-main]')) {
+    b.setAttribute('aria-pressed', String(st === 'on'))
+    b.dataset.state = st
+    b.querySelector('.pw-word').textContent = word
+    b.title = st === 'on' ? 'On: Space puts the amp in standby' : 'Turn back on (Space)'
+  }
+  for (const w of document.querySelectorAll('[data-pw-word]')) w.textContent = word
+  $('pw-jewel')?.classList.toggle('off', st !== 'on')
+  const pb = document.querySelector('.pw-bat[data-pw="power"]'), sb = document.querySelector('.pw-bat[data-pw="standby"]')
+  if (pb) { pb.setAttribute('aria-pressed', String(power)); pb.querySelector('small').textContent = power ? 'On' : 'Off' }
+  if (sb) { sb.setAttribute('aria-pressed', String(st === 'on')); sb.querySelector('small').textContent = st === 'on' ? 'Play' : st === 'muted' ? 'Muted' : 'Standby' }
+  const guard = $('pw-guard-word')
+  if (guard) guard.textContent = settings.guardOn < 0.5 ? 'Squeal guard off' : muted?.why === 'squeal' ? 'Squeal guard tripped' : 'Squeal guard on'
+  // The banner: why the output is quiet, and the way back.
+  const banner = $('banner'), show = power && (muted || standby)
+  banner.hidden = !show
+  if (show) {
+    const { title, body } = bannerWords()
+    $('banner-title').textContent = title
+    $('banner-body').textContent = body
+    banner.dataset.kind = muted ? 'muted' : 'standby'
+    banner.setAttribute('role', muted ? 'alert' : 'status')
+  }
+  rememberPlaying()
+}
+
+// The desktop app plays the guitar when it opens if it was playing when it last closed (the owner's word, R3): it
+// keeps whether the guitar is playing, out of standby and unmuted, as it changes.
+const PLAYING_KEY = 'crbn-rig/playing'
+// Read before anything plays or stops (the backends' first messages arrive after this module has run).
+const playAtOpen = (() => { try { return localStorage.getItem(PLAYING_KEY) === '1' } catch { return false } })()
+function rememberPlaying() {
+  if (!desktop) return
+  const playing = power && !standby && !muted && audio.source === 'guitar'
+  try { localStorage.setItem(PLAYING_KEY, playing ? '1' : '0') } catch { /* not remembered */ }
+}
+
+// The demo riff cannot feed back (nothing listens to a microphone while it plays), and NAM Core's example is a steady
+// sine the guard would have to ask about: the guard and auto-off rest while it plays.
+function syncProtection() {
+  const demo = audio.source === 'demo'
+  audio.setParam('guardOn', demo ? 0 : settings.guardOn)
+  audio.setParam('autoOff', demo ? 0 : settings.autoOff)
+}
+
+// Space is the power key wherever typing or a dialog does not want it. It is taken before a focused button would click.
+function wirePowerKey() {
+  addEventListener('keydown', (e) => {
+    // By its key as well as its code: keys typed without a scan code (an on-screen keyboard, remote input) have no code.
+    if (!(e.code === 'Space' || e.key === ' ') || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+    if (e.target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"], dialog, #look-menu, .lm-build')) return
+    e.preventDefault()
+    powerKey()
+  })
+  for (const b of document.querySelectorAll('[data-pw-main]')) b.addEventListener('click', () => (powerState() === 'on' ? setStandby(true) : turnBackOn()))
+  $('banner-on').addEventListener('click', turnBackOn)
+  document.querySelector('.pw-bat[data-pw="power"]')?.addEventListener('click', () => setPower(!power))
+  document.querySelector('.pw-bat[data-pw="standby"]')?.addEventListener('click', () => (powerState() === 'on' ? setStandby(true) : turnBackOn()))
+}
 
 // ------------------------------------------------------------------------------------------------- the audio
 // One backend or the other (above), with the same calls; the page keeps what the person chose and sends it.
+const inputLost = () => { if (power) setMuted({ why: 'device', hz: 0, seconds: 0 }) }
 const audio = inDesktopApp()
-  ? createDesktopAudio({ onChange: () => updateStatus() })
-  : createWebAudio({ onError: (text) => toast(text), onChange: () => updateStatus() })
+  ? createDesktopAudio({ onChange: () => updateStatus(), onInputLost: inputLost })
+  : createWebAudio({ onError: (text) => toast(text), onChange: () => updateStatus(), onInputLost: inputLost })
 const desktop = audio.kind === 'desktop'
 let metersRunning = false
 
@@ -164,6 +285,7 @@ async function ensureAudio() {
   if (!first) return
   audio.setIROn(settings.irOn > 0.5)
   audio.setStandby(standby)
+  syncProtection()
   if (capture.bytes) {
     const result = await sendCapture()
     if (!result.ok) { toast(`${capture.name}: ${result.error}`); await clearCapture() }
@@ -177,9 +299,11 @@ async function ensureAudio() {
 // ------------------------------------------------------------------------------------------------- playing
 async function playGuitar() {
   powerUp()
+  if (muted) liftMute()
   try {
     await ensureAudio()
     const device = await audio.playGuitar($('input-device').value || undefined)
+    syncProtection()
     if (!desktop) await listDevices(device)
   } catch (err) {
     if (err?.name === 'NotAllowedError' && hubApp) {
@@ -194,6 +318,7 @@ async function playGuitar() {
   }
   syncDemoButton()
   updateStatus()
+  syncPower()
 }
 
 async function listDevices(current) {
@@ -210,12 +335,14 @@ async function listDevices(current) {
 }
 
 async function toggleDemo() {
-  if (audio.source === 'demo') { audio.stopDemo(); syncDemoButton(); updateStatus(); return }
+  if (audio.source === 'demo') { audio.stopDemo(); syncProtection(); syncDemoButton(); updateStatus(); return }
   powerUp()
+  if (muted) liftMute()
   try {
     await ensureAudio()
     if (!capture.bytes) await loadExample()
     await audio.playDemo()
+    syncProtection()
   } catch (err) {
     toast(`The demo could not play: ${err?.message ?? err}`)
   }
@@ -229,9 +356,10 @@ function syncDemoButton() {
   $('play-demo').textContent = on ? 'Stop the demo riff' : 'Hear the demo riff'
 }
 
-function stopAll() { audio.stop(); syncDemoButton(); updateStatus() }
+function stopAll() { audio.stop(); syncProtection(); syncDemoButton(); updateStatus() }
 
 function updateStatus() {
+  rememberPlaying()
   const playing = audio.running
   $('status').classList.toggle('live', playing)
   $('stop').hidden = !playing
@@ -242,12 +370,13 @@ function updateStatus() {
     hardware?.level(0, false)
     // On the desktop, a driver that is not running is said in words (no device, or the device is in use).
     const silent = desktop && audio.started && audio.describe() && !audio.describe().running
-    $('status-text').textContent = !power ? 'Off' : silent ? 'No sound from the audio device: open Audio settings' : 'Not playing'
+    $('status-text').textContent = !power ? 'Off' : muted?.why === 'device' ? 'Auto-off: the input device went away' : silent ? 'No sound from the audio device: open Audio settings' : 'Not playing'
     return
   }
   const ms = audio.latencyMs()
   const what = audio.source === 'demo' ? 'Demo riff' : 'Live'
-  $('status-text').textContent = `${what} · ${standby ? 'Standby · ' : ''}${(audio.sampleRate / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ms ? `about ${ms} ms out` : 'low latency'}`
+  const quiet = muted ? (muted.why === 'squeal' ? 'Muted by the squeal guard · ' : 'Auto-off · ') : standby ? 'Standby · ' : ''
+  $('status-text').textContent = `${what} · ${quiet}${(audio.sampleRate / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ms ? `about ${ms} ms out` : 'low latency'}`
 }
 
 // The desktop app's audio device, as its Audio settings left it (the driver's own list, not the browser's).
@@ -466,6 +595,15 @@ function meterLoop() {
   // The energy and the kits' lamps follow the input's level (D-RIG-009 (e)).
   hardware?.level(m.input, audio.running)
   meterOut(m.output, m.output >= 0.999)
+  // What the engine muted the output for: a new trip shows its banner. After the person turns the output back on,
+  // reports still on their way from before are not news; a trip counted since is.
+  const st = m.status
+  if (st) {
+    lastStatus = st
+    if (!st.muted && lifted !== null && st.trips <= lifted) lifted = null
+    const fresh = lifted === null || st.trips > lifted
+    if (st.muted && fresh && !muted && power && audio.running) setMuted({ why: MUTED[st.muted], hz: st.hz, seconds: st.seconds })
+  }
   requestAnimationFrame(meterLoop)
 }
 
@@ -475,7 +613,7 @@ function meterLoop() {
 const RIG_KEY = 'crbn-rig/rig'
 // v2 (R1): the hardware kit, Salvage's choices and the seed of its crops. Before v2 the default finish was the look's
 // own; a v1 finish of 'look' was never a choice a person made, so it becomes the kit's own.
-const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
+const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
 const abc = (v) => (/^[abc]$/.test(v) ? v : 'b')
 const kitId = (v) => (KIT_LIST.some((k) => k.id === v) || (isOwnId(v) && kits.some((k) => k.id === v)) ? v : DEFAULT_KIT)
 const salvOf = (s) => Object.fromEntries(Object.entries(SALVAGE_DEFAULTS).map(([k, d]) => [k, SALVAGE_CHOICES[k].some((c) => c[0] === s?.[k]) ? s[k] : d]))
@@ -487,7 +625,7 @@ function loadRig() {
     v: 2,
     finish: FINISHES.some((f) => f.id === finish) ? finish : 'own',
     custom: HEX_RE.test(r.custom ?? '') ? r.custom.toLowerCase() : DEFAULT_CUSTOM,
-    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters),
+    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power),
     kit: kitId(r.kit), salv: salvOf(r.salv), seed: Number.isInteger(r.seed) && r.seed > 0 ? r.seed : 1,
   }
 }
@@ -497,7 +635,7 @@ const saveRig = () => { if (keepRig) try { localStorage.setItem(RIG_KEY, JSON.st
 
 function applyAll() {
   const { look, accent } = applyPrefs(prefs)
-  root.dataset.layout = rig.layout; root.dataset.amp = rig.amp; root.dataset.meters = rig.meters
+  root.dataset.layout = rig.layout; root.dataset.amp = rig.amp; root.dataset.meters = rig.meters; root.dataset.power = rig.power
   const hex = finishHex(rig, look.id)
   for (const [k, v] of Object.entries(finishVars(hex))) root.style.setProperty(k, v)
   if (hardware) {
@@ -904,7 +1042,7 @@ async function start() {
   ;({ prefs, every } = loadPrefs())
   rig = loadRig()
   if (query.has('look')) { prefs = { ...prefs, look: query.get('look') }; prefs = sanitize(prefs); keepPrefs = false }
-  for (const k of ['layout', 'amp', 'meters']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
+  for (const k of ['layout', 'amp', 'meters', 'power']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
   // ?kit= shows a hardware kit (Salvage's id is hammer, after the kit it replaced) for a scripted screenshot
   if (query.has('kit')) { rig.kit = kitId(query.get('kit')); rig.amp = 'b'; keepRig = false }
   if (query.has('finish')) {
@@ -923,6 +1061,8 @@ async function start() {
     toggle: (role, on) => (role === 'power' ? setPower(on) : setStandby(!on)),
   })
   applyAll()
+  wirePowerKey()
+  syncPower()
   if (query.has('menu')) openMenu(true)
 
   for (const box of document.querySelectorAll('input[type=checkbox][data-param]')) box.addEventListener('change', () => setSetting(box.dataset.param, box.checked ? 1 : 0))
@@ -968,10 +1108,11 @@ async function start() {
   if (c) { try { await useCapture(c.name, new Uint8Array(c.bytes), { remember: false }) } catch { await forgetFile('capture') } }
   const i = await recallFile('ir')
   if (i) { try { await useIR(i.name, new Uint8Array(i.bytes), { remember: false }) } catch { await forgetFile('ir') } }
-  // The desktop app's engine starts with the page, so the capture, IR and status are there at once. It waits for Play
-  // my guitar, as the web version does but with no permission to ask: until R3's squeal guard, a laptop's own
-  // microphone and speakers must not feed back the moment the app opens.
+  // The desktop app's engine starts with the page, so the capture, IR and status are there at once. Since R3, with the
+  // squeal guard on, it plays the guitar when it opens if it was playing when it last closed (the owner's word); a
+  // first run still waits for Play my guitar. A browser always waits: it needs a click to make a sound, and asks first.
   if (desktop) await ensureAudio()
+  if (desktop && playAtOpen) await playGuitar()
   showCapture(); showIR(); updateStatus()
   root.dataset.ready = 'true'
 }

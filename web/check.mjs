@@ -4,12 +4,14 @@
 //                                         Edge, which runs web/test/selftest.html: the page paints in Rig's look,
 //                                         and the engine plays the example capture through the real AudioWorklet,
 //                                         equal to the engine run directly, with the cabinet stage scaled as the
-//                                         desktop's.
+//                                         desktop's; the power switch, Standby, the squeal guard in a real feedback
+//                                         loop through the worklet, and auto-off through the page's own input.
 //   node web/check.mjs --url=<origin>     the live host: /__build names a build, and every file of the artifact is
 //                                         served byte for byte (SHA-256).
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { extname, join, normalize, relative, resolve, sep } from 'node:path'
 import { DEFAULT_EDGE, startHeadlessEdge } from '../scripts/headless-edge.mjs'
 
@@ -63,7 +65,29 @@ const server = createServer((req, res) => {
 })
 await new Promise((ok) => server.listen(0, '127.0.0.1', ok))
 const edge = process.env.EDGE ?? DEFAULT_EDGE
-const browser = startHeadlessEdge(`http://127.0.0.1:${server.address().port}/__selftest/selftest.html`, { edge, args: ['--autoplay-policy=no-user-gesture-required', '--window-size=1500,1000'] })
+// The page's "guitar" in this browser (build plan R3): Edge's fake input plays a pulled jack, over and over (two seconds
+// of a quiet string's hiss, contacts scraping near full scale, then three seconds of dead silence), so the self-test
+// sees auto-off trip through the page's own input, worklet and banner.
+const jackWav = join(mkdtempSync(join(tmpdir(), 'crbn-rig-jack-')), 'pulled-jack.wav')
+{
+  const rate = 48000, n = rate * 5, pcm = Buffer.alloc(44 + n * 2)
+  pcm.write('RIFF', 0, 'latin1'); pcm.writeUInt32LE(36 + n * 2, 4); pcm.write('WAVEfmt ', 8, 'latin1'); pcm.writeUInt32LE(16, 16)
+  pcm.writeUInt16LE(1, 20); pcm.writeUInt16LE(1, 22); pcm.writeUInt32LE(rate, 24); pcm.writeUInt32LE(rate * 2, 28); pcm.writeUInt16LE(2, 32); pcm.writeUInt16LE(16, 34)
+  pcm.write('data', 36, 'latin1'); pcm.writeUInt32LE(n * 2, 40)
+  let seed = 1
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296)
+  for (let i = 0; i < n; i++) {
+    const t = i / rate
+    const v = t < 2 ? (rnd() - 0.5) * 0.01 : t < 2.006 ? (rnd() < 0.5 ? -0.97 : 0.97) : 0
+    pcm.writeInt16LE(Math.round(Math.max(-1, Math.min(1, v)) * 32767), 44 + i * 2)
+  }
+  writeFileSync(jackWav, pcm)
+}
+const browser = startHeadlessEdge(`http://127.0.0.1:${server.address().port}/__selftest/selftest.html`, {
+  edge,
+  args: ['--autoplay-policy=no-user-gesture-required', '--window-size=1500,1000', '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${jackWav}`],
+})
 let report
 try { report = await result } finally { await browser.stop(); server.close() }
 
