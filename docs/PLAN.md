@@ -26,6 +26,12 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-007): R1 begun, widened at the owner's ask. The Hardware Lab
+  (https://claude.ai/artifact/WdqG3GWav3qnqffCQeVe4m, source `docs/design/2026-11-11-hardware-lab/lab.html`) has 19
+  hardware kits for the amp and pedals. Ten are classic. Nine are new: the Hub's logo-window energy behind cut
+  faceplates and meshes, plus Valve and Ferro. It also has a builder, Rig's page as a stage and six questions. Nothing
+  is built until he picks.
+
 - 2026-11-11 (SYNC:RIG-006): the new look live on the web (build `20261110-1452-36ad4b0`, the owner's publish); the store
   pictures with the stompbox icon uploaded (record version 10); `docs/BUILD_PLAN.md` written: R1 the look's details, R2
   the desktop on the page, R3..R8 U1 and U3..U7, R9 release and store.

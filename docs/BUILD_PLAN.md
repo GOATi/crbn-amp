@@ -55,6 +55,18 @@ R1 can be skipped or moved if the owner prefers to go straight to R2. It is firs
 His note in the Rig Lab (D-RIG-008 (f)): "I'm not happy with the stripe detail overlay/finish on the plate on the amp,
 and the gradients and treatments on the buttons and knobs."
 
+**Widened by the owner when R1 started (2026-11-11, SYNC:RIG-007):** not a small Detail Lab but a full range of
+hardware kits for the amp's and the pedals' knobs, switches, lights and faceplates, so that he can pick the default and
+offer the rest as players' choices. There are two families. **Classic** kits follow the gear players know (his
+examples: Marshall, Fender, Peavey, Mesa/Boogie, Boss), never copying a maker's name, logo or panel. **New** kits put
+the energy of the Hub's logo window inside the amp, behind faceplates with cutouts and meshes between. He reviews them
+before anything is built. The lab is the **Hardware Lab**: https://claude.ai/artifact/WdqG3GWav3qnqffCQeVe4m (source
+`docs/design/2026-11-11-hardware-lab/lab.html`). It holds 10 classic and 9 new kits, each an amp and a pedal with the
+real controls. It also has a builder for the energy kits, Rig's page as a stage, and six questions. His picks go to its
+db: `picks/<kit>` (keep, maybe or cut, and a note), `picks/default`, `picks/q-<id>`, `picks/builder` and
+`picks/general`. The steps below still hold, scaled to the kits he keeps. Many kept kits may need R1 and an R1b; the
+energy kits share one engine, a port of the Hub's `shell/logo-window` layers.
+
 - **Lab first, as before:** a small **Detail Lab** artifact (the Rig Lab's pattern: three options per area, live on a
   mock of the real page in all four looks and three finishes, Pick and a note saved to its db). Areas: the faceplate's
   finish (today's brushed stripes; a smooth satin gradient; a fine grain, or anodised flat), the knobs (today's shine;

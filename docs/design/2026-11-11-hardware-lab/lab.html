@@ -1,0 +1,2013 @@
+<title>Rig Hardware Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lexend:wght@400;500;600&family=Lexend+Giga:wght@500;600;700&family=Lexend+Mega:wght@500;600;700&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Display:wght@600;700;800;900&family=Oswald:wght@400;500;600;700&family=Yellowtail&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* CRBN Rig's Hardware Lab (crbn-amp docs/design/2026-11-11-hardware-lab, build plan R1). The owner's ask: a suite of
+   looks for the amp's and the pedals' knobs, switches, lights and faceplates, classic and new, to pick a default and to
+   offer players the rest. Layout: a sticky bar of switches (finish, look, playing, motion), Rig's page mocked as a stage,
+   then one card per kit in two families, a builder for the energy kits, and the open questions. Picks and notes save to
+   the page's db (picks/<kit>, picks/default, picks/q-<id>, picks/builder, picks/general). Tokens: crbn-launcher
+   looks/themes.css (D-CRBN-019) and Rig's row (D-CRBN-021, D-RIG-002, D-RIG-008). The lab follows its own look switch,
+   dark by default, and sets every colour itself. */
+:root {
+  --bg:#0b0a0c; --chrome:#0b0a0c; --panel:#141317; --panel-2:#1c1a20; --field:#1b191f; --popover:#18161b;
+  --hover:rgba(255,255,255,.055); --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.13);
+  --text:#f4f1f6; --text-dim:#b1acb8; --text-faint:#8a8492;
+  --brand:#d92b52; --brand-ink:#ffffff; --accent:#d92b52; --accent-ink:#ffffff;
+  --ok:#5fd39a; --warn:#f2c037; --bad:#ff5470;
+  --floor-a:#29242c; --floor-b:#121014; --floor-c:#0a090b;
+  --r:14px; --r-sm:9px; --r-btn:999px; --r-chip:999px;
+  --font-display:'Lexend Giga','Lexend',sans-serif; --font-ui:'Poppins','Segoe UI',system-ui,sans-serif; --font-mono:'Geist Mono',ui-monospace,Consolas,monospace;
+  --d-scale:.9; --d-track:.24em;
+  --accent-text:color-mix(in oklab, var(--accent) 72%, white);
+  color-scheme: dark;
+}
+:root[data-look="holo"] { --bg:#07060a; --chrome:#0c0a10; --panel:#120d17; --panel-2:#1a1320; --field:#150f1b; --popover:#171019; --hover:rgba(120,220,255,.07); --line:rgba(130,200,255,.09); --line-2:rgba(130,200,255,.2); --text:#ebe7f2; --text-dim:#aaa3ba; --text-faint:#8a82a0; --ok:#3ecf8e; --warn:#f2c037; --bad:#e0445a; --accent:#be9851; --accent-ink:#1d1406; --r:6px; --r-sm:4px; --r-btn:4px; --r-chip:6px; --font-display:'Lexend Mega','Lexend',sans-serif; --font-ui:'Lexend','Segoe UI',sans-serif; --font-mono:'JetBrains Mono',ui-monospace,Consolas,monospace; --d-scale:.92; --d-track:.16em; --floor-a:#1d1626; --floor-b:#0e0b13; --floor-c:#07060a; }
+:root[data-look="redline"] { --bg:#0b0a0a; --chrome:#121110; --panel:#191716; --panel-2:#22201f; --field:#100f0e; --popover:#1d1b1a; --hover:rgba(255,255,255,.05); --line:#2a2725; --line-2:#3e3936; --text:#f3eee9; --text-dim:#bdb3ab; --text-faint:#8f857d; --ok:#6fdc6a; --warn:#ffb020; --bad:#ff2a3d; --accent:#ff3200; --accent-ink:#160805; --r:2px; --r-sm:2px; --r-btn:2px; --r-chip:2px; --font-display:'Big Shoulders Display',sans-serif; --font-ui:'Barlow Semi Condensed','Segoe UI',sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace; --d-scale:1.25; --d-track:.06em; --floor-a:#24201e; --floor-b:#131110; --floor-c:#0b0a0a; }
+:root[data-look="daylight"] { --bg:#e8e6ea; --chrome:#e8e6ea; --panel:#fbfafc; --panel-2:#f1eff3; --field:#f0eef2; --popover:#ffffff; --hover:rgba(30,10,30,.05); --line:rgba(30,10,30,.08); --line-2:rgba(30,10,30,.17); --text:#1b1720; --text-dim:#4f4957; --text-faint:#6a6373; --ok:#18965a; --warn:#a86a00; --bad:#d1243f; --accent:#be9851; --accent-ink:#1d1406; --accent-text:#7a5c22; --floor-a:#f7f4ef; --floor-b:#e4dfd8; --floor-c:#d6d0c8; color-scheme: light; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--text); }
+body { margin: 0; font: 13px/1.55 var(--font-ui); -webkit-font-smoothing: antialiased; }
+:root[data-look="holo"] body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='41.57'%3E%3Cpath d='M12 0L24 6.93V20.78L12 27.71L0 20.78V6.93Z M12 27.71V41.57' fill='none' stroke='%2382c8ff' stroke-opacity='.06'/%3E%3C/svg%3E"); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: var(--d-track); text-transform: uppercase; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: var(--accent-text); }
+.sec { font: 600 calc(10px * var(--d-scale)) / 1.2 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; color: var(--text-faint); white-space: nowrap; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- the lab's bar ---------- */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 31; background: var(--chrome); }
+.labbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--chrome); box-shadow: 0 1px 0 var(--line); }
+:root[data-look="holo"] .labbar { background: linear-gradient(180deg, #120c18, #0c0a10); box-shadow: inset 0 -1px 0 rgba(79,227,255,.14); }
+:root[data-look="redline"] .labbar { background-color: #121110; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.028) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(0,0,0,.3) 0 2px, transparent 2px 4px); }
+.bstrip { height: 2px; background: var(--brand); }
+.labbar-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-height: 52px; padding-block: 7px; }
+.brandmark { display: flex; align-items: center; gap: 10px; flex: none; text-decoration: none; color: var(--text); }
+.rig-mark .m-body { fill: var(--brand); } .rig-mark .m-ink { fill: var(--brand-ink); }
+.rig-mark .m-pupil { fill: none; stroke: var(--brand); stroke-width: 2.6; stroke-linecap: round; }
+.rig-mark .m-ring { fill: none; stroke: var(--brand-ink); stroke-width: 2.6; }
+.rig-mark .m-hex { fill: none; stroke: var(--text); stroke-width: 5; stroke-linejoin: round; }
+.bn { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.bn .c { font: 600 calc(10px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); color: var(--text-faint); }
+.bn .n { font: 700 calc(13px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); color: var(--brand); text-transform: uppercase; }
+:root[data-look="daylight"] .bn .n { color: color-mix(in oklab, var(--brand) 78%, black); }
+.bn .l { font: 500 12px/1 var(--font-ui); color: var(--text-dim); }
+.ctl { display: flex; align-items: center; gap: 8px; }
+.ctl > span { font-size: 11px; color: var(--text-faint); }
+.seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--field); border: 1px solid var(--line); border-radius: var(--r-btn); flex-wrap: wrap; }
+.seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--text-dim); padding: 4px 11px; border-radius: var(--r-btn); font-size: 12px; white-space: nowrap; cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+:root[data-look="holo"] .seg button[aria-pressed="true"] { background: rgba(79,227,255,.1); color: #dff8ff; box-shadow: inset 0 0 0 1px rgba(79,227,255,.5); }
+:root[data-look="redline"] .seg { background: transparent; border-color: var(--line-2); }
+:root[data-look="redline"] .seg button[aria-pressed="true"] { background: transparent; color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
+.seg .dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(128,128,128,.5); flex: none; }
+.btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line-2); background: var(--field); color: var(--text); border-radius: var(--r-btn); padding: 5px 13px; font: 500 12px/1.2 var(--font-ui); cursor: pointer; white-space: nowrap; text-decoration: none; }
+.btn:hover { background: var(--hover); }
+.btn[aria-pressed="true"] { border-color: color-mix(in oklab, var(--accent) 55%, transparent); background: color-mix(in oklab, var(--accent) 14%, var(--field)); color: var(--accent-text); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); }
+.btn.ghost:hover { color: var(--text); background: var(--hover); }
+.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.minimeter { display: inline-flex; gap: 1.5px; align-items: flex-end; height: 12px; }
+.minimeter i { width: 3px; border-radius: 1px; background: currentColor; opacity: .25; }
+.minimeter i:nth-child(1) { height: 4px; } .minimeter i:nth-child(2) { height: 7px; } .minimeter i:nth-child(3) { height: 10px; } .minimeter i:nth-child(4) { height: 12px; }
+.minimeter i.on { opacity: 1; }
+.save { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; font-size: 11.5px; color: var(--text-faint); white-space: nowrap; }
+.save i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); flex: none; }
+.save[data-s="saved"] i { background: var(--ok); } .save[data-s="saving"] i { background: var(--accent); } .save[data-s="off"] i { background: var(--warn); }
+
+/* ---------- the page's sections ---------- */
+main { display: grid; gap: 34px; padding-block: 26px 60px; }
+.intro { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px 40px; align-items: start; }
+.intro h1 { font-size: calc(26px * var(--d-scale)); line-height: 1.2; }
+.intro .lede { margin-top: 10px; color: var(--text-dim); font-size: 14px; max-width: 64ch; }
+.how { display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; color: var(--text-dim); }
+.how b { color: var(--text); font-weight: 600; }
+.how ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.how .rule { font-size: 11.5px; color: var(--text-faint); border-top: 1px solid var(--line); padding-top: 8px; }
+.shead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-bottom: 12px; }
+.shead h2 { font-size: calc(15px * var(--d-scale)); }
+.shead p { color: var(--text-dim); font-size: 12.5px; max-width: 80ch; }
+.shead .sp { flex: 1; }
+
+/* the index of kits */
+.index { display: flex; flex-wrap: wrap; gap: 6px; }
+.index .fam-l { flex-basis: 100%; margin-top: 2px; }
+.ix { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px 3px 8px; border-radius: var(--r-chip); background: var(--panel-2); color: var(--text-dim); font-size: 12px; text-decoration: none; box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.ix:hover { color: var(--text); }
+.ix .vm { width: 15px; height: 15px; border-radius: 50%; display: grid; place-items: center; font: 700 9px/1 var(--font-ui); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text-faint); }
+.ix[data-v="keep"] .vm { background: var(--ok); color: #06210f; box-shadow: none; }
+.ix[data-v="maybe"] .vm { background: var(--warn); color: #241a00; box-shadow: none; }
+.ix[data-v="cut"] .vm { background: var(--panel); color: var(--text-faint); box-shadow: inset 0 0 0 1px var(--line-2); text-decoration: line-through; }
+.ix[data-v="cut"] { opacity: .6; }
+.ix .star { color: var(--accent-text); font-size: 12px; }
+
+/* ---------- the stage: Rig's page, mocked ---------- */
+.stage { display: grid; gap: 10px; }
+.stage-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.stage-ctl select { font: 500 12.5px var(--font-ui); color: var(--text); background: var(--field); border: 1px solid var(--line-2); border-radius: var(--r-btn); padding: 5px 12px; max-width: 100%; }
+.mock { border-radius: var(--r); overflow: hidden; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-2), 0 20px 50px rgba(0,0,0,.35); }
+:root[data-look="daylight"] .mock { box-shadow: inset 0 0 0 1px var(--line-2), 0 20px 40px rgba(60,40,20,.14); }
+.mbar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--chrome); box-shadow: inset 0 -1px 0 var(--line); flex-wrap: wrap; }
+.mbar .status { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-dim); padding: 2px 11px 2px 9px; border-radius: var(--r-btn); background: var(--field); box-shadow: inset 0 0 0 1px var(--line); margin-right: auto; }
+.mbar .status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ok) 22%, transparent); }
+.mbar .status.idle i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-faint); }
+.mboard { display: grid; gap: 14px; padding: 16px; }
+.mboard .lane { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.mboard .lane-l { align-self: center; margin-right: 4px; }
+.mchain { display: flex; gap: 12px; align-items: stretch; min-width: 0; }
+.mchain > .amp { flex: 1 1 520px; max-width: none; }
+.mchain > .cab { flex: 0 0 196px; }
+.meter { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 30px; flex: none; }
+.meter .ladder { display: flex; flex-direction: column-reverse; gap: 2px; padding: 4px; border-radius: 4px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); flex: 1 1 auto; min-height: 140px; }
+.meter .ladder i { width: 12px; flex: 1 1 5px; max-height: 9px; border-radius: 1.5px; opacity: .17; }
+.meter .ladder i.g { background: var(--ok); } .meter .ladder i.y { background: var(--warn); } .meter .ladder i.r { background: var(--bad); }
+.meter .ladder i.on { opacity: 1; }
+.meter .clip { font: 600 8.5px/1 var(--font-mono); letter-spacing: .05em; padding: 3px 3px; border-radius: 3px; color: var(--text-faint); box-shadow: inset 0 0 0 1px var(--line-2); }
+.meter .clip.lit { background: var(--bad); color: #fff; box-shadow: none; }
+.meter .m-l { font: 600 calc(8.5px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; color: var(--text-faint); }
+
+/* ---------- a kit's card ---------- */
+.fam { display: grid; gap: 16px; }
+.kit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 310px); grid-template-areas: 'head head' 'show info'; gap: 12px 18px; padding: 16px; border-radius: calc(var(--r) + 4px); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); scroll-margin-top: 80px; }
+.kit[data-v="cut"] { opacity: .72; }
+.kit[data-default="true"] { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--accent) 70%, transparent); }
+.khead { grid-area: head; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.khead h3 { font-size: calc(16px * var(--d-scale)); color: var(--text); }
+.khead .after { font-size: 12px; color: var(--text-faint); }
+.khead .pitch { flex: 0 0 100%; color: var(--text-dim); font-size: 13px; }
+.khead .pitch span { display: block; max-width: 92ch; }
+.khead .tags { display: flex; gap: 6px; margin-left: auto; }
+.tag { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: var(--r-chip); background: var(--panel-2); color: var(--text-dim); font-size: 11px; box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.tag.def { background: color-mix(in oklab, var(--accent) 16%, transparent); color: var(--accent-text); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
+.show { grid-area: show; min-width: 0; }
+.info { grid-area: info; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.parts { margin: 0; display: grid; gap: 7px; font-size: 12px; }
+.parts div { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px; }
+.parts dt { color: var(--text-faint); font-weight: 500; }
+.parts dd { margin: 0; color: var(--text-dim); }
+.parts .reach dd { color: var(--text); }
+.verdict { display: grid; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.vrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vseg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-btn); background: var(--field); box-shadow: inset 0 0 0 1px var(--line); }
+.vseg button { border: 0; background: transparent; color: var(--text-dim); padding: 4px 12px; border-radius: var(--r-btn); font-size: 12px; cursor: pointer; }
+.vseg button:hover { color: var(--text); }
+.vseg button[data-val="keep"][aria-pressed="true"] { background: var(--ok); color: #06210f; font-weight: 600; }
+.vseg button[data-val="maybe"][aria-pressed="true"] { background: var(--warn); color: #241a00; font-weight: 600; }
+.vseg button[data-val="cut"][aria-pressed="true"] { background: var(--panel-2); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line-2); text-decoration: line-through; }
+.note { width: 100%; min-height: 54px; resize: vertical; padding: 7px 10px; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--field); color: var(--text); font: 12.5px/1.45 var(--font-ui); }
+.note::placeholder { color: var(--text-faint); }
+
+/* ---------- the floor the hardware stands on ---------- */
+.floor { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 18px; padding: 22px 20px; border-radius: var(--r); background: radial-gradient(130% 100% at 50% 0%, var(--floor-a) 0%, var(--floor-b) 62%, var(--floor-c) 100%); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+.floor > .amp { flex: 1 1 500px; min-width: 0; }
+
+/* ---------- hardware: shared ---------- */
+.hw { --ink:#f2efe8; --kit-font:'Barlow Semi Condensed', sans-serif; --fin:#d92b52; --lampc:var(--fin); --fin-ink:#fff;
+  --m-hi:color-mix(in oklab, var(--fin) 42%, white); --m-mid:var(--fin); --m-lo:color-mix(in oklab, var(--fin) 62%, black); --m-dk:color-mix(in oklab, var(--fin) 32%, black);
+  --chr:conic-gradient(from 200deg, #6f757b, #f1f3f5 15%, #9aa0a6 30%, #4f555b 48%, #e4e7ea 64%, #8a9096 80%, #6f757b);
+  position: relative; min-width: 0; color: var(--ink); -webkit-user-select: none; user-select: none; }
+.cabinet { position: relative; padding: 9px; border-radius: 10px; background: #151417; box-shadow: 0 16px 30px rgba(0,0,0,.5), 0 2px 0 rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.09); }
+:root[data-look="daylight"] .cabinet { box-shadow: 0 16px 26px rgba(50,35,20,.28), 0 2px 0 rgba(0,0,0,.3), inset 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.09); }
+.face { position: relative; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden; isolation: isolate; }
+.ui { position: relative; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; padding: 12px 12px 10px; }
+.knobs { display: flex; flex-wrap: wrap; flex: 1 1 300px; justify-content: space-around; gap: 2px 2px; }
+.tgs, .pwr { display: flex; align-items: center; gap: 4px; }
+.pwr { gap: 6px; padding-left: 8px; border-left: 1px solid color-mix(in oklab, var(--ink) 22%, transparent); }
+.gz { position: relative; z-index: 4; display: flex; align-items: center; gap: 12px; min-height: 92px; padding: 10px 16px; min-width: 0; }
+.logo-box { display: grid; gap: 2px; min-width: 0; }
+.logo { white-space: nowrap; }
+.sub { font: 500 10px/1.25 var(--kit-font); letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .8; }
+.cc { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 44px; }
+.lb { font: 600 8.5px/1.1 var(--kit-font); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+.st { font: 500 8px/1 var(--kit-font); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); opacity: .72; white-space: nowrap; min-height: 8px; }
+
+/* knobs: static lighting above or below a rotating body; --a is the angle (-135deg..135deg) */
+.kw { position: relative; display: grid; place-items: center; width: calc(var(--s) + 12px); height: calc(var(--s) + 12px); --s: 40px; }
+.kw.sm { --s: 26px; } .kw.md { --s: 32px; }
+.kw > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.kw .sc { color: var(--ink); }
+.kw .arc .trk { fill: none; stroke: rgba(255,255,255,.05); stroke-width: 2.6; stroke-linecap: round; }
+.kw .arc .val { fill: none; stroke: color-mix(in oklab, var(--fin) 65%, white); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--fin)) drop-shadow(0 0 6px var(--fin)); transition: opacity .2s; }
+.hw:not(.on) .kw .arc .val { opacity: .18; filter: none; }
+.kn { --a: 0deg; position: relative; width: var(--s); height: var(--s); border-radius: 50%; cursor: ns-resize; touch-action: none; outline: none; z-index: 1; }
+.kn > i { position: absolute; inset: 0; border-radius: 50%; display: block; pointer-events: none; }
+.kn .r { transform: rotate(var(--a)); }
+.kn:focus-visible { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--accent); }
+.kn .sh { inset: 8% -5% -14% -5%; background: radial-gradient(closest-side, rgba(0,0,0,.72), rgba(0,0,0,.3) 62%, transparent); }
+.kn .ln::after { content: ''; position: absolute; left: 50%; top: var(--lt, 6%); width: var(--lw, 2px); height: var(--lh, 22%); margin-left: calc(var(--lw, 2px) / -2); border-radius: 2px; background: var(--lc, #f3efe4); box-shadow: var(--lg, none); }
+.kn svg { width: 100%; height: 100%; overflow: visible; display: block; }
+
+.kn-cap .body { background: repeating-conic-gradient(#26262a 0 3.6deg, #09090a 3.6deg 7.2deg); box-shadow: 0 0 0 1px #000; }
+.kn-cap .top { inset: 9%; background: radial-gradient(circle at 50% 28%, #3c3c41, #141416 55%, #060607); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 3px rgba(0,0,0,.7); }
+.kn-cap .cap { inset: 27%; background: repeating-radial-gradient(circle, rgba(255,255,255,.08) 0 .6px, transparent .6px 1.6px), conic-gradient(from 210deg, var(--m-lo), var(--m-hi) 14%, var(--m-mid) 26%, var(--m-lo) 40%, var(--m-hi) 64%, var(--m-mid) 76%, var(--m-lo)); box-shadow: 0 0 0 1px rgba(0,0,0,.75), inset 0 0 2px rgba(0,0,0,.5); }
+.kn-cap .ln { --lt: 3%; --lh: 19%; }
+
+.kn-skirt .skirt { background: radial-gradient(circle, #1c1c1f 0 60%, #0f0f11 61% 100%); box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(255,255,255,.07); }
+.kn-skirt .skirt b { position: absolute; left: 50%; top: 50%; width: 12px; height: 8px; margin: -4px 0 0 -6px; text-align: center; font: 600 6px/8px 'Barlow Semi Condensed', sans-serif; color: #f2f1ec; transform: rotate(var(--t)) translateY(calc(var(--s) / -2 + 4.5px)); }
+.kn-skirt .top { inset: 24%; background: radial-gradient(circle at 46% 34%, #4a4a50, #151517 55%, #020203); box-shadow: 0 2px 3px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.24); }
+.kn-skirt .ln { display: none; }
+.kw.sm .kn-skirt .ln { display: block; --lt: 2%; --lh: 22%; }
+.kw.sm .kn-skirt .skirt b { display: none; }
+.kn-skirt .gl { inset: 24%; background: radial-gradient(circle at 38% 28%, rgba(255,255,255,.35) 0 8%, transparent 30%); }
+
+.kn-chicken .gl { inset: 34% 30% 16% 30%; background: radial-gradient(circle at 42% 30%, rgba(255,255,255,.42), transparent 62%); }
+.kn-chicken svg { filter: drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
+
+.kn-insert .body { background: repeating-conic-gradient(#2c2c30 0 4deg, #0c0c0d 4deg 8deg); box-shadow: 0 0 0 1px #000; }
+.kn-insert .top { inset: 10%; background: radial-gradient(circle at 50% 30%, #3d3d43, #121214 60%, #050506); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+.kn-insert .ins { inset: 32%; background: repeating-radial-gradient(circle, rgba(255,255,255,.1) 0 .5px, transparent .5px 1.4px), conic-gradient(from 210deg, var(--m-lo), var(--m-hi) 15%, var(--m-mid) 30%, var(--m-dk) 45%, var(--m-hi) 62%, var(--m-mid) 80%, var(--m-lo)); box-shadow: 0 0 0 1px rgba(0,0,0,.85); }
+.kn-insert .ln { --lt: 11%; --lh: 16%; }
+
+.kn-knurl .body { background: repeating-conic-gradient(#323237 0 3deg, #0a0a0b 3deg 6deg); box-shadow: 0 0 0 1px #000; }
+.kn-knurl .top { inset: 14%; background: radial-gradient(circle at 50% 30%, #303035, #0d0d0f 65%); box-shadow: 0 0 0 1.5px #8d9299, inset 0 1px 0 rgba(255,255,255,.15); }
+.kn-knurl .ln { --lt: 16%; --lh: 26%; --lw: 2.6px; --lc: color-mix(in oklab, var(--fin) 80%, white); --lg: 0 0 3px var(--fin); }
+
+.kn-dome .base { inset: -7%; background: var(--chr); box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 3px 4px rgba(0,0,0,.5); }
+.kn-dome .dome { inset: 3%; background: radial-gradient(circle at 40% 32%, #4c4c52 0, #1b1b1e 38%, #050506 80%); box-shadow: 0 3px 4px rgba(0,0,0,.7); }
+.kn-dome .ln { --lt: 7%; --lh: 30%; --lw: 2.6px; }
+.kn-dome .gl { inset: 3%; background: radial-gradient(circle at 34% 26%, rgba(255,255,255,.55) 0 5%, rgba(255,255,255,.12) 16%, transparent 32%); }
+
+.kn-compact .body { background: repeating-conic-gradient(#2e2e32 0 5deg, #111113 5deg 10deg); box-shadow: 0 0 0 1px #000; }
+.kn-compact .top { inset: 15%; background: radial-gradient(circle at 50% 35%, #2c2c30, #101012); box-shadow: inset 0 0 0 2px #a3a9b0, inset 0 0 0 3px rgba(0,0,0,.6); }
+.kn-compact .ln { --lt: 17%; --lh: 30%; }
+
+.kn-alu .body { background: repeating-conic-gradient(#c3c8ce 0 2.5deg, #7a8087 2.5deg 5deg); box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.kn-alu .top { inset: 9%; background: repeating-radial-gradient(circle, rgba(255,255,255,.2) 0 .5px, transparent .5px 1.4px), conic-gradient(from 200deg, #8c9298, #f5f7f9 14%, #aab0b6 28%, #6e747a 44%, #eef1f3 62%, #a3a9af 80%, #8c9298); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+.kn-alu .ln { --lt: 14%; --lh: 5px; --lw: 5px; --lc: #1d1f22; }
+
+.kn-halo .body { background: radial-gradient(circle at 50% 30%, #2e2f36, #101116 62%, #07070a); box-shadow: 0 0 0 1px rgba(255,255,255,.09), 0 3px 6px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14); }
+.kn-halo .kf { inset: 22%; background: repeating-radial-gradient(circle, rgba(255,255,255,.05) 0 .5px, transparent .5px 1.5px), radial-gradient(circle at 50% 35%, #24252b, #0c0c10); box-shadow: inset 0 1px 2px rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.08); }
+.kn-halo .ln { --lt: 6%; --lh: 16%; --lc: color-mix(in oklab, var(--fin) 55%, white); --lg: 0 0 5px var(--fin), 0 0 2px var(--fin); }
+
+.kn-machined .body { background: repeating-conic-gradient(#3b3d43 0 2deg, #191a1e 2deg 4deg); box-shadow: 0 0 0 1px #000, 0 3px 6px rgba(0,0,0,.6); }
+.kn-machined .top { inset: 12%; background: repeating-radial-gradient(circle, rgba(255,255,255,.07) 0 .6px, transparent .6px 1.5px), conic-gradient(from 200deg, #2e3036, #6d717a 15%, #3a3d44 30%, #1e2025 46%, #60646c 64%, #34373d 80%, #2e3036); }
+.kn-machined .ln { --lt: 10%; --lh: 30%; --lw: 3px; --lc: color-mix(in oklab, var(--fin) 50%, white); --lg: 0 0 5px var(--fin), 0 0 11px var(--fin); }
+
+.kn-obsidian .body { background: radial-gradient(circle at 50% 30%, #2b2b31 0, #0b0b0e 55%, #000 100%); box-shadow: 0 0 0 1px rgba(255,255,255,.11), 0 4px 8px rgba(0,0,0,.7); }
+.kn-obsidian .gl { background: radial-gradient(ellipse 58% 28% at 50% 18%, rgba(255,255,255,.34), transparent 72%), radial-gradient(ellipse 50% 18% at 50% 88%, rgba(255,255,255,.08), transparent 72%); }
+.kn-obsidian .ln { --lt: 8%; --lh: 36%; --lw: 1.6px; --lc: #ffffff; --lg: 0 0 4px var(--fin), 0 0 10px var(--fin); }
+
+.kn-gem svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.7)) drop-shadow(0 0 5px color-mix(in oklab, var(--fin) 55%, transparent)); }
+.kn-gem .f0 { fill: color-mix(in oklab, var(--fin) 55%, white); } .kn-gem .f1 { fill: color-mix(in oklab, var(--fin) 85%, white); }
+.kn-gem .f2 { fill: var(--fin); } .kn-gem .f3 { fill: color-mix(in oklab, var(--fin) 60%, black); }
+.kn-gem .f4 { fill: color-mix(in oklab, var(--fin) 38%, black); } .kn-gem .f5 { fill: color-mix(in oklab, var(--fin) 75%, black); }
+.kn-gem .tb { fill: color-mix(in oklab, var(--fin) 30%, #0c0c10); stroke: rgba(255,255,255,.35); stroke-width: 1; }
+.kn-gem .pt { fill: #fff; filter: drop-shadow(0 0 3px var(--fin)); }
+
+.kn-spinner .body { background: repeating-conic-gradient(#4d5159 0 6deg, #1b1d21 6deg 12deg); box-shadow: 0 0 0 1px #000, 0 3px 5px rgba(0,0,0,.6); }
+.kn-spinner .cone { inset: 13%; background: radial-gradient(circle at 42% 34%, #f5f7fa 0, #b6bcc4 24%, #6b717a 60%, #2c2f35 100%); box-shadow: 0 2px 4px rgba(0,0,0,.7); }
+.kn-spinner .sp path { fill: none; stroke: color-mix(in oklab, var(--fin) 80%, white); stroke-width: 5; stroke-linecap: round; }
+
+/* faders (the Hardwood kit's graphic EQ) */
+.fd { position: relative; width: 26px; height: 62px; display: flex; justify-content: center; cursor: ns-resize; touch-action: none; outline: none; }
+.fd::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 50%; width: 4px; margin-left: -2px; border-radius: 2px; background: #000; box-shadow: 0 1px 0 rgba(255,255,255,.12), inset 0 1px 2px rgba(0,0,0,.9); }
+.fd .tk { position: absolute; left: 1px; right: 1px; top: 6px; bottom: 6px; background: repeating-linear-gradient(180deg, color-mix(in oklab, var(--ink) 45%, transparent) 0 1px, transparent 1px 10px); -webkit-mask: linear-gradient(90deg, #000 0 5px, transparent 5px 21px, #000 21px); mask: linear-gradient(90deg, #000 0 5px, transparent 5px 21px, #000 21px); }
+.fd .cap { position: absolute; left: 3px; right: 3px; height: 13px; top: calc(4px + (1 - var(--v, .5)) * (100% - 21px)); border-radius: 2px; background: linear-gradient(180deg, var(--m-hi), var(--m-mid) 45%, var(--m-lo)); box-shadow: 0 2px 3px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.45); }
+.fd .cap::after { content: ''; position: absolute; left: 2px; right: 2px; top: 6px; height: 1.5px; background: rgba(0,0,0,.6); }
+.fd:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* switches */
+.sw { position: relative; border: 0; padding: 0; background: none; cursor: pointer; flex: none; display: block; }
+.sw > i { position: absolute; display: block; pointer-events: none; }
+.sw-rocker { width: 18px; height: 30px; border-radius: 3px; background: #050505; box-shadow: 0 0 0 2px #2b2b2d, 0 0 0 3px #000, 0 2px 3px 2px rgba(0,0,0,.45); }
+.sw-rocker .a, .sw-rocker .b { left: 2px; right: 2px; height: 12px; border-radius: 2px; }
+.sw-rocker .a { top: 2px; background: linear-gradient(180deg, #0c0c0e, #1c1c1f); }
+.sw-rocker .b { bottom: 2px; background: linear-gradient(180deg, #45454a, #18181b); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+.sw-rocker[aria-pressed="true"] .a { background: linear-gradient(180deg, #4a4a4f, #1b1b1e); box-shadow: inset 0 1px 0 rgba(255,255,255,.22); }
+.sw-rocker[aria-pressed="true"] .b { background: linear-gradient(180deg, #0c0c0e, #1a1a1d); box-shadow: none; }
+.sw-rocker .a::after { content: ''; position: absolute; left: 50%; top: 3px; width: 2px; height: 6px; margin-left: -1px; background: #e9e5da; border-radius: 1px; }
+.sw-rocker .b::after { content: ''; position: absolute; left: 50%; top: 2.5px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px #e9e5da; opacity: .8; }
+.sw-bat { width: 24px; height: 40px; }
+.sw-bat .nut { left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--chr); box-shadow: 0 1px 2px rgba(0,0,0,.7), inset 0 0 0 1px rgba(0,0,0,.25); }
+.sw-bat .nut::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle, #20222a, #050506); }
+.sw-bat .bat { left: 50%; top: 50%; width: 8px; height: 18px; margin-left: -4px; transform-origin: 50% 0; transform: rotate(0deg); border-radius: 2px 2px 5px 5px; background: linear-gradient(90deg, #747b82, #fbfcfd 45%, #a3a9af 72%, #666c72); box-shadow: 0 2px 2px rgba(0,0,0,.45); clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%); transition: transform .14s; }
+.sw-bat[aria-pressed="true"] .bat { transform: rotate(180deg); }
+.sw-bat.black .bat { background: linear-gradient(90deg, #000, #4a4a4f 45%, #141416); }
+.sw-bat.tip .bat { background: linear-gradient(90deg, #24262b, #6b6f78 45%, #2c2e33); }
+.sw-bat.tip .bat::after { content: ''; position: absolute; left: 1px; right: 1px; bottom: 1px; height: 4px; border-radius: 2px; background: #33353b; }
+.sw-bat.tip[aria-pressed="true"] .bat::after { background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 6px var(--fin); }
+.sw-bat.mini { width: 18px; height: 32px; } .sw-bat.mini .nut { width: 12px; height: 12px; margin: -6px 0 0 -6px; } .sw-bat.mini .nut::after { inset: 3px; } .sw-bat.mini .bat { width: 6px; height: 14px; margin-left: -3px; }
+.sw-push { width: 26px; height: 20px; margin-top: 10px; border-radius: 3px; background: linear-gradient(180deg, #3e3f44, #1b1c1f); box-shadow: 0 0 0 1px #000, 0 2px 0 #000, inset 0 1px 0 rgba(255,255,255,.15); }
+.sw-push .led { left: 50%; top: -10px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: color-mix(in oklab, var(--lampc) 25%, #120808); box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.sw-push[aria-pressed="true"] { transform: translateY(1px); box-shadow: 0 0 0 1px #000, 0 1px 0 #000, inset 0 1px 0 rgba(255,255,255,.08); }
+.hw.on .sw-push[aria-pressed="true"] .led { background: color-mix(in oklab, var(--lampc) 70%, white); box-shadow: 0 0 5px 1px var(--lampc); }
+.sw-lit { width: 28px; height: 22px; border-radius: 3px; background: linear-gradient(180deg, #2a2c30, #121316); box-shadow: 0 0 0 1px #000, 0 2px 0 #000, inset 0 1px 0 rgba(255,255,255,.12); }
+.sw-lit .cap { inset: 4px; border-radius: 2px; background: color-mix(in oklab, var(--lampc) 18%, #15161a); box-shadow: inset 0 0 0 1px rgba(0,0,0,.6); }
+.hw.on .sw-lit[aria-pressed="true"] .cap { background: radial-gradient(circle at 50% 40%, #fff 0 10%, color-mix(in oklab, var(--lampc) 60%, white) 35%, var(--lampc)); box-shadow: 0 0 8px var(--lampc); }
+.sw-lit[aria-pressed="true"] { transform: translateY(1px); }
+.sw-pad { width: 32px; height: 22px; margin-top: 10px; border-radius: 4px; background: repeating-linear-gradient(180deg, #222225 0 2px, #0e0e10 2px 4px); box-shadow: 0 0 0 1px #000, 0 2px 2px rgba(0,0,0,.5); }
+.sw-pad .led { left: 50%; top: -10px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #2a0c0c; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.hw.on .sw-pad[aria-pressed="true"] .led { background: #ff5b4d; box-shadow: 0 0 6px 1px #ff3b2f; }
+.sw-guard { width: 26px; height: 40px; }
+.sw-guard .base { inset: 7px 3px 2px; border-radius: 3px; background: repeating-linear-gradient(45deg, #18181b 0 3px, #26262b 3px 6px); box-shadow: 0 0 0 1px #000; }
+.sw-guard .tgl { left: 50%; top: 13px; width: 6px; height: 14px; margin-left: -3px; border-radius: 3px; background: linear-gradient(90deg, #2c2e33, #7a7e86 50%, #2c2e33); transform: translateY(8px); transition: transform .14s; }
+.sw-guard[aria-pressed="true"] .tgl { transform: none; }
+.sw-guard[aria-pressed="true"] .tgl::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 3px; background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 6px var(--fin); }
+.sw-guard .lid { left: 1px; right: 1px; top: 6px; height: 33px; border-radius: 3px; transform-origin: 50% 0; transition: transform .25s ease; background: linear-gradient(180deg, color-mix(in oklab, var(--fin) 60%, white), var(--fin) 45%, var(--m-lo)); opacity: .9; box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 1px rgba(0,0,0,.25); }
+.sw-guard[aria-pressed="true"] .lid { transform: perspective(70px) rotateX(-78deg); }
+.sw-glow { width: 30px; height: 15px; margin-top: 4px; border-radius: 8px; background: linear-gradient(180deg, #17181c, #0b0b0e); box-shadow: 0 0 0 1px rgba(255,255,255,.1), inset 0 1px 2px rgba(0,0,0,.85); }
+.sw-glow .bar { inset: 6px 8px; border-radius: 2px; background: rgba(255,255,255,.1); }
+.hw.on .sw-glow[aria-pressed="true"] .bar { background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 5px var(--fin), 0 0 12px var(--fin); }
+
+/* lights; .on on the amp or pedal lights them (Power on, or the pedal engaged) */
+.lp { position: relative; flex: none; display: block; }
+.lp-jewel { width: 26px; height: 26px; border-radius: 50%; background: var(--chr); box-shadow: 0 2px 3px rgba(0,0,0,.6); }
+.lp-jewel.sm { width: 16px; height: 16px; }
+.lp-jewel::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: repeating-conic-gradient(rgba(255,255,255,.16) 0 15deg, rgba(0,0,0,.28) 15deg 30deg), radial-gradient(circle at 40% 35%, color-mix(in oklab, var(--lampc) 40%, #000), color-mix(in oklab, var(--lampc) 14%, #000) 72%); }
+.lp-jewel.sm::before { inset: 2.5px; }
+.on .lp-jewel::before, .on.lp-jewel::before { background: repeating-conic-gradient(rgba(255,255,255,.22) 0 15deg, rgba(0,0,0,.18) 15deg 30deg), radial-gradient(circle at 42% 36%, #fff 0 6%, color-mix(in oklab, var(--lampc) 45%, white) 20%, var(--lampc) 48%, color-mix(in oklab, var(--lampc) 50%, black)); box-shadow: 0 0 10px 2px color-mix(in oklab, var(--lampc) 70%, transparent), 0 0 26px 7px color-mix(in oklab, var(--lampc) 32%, transparent); }
+.lp-led { width: 13px; height: 13px; border-radius: 50%; background: var(--chr); box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.lp-led::before { content: ''; position: absolute; inset: 2.5px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, color-mix(in oklab, var(--lampc) 42%, #000), color-mix(in oklab, var(--lampc) 14%, #000)); }
+.on .lp-led::before { background: radial-gradient(circle at 40% 35%, #fff 0 12%, var(--lampc) 48%, color-mix(in oklab, var(--lampc) 50%, black)); box-shadow: 0 0 6px 1px var(--lampc), 0 0 14px 4px color-mix(in oklab, var(--lampc) 40%, transparent); }
+.lp-eye { --eye: 80deg; width: 30px; height: 30px; border-radius: 50%; background: var(--chr); box-shadow: 0 2px 3px rgba(0,0,0,.6); }
+.lp-eye::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: radial-gradient(circle, #050505 0 24%, transparent 25%), #0b120e; box-shadow: inset 0 0 4px #000; }
+.on .lp-eye::before { background: radial-gradient(circle, #0a0a0a 0 23%, rgba(0,0,0,.4) 24% 30%, transparent 31% 78%, rgba(0,0,0,.55) 100%), conic-gradient(from calc(var(--eye) / -2), #04100a 0 var(--eye), color-mix(in oklab, var(--lampc) 70%, white) 0 calc(var(--eye) + 8deg), var(--lampc) 0 calc(360deg - 8deg), color-mix(in oklab, var(--lampc) 70%, white) 0); box-shadow: inset 0 0 4px #000, 0 0 10px color-mix(in oklab, var(--lampc) 55%, transparent); }
+.lp-ring { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 3px #1c1d21, 0 0 0 1px rgba(255,255,255,.1); }
+.on .lp-ring { box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--lampc) 55%, white), 0 0 8px var(--lampc), inset 0 0 7px var(--lampc), 0 0 0 1px rgba(255,255,255,.1); }
+.lp-bead { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #1b1b1f, #08080a); box-shadow: 0 0 0 2px #2b2c31, 0 0 0 3px #000; }
+.on .lp-bead { background: radial-gradient(circle at 42% 36%, #fff 0 8%, color-mix(in oklab, var(--lampc) 50%, white) 22%, var(--lampc) 52%, color-mix(in oklab, var(--lampc) 30%, black)); box-shadow: 0 0 0 2px #2b2c31, 0 0 0 3px #000, 0 0 12px 2px var(--lampc); animation: bead 2.6s ease-in-out infinite; }
+@keyframes bead { 50% { box-shadow: 0 0 0 2px #2b2c31, 0 0 0 3px #000, 0 0 20px 5px var(--lampc); } }
+.lp-slit { width: 30px; height: 4px; border-radius: 2px; background: #0d0d10; box-shadow: inset 0 1px 1px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.09); }
+.on .lp-slit { background: linear-gradient(90deg, transparent, var(--lampc) 18%, #fff 50%, var(--lampc) 82%, transparent); box-shadow: 0 0 8px var(--lampc), 0 0 18px color-mix(in oklab, var(--lampc) 60%, transparent); }
+.lp-hex { width: 18px; height: 20px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: #2a2b30; }
+.lp-hex::before { content: ''; position: absolute; inset: 2px; clip-path: inherit; background: #101115; }
+.on .lp-hex { background: color-mix(in oklab, var(--lampc) 60%, white); filter: drop-shadow(0 0 5px var(--lampc)); }
+.on .lp-hex::before { background: radial-gradient(circle at 45% 40%, #fff 0 10%, var(--lampc) 55%, color-mix(in oklab, var(--lampc) 40%, black)); }
+.lp-vu { width: 74px; height: 44px; border-radius: 3px; background: #15130f; box-shadow: 0 0 0 2px #0b0b0c, 0 0 0 3px rgba(255,255,255,.18), inset 0 2px 6px rgba(0,0,0,.8); overflow: hidden; }
+.lp-vu svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lp-vu .vf { fill: #2a2418; } .on .lp-vu .vf { fill: url(#vu-lit); }
+.lp-vu .sc { fill: none; stroke: #1b140a; stroke-width: 1; } .lp-vu .scr { fill: none; stroke: #b3261e; stroke-width: 1.6; }
+.lp-vu text { font: 700 6px var(--font-mono); fill: #1b140a; }
+.lp-vu .nd { stroke: #111; stroke-width: 1.1; stroke-linecap: round; }
+
+/* pedal footswitches */
+.fs { position: relative; border: 0; padding: 0; background: none; cursor: pointer; flex: none; display: block; }
+.fs > i { position: absolute; display: block; pointer-events: none; }
+.fs-3pdt { width: 40px; height: 40px; }
+.fs-3pdt .nut { inset: 0; background: var(--chr); clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%); }
+.fs-3pdt .cap { inset: 7px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffffff, #c9ced3 40%, #7c838a 90%); box-shadow: 0 2px 3px rgba(0,0,0,.6), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(0,0,0,.4); transition: transform .08s; }
+.fs-3pdt:active .cap { transform: scale(.92); }
+.fs-ring { width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 45% 40%, #2c2d32, #0d0d10); box-shadow: 0 0 0 3px #1a1b1f, 0 0 0 4px rgba(255,255,255,.1), 0 3px 6px rgba(0,0,0,.6); }
+.on .fs-ring { box-shadow: 0 0 0 3px color-mix(in oklab, var(--fin) 60%, white), 0 0 12px 2px var(--fin), 0 0 0 4px rgba(255,255,255,.12), 0 3px 6px rgba(0,0,0,.6); }
+.fs-ring:active { transform: scale(.95); }
+.fs-pad { position: absolute !important; left: 6px; right: 6px; bottom: 6px; top: 46%; border-radius: 6px 6px 12px 12px; background: repeating-linear-gradient(180deg, #252528 0 3px, #101012 3px 6px); box-shadow: inset 0 2px 0 rgba(255,255,255,.08), 0 -2px 0 rgba(0,0,0,.45), 0 2px 3px rgba(0,0,0,.5); display: flex !important; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 12px; }
+.fs-pad:active { transform: translateY(1px); }
+.fs-pad .strip { position: static; padding: 3px 10px; border-radius: 2px; background: #0b0b0c; color: #f4f4f2; font: 700 11px/1 'Barlow Semi Condensed', sans-serif; letter-spacing: .1em; text-transform: uppercase; box-shadow: 0 1px 0 rgba(255,255,255,.08); }
+.fs-pad .strip small { display: block; margin-top: 2px; font-size: 7.5px; font-weight: 500; letter-spacing: .14em; opacity: .7; text-align: center; }
+
+/* the pedal */
+.pedal { flex: none; width: 154px; }
+.pedal.new .pface { height: 254px; }
+.k-hammer.pedal { width: 180px; }
+.pknobs .cc { min-width: 0; gap: 0; }
+.pknobs .cc .lb { order: 2; margin-top: 1px; }
+.pface { position: relative; height: 226px; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 10px 14px; border-radius: 10px; overflow: hidden; isolation: isolate; background: #222; box-shadow: 0 16px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.55); }
+:root[data-look="daylight"] .pface { box-shadow: 0 14px 22px rgba(50,35,20,.26), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.55); }
+.pface > * { position: relative; z-index: 4; }
+.pplate { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 6px 2px 5px; border-radius: 4px; }
+.pknobs { display: flex; justify-content: center; gap: 0; }
+.pknobs .cc { min-width: 40px; }
+.pknobs .cc.wide { min-width: 46px; }
+.pname { font: 700 12px/1.1 var(--kit-font); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); text-align: center; white-space: nowrap; }
+.pface .fs { margin-top: auto; }
+.pface .gz { flex: 1 1 auto; width: 100%; min-height: 40px; padding: 0; }
+.pedal .pled { display: flex; align-items: center; gap: 5px; }
+
+/* the cabinet (on the stage) */
+.cab { flex: 0 0 196px; display: flex; }
+.cab .cabinet { flex: 1; display: flex; }
+.cab .face { flex: 1; }
+.cab .gz { flex: 1 1 auto; min-height: 140px; justify-content: space-around; }
+.cab .cplate { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 8px; padding: 8px 10px; font-size: 11px; color: var(--ink); align-items: center; }
+.cab .cplate .lb { grid-column: 1; } .cab .cplate b { grid-column: 1; font: 600 11px/1.25 var(--kit-font); letter-spacing: .04em; overflow-wrap: anywhere; } .cab .cplate small { grid-column: 1; font-size: 9.5px; opacity: .78; }
+.cab .cplate .cc { grid-column: 2; grid-row: 1 / 4; min-width: 0; }
+.spk { width: 64px; height: 64px; border-radius: 50%; box-shadow: inset 0 0 0 8px rgba(0,0,0,.2), inset 0 0 0 20px rgba(0,0,0,.09), inset 0 0 12px rgba(0,0,0,.3); }
+
+/* ---------- the classic kits ---------- */
+.k-brit { --ink:#1b1306; --kit-font:'Oswald', sans-serif; }
+.k-brit .cabinet { background: var(--tx-grain), #141316; }
+.k-brit .face { border: 2px solid #ece6d6; }
+.k-brit .gz { order: -1; background: var(--tx-basket); background-size: 12px 12px; box-shadow: inset 0 -3px 4px rgba(0,0,0,.45); }
+.k-brit .ui, .k-brit .pplate, .k-brit.cab .cplate { background: var(--tx-brushed), linear-gradient(180deg, var(--m-hi) 0%, var(--m-mid) 40%, var(--m-lo) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 3px color-mix(in oklab, var(--m-lo) 70%, transparent), inset 0 0 0 4px rgba(0,0,0,.6); }
+.k-brit .logo { font: 400 46px/1 'Yellowtail', cursive; color: #f6f2e7; text-shadow: 0 2px 0 rgba(0,0,0,.65), 0 0 1px #fff; transform: rotate(-5deg); padding: 0 6px 4px; }
+.k-brit .sub { color: var(--m-hi); }
+.k-brit .pface { background: var(--tx-grain), linear-gradient(180deg, #232226, #121114); }
+.k-brit .pname { color: var(--m-hi); font-weight: 600; }
+
+.k-black { --ink:#f2f1ec; }
+.k-black .cabinet { background: var(--tx-grain), #18171a; }
+.k-black .ui, .k-black .pplate, .k-black.cab .cplate { background: linear-gradient(180deg, #2b2b30 0, #0f0f11 5px, #060607 100%); box-shadow: inset 0 3px 0 var(--m-hi), inset 0 4px 0 var(--m-lo); }
+.k-black .ui { padding-top: 15px; }
+.k-black .gz { background: linear-gradient(180deg, rgba(0,0,0,.22), transparent 30%, transparent 72%, rgba(0,0,0,.3)), var(--tx-sparkle), var(--tx-silver); background-size: auto, 140px 140px, 6px 6px; box-shadow: inset 0 3px 5px rgba(0,0,0,.45); }
+.k-black .logo { font: 400 48px/1.1 'Yellowtail', cursive; padding: 0 10px 6px 4px; background: linear-gradient(180deg, #ffffff 0%, #d3d7dc 42%, #6f767e 52%, #eef0f2 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 1px #000) drop-shadow(0 1px 0 #111) drop-shadow(0 2px 3px rgba(0,0,0,.7)); transform: rotate(-7deg); }
+.k-black .sub { color: #1d1f22; opacity: .85; }
+.k-black .pface { background: linear-gradient(180deg, #1d1d20, #09090a); }
+
+.k-tweed { --ink:#1d1509; }
+.k-tweed .cabinet { background: linear-gradient(180deg, rgba(150,95,25,.18), rgba(80,45,10,.38)), var(--tx-tweed); background-size: auto, 14px 14px; }
+.k-tweed .ui, .k-tweed .pplate, .k-tweed.cab .cplate { background: var(--tx-brushed), linear-gradient(180deg, #f6f8fa, #bfc4ca 38%, #e6e9ec 60%, #8f959c); box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(0,0,0,.35); }
+.k-tweed .gz { background: var(--tx-oxblood); background-size: 6px 10px; box-shadow: inset 0 3px 5px rgba(0,0,0,.5); }
+.k-tweed .logo { font: 400 42px/1.1 'Yellowtail', cursive; color: color-mix(in oklab, var(--fin) 45%, #f6ead0); text-shadow: 0 1px 0 #2a0c08, 0 2px 3px rgba(0,0,0,.6); transform: rotate(-4deg); padding: 0 6px 4px; }
+.k-tweed .sub { color: #e7d6b0; }
+.k-tweed .pface { background: linear-gradient(180deg, rgba(150,95,25,.2), rgba(80,45,10,.4)), var(--tx-tweed); background-size: auto, 14px 14px; }
+
+.k-boost { --ink:#1b1007; --kit-font:'Oswald', sans-serif; }
+.k-boost .cabinet { background: var(--tx-grain), #121113; }
+.k-boost .face { border: 2px solid #d8ccb2; }
+.k-boost .ui, .k-boost .pplate, .k-boost.cab .cplate { background: var(--tx-brushed), linear-gradient(180deg, var(--m-hi) 0%, var(--m-mid) 46%, var(--m-lo) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 0 rgba(0,0,0,.4); }
+.k-boost .gz { background: var(--tx-diamond); background-size: 18px 18px; box-shadow: inset 0 3px 5px rgba(0,0,0,.5); }
+.k-boost .logo { font: 800 26px/1 'Big Shoulders Display', sans-serif; letter-spacing: .2em; color: #efe6d2; padding: 6px 16px 6px 20px; background: linear-gradient(180deg, #1b191c, #0b0a0c); box-shadow: 0 0 0 1px #c9b58a, 0 3px 4px rgba(0,0,0,.6); clip-path: polygon(7% 0, 93% 0, 100% 100%, 0 100%); }
+.k-boost .sub { color: #e8dcc0; }
+.k-boost .pface { background: var(--tx-brushed), linear-gradient(180deg, var(--m-hi), var(--m-mid) 50%, var(--m-lo)); }
+.k-boost .pplate { background: none; box-shadow: none; }
+
+.k-plate { --ink:#eef0f3; }
+.k-plate .cabinet { background: var(--tx-grain), #0f0f11; }
+.k-plate .gz { order: -1; background: var(--tx-perf); background-size: 8px 8px; box-shadow: inset 0 -3px 5px rgba(0,0,0,.5); }
+.k-plate .ui { padding: 16px 20px; background: var(--tx-tread), var(--tx-brushed), linear-gradient(180deg, #e4e8eb, #9aa1a8); background-size: 22px 22px, auto, auto; }
+.k-plate .ui::before { content: ''; position: absolute; inset: 11px 12px; border-radius: 7px; background: linear-gradient(180deg, #1a1a1d, #0b0b0d); box-shadow: 0 1px 0 rgba(255,255,255,.55), 0 -1px 0 rgba(0,0,0,.35), inset 0 1px 3px rgba(0,0,0,.9); z-index: -1; }
+.k-plate .logo { font: 900 italic 40px/1 'Big Shoulders Display', sans-serif; letter-spacing: .04em; background: linear-gradient(180deg, #ffffff, #c7ccd1 45%, #5f666d 55%, #e9ecef); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 1px #000); padding-right: 6px; }
+.k-plate .sub { color: #c7ccd1; }
+.k-plate .pface { background: var(--tx-tread), linear-gradient(180deg, #e4e8eb, #8d949b); background-size: 22px 22px, auto; }
+.k-plate .pplate, .k-plate.cab .cplate { background: linear-gradient(180deg, #1a1a1d, #0b0b0d); box-shadow: 0 1px 0 rgba(255,255,255,.55), inset 0 1px 3px rgba(0,0,0,.9); }
+.k-plate .pname { color: #16181b; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+
+.k-wood { --ink:#efe3c8; }
+.k-wood .cabinet { padding: 12px; border-radius: 6px; background: var(--tx-wood); background-size: 480px 220px; box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,225,180,.28), inset 0 -3px 6px rgba(0,0,0,.4); }
+.k-wood .face { border-radius: 3px; box-shadow: 0 0 0 2px rgba(0,0,0,.45); }
+.k-wood .gz { order: -1; background: var(--tx-wicker); background-size: 14px 14px; box-shadow: inset 0 -3px 6px rgba(0,0,0,.5), inset 0 3px 6px rgba(0,0,0,.4); }
+.k-wood .ui, .k-wood .pplate, .k-wood.cab .cplate { background: linear-gradient(180deg, #1e1d20, #0b0b0c); box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+.k-wood .logo { font: 800 20px/1 'Big Shoulders Display', sans-serif; letter-spacing: .26em; color: #2a1c08; padding: 9px 18px 9px 22px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, color-mix(in oklab, var(--fin) 40%, white), var(--fin) 45%, var(--m-lo)); box-shadow: 0 2px 4px rgba(0,0,0,.6), inset 0 0 0 1.5px rgba(0,0,0,.35); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+.k-wood .sub { color: #f1e2c2; text-shadow: 0 1px 2px #000; }
+.k-wood .pface { background: linear-gradient(90deg, transparent 0 12px, #121113 12px calc(100% - 12px), transparent 0), var(--tx-wood); background-size: auto, 480px 220px; }
+.k-wood .eq { display: flex; gap: 2px; padding: 0 6px; border-left: 1px solid rgba(239,227,200,.18); border-right: 1px solid rgba(239,227,200,.18); }
+
+.k-gain { --ink:#ebebee; --kit-font:'Oswald', sans-serif; }
+.k-gain .cabinet { background: var(--tx-grain), #0e0e10; }
+.k-gain .gz { order: -1; background: var(--tx-cloth); background-size: 3px 3px; box-shadow: inset 0 -3px 5px rgba(0,0,0,.6); }
+.k-gain .ui, .k-gain .pplate, .k-gain.cab .cplate { background: var(--tx-brushed-d), linear-gradient(180deg, #2c2d31, #141417 60%, #0b0b0d); box-shadow: inset 0 3px 0 var(--fin), inset 0 4px 0 rgba(0,0,0,.6), inset 0 5px 0 rgba(255,255,255,.08); }
+.k-gain .ui { padding-top: 16px; }
+.k-gain .logo { font: 900 italic 44px/1 'Big Shoulders Display', sans-serif; letter-spacing: .02em; color: #f4f4f6; text-shadow: 3px 3px 0 var(--fin), 0 4px 6px rgba(0,0,0,.6); transform: skewX(-8deg); padding: 0 8px 0 2px; }
+.k-gain .sub { color: #c9c9ce; }
+.k-gain .pface { background: var(--tx-brushed-d), linear-gradient(180deg, #2a2b2f, #0c0c0e); }
+.k-gain .pface::before { content: ''; position: absolute; left: 0; right: 0; top: 112px; height: 4px; background: var(--fin); z-index: 1; box-shadow: 0 0 8px color-mix(in oklab, var(--fin) 50%, transparent); }
+
+.k-compact { --ink:var(--fin-ink); }
+.k-compact .cabinet { padding: 7px; border-radius: 13px; background: var(--tx-grain-d), linear-gradient(180deg, var(--m-hi), var(--fin) 28%, var(--m-lo)); }
+.k-compact .face { border-radius: 8px; }
+.k-compact .ui, .k-compact.cab .cplate { background: var(--tx-grain-d), linear-gradient(180deg, color-mix(in oklab, var(--fin) 82%, white), var(--fin)); }
+.k-compact .gz { background: var(--tx-square); background-size: 6px 6px; box-shadow: inset 0 3px 5px rgba(0,0,0,.6); }
+.k-compact .logo { font: 700 13px/1 'Barlow Semi Condensed', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #f2f2f0; padding: 5px 10px; background: #0b0b0c; border-radius: 2px; box-shadow: 0 1px 0 rgba(255,255,255,.1); }
+.k-compact .sub { color: #d9d9d9; }
+.k-compact .pedal, .k-compact.pedal { width: 128px; }
+.k-compact .pface { padding: 10px 8px; background: var(--tx-grain-d), linear-gradient(180deg, color-mix(in oklab, var(--fin) 80%, white), var(--fin) 40%, var(--m-lo)); }
+.k-compact .pled .lb { font-size: 7px; }
+
+.k-hammer { --ink:var(--fin-ink); --kit-font:'Big Shoulders Display', sans-serif; }
+.k-hammer .cabinet, .k-hammer .pface { background: var(--tx-hammer), linear-gradient(180deg, color-mix(in oklab, var(--fin) 85%, white), var(--fin) 50%, var(--m-lo)); background-size: 200px 200px, auto; background-blend-mode: soft-light, normal; }
+.k-hammer .ui, .k-hammer.cab .cplate { background: var(--tx-hammer), linear-gradient(180deg, color-mix(in oklab, var(--fin) 85%, white), var(--fin)); background-size: 200px 200px, auto; background-blend-mode: soft-light, normal; box-shadow: inset 0 -1px 0 rgba(0,0,0,.35); }
+.k-hammer .gz { background: var(--tx-cloth); background-size: 3px 3px; box-shadow: inset 0 3px 5px rgba(0,0,0,.6); }
+.k-hammer .logo { font: 900 44px/.9 'Big Shoulders Display', sans-serif; color: var(--fin); -webkit-text-stroke: 1.5px color-mix(in oklab, var(--fin) 50%, white); letter-spacing: -.01em; text-transform: lowercase; }
+.k-hammer .sub { color: #d8d8d8; }
+.k-hammer .pname { font-size: 20px; font-weight: 900; letter-spacing: .02em; text-transform: lowercase; }
+.k-hammer .lb { font-size: 10px; letter-spacing: .08em; font-weight: 700; }
+
+.k-rack { --ink:var(--fin-ink); }
+.k-rack .cabinet { padding: 0; background: none; box-shadow: none !important; }
+.k-rack .face { padding: 0 40px; border-radius: 3px; background: var(--tx-brushed), var(--tx-brushed-d), linear-gradient(180deg, var(--m-hi), var(--m-mid) 40%, var(--m-lo)); box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.4), 0 0 0 1px rgba(0,0,0,.6); overflow: visible; }
+.k-rack .face::before, .k-rack .face::after { content: ''; position: absolute; top: 12px; bottom: 12px; width: 9px; border-radius: 5px; background: #0d0d0f; box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255,255,255,.3); }
+.k-rack .face::before { left: 12px; } .k-rack .face::after { right: 12px; }
+.k-rack .ear { position: absolute; top: 10px; bottom: 10px; width: 14px; border-radius: 8px; border: 5px solid; border-color: #d7dbdf #8b9197 #6e747a #c3c8cd; background: transparent; z-index: 5; box-shadow: 0 3px 4px rgba(0,0,0,.5); }
+.k-rack .ear.l { left: 24px; border-left-width: 6px; } .k-rack .ear.r { right: 24px; }
+.k-rack .ui { padding: 12px 18px 8px; }
+.k-rack .gz { min-height: 38px; padding: 4px 18px 12px; justify-content: space-between; }
+.k-rack .vents { flex: 1; height: 20px; max-width: 280px; background: repeating-linear-gradient(90deg, rgba(0,0,0,.7) 0 3px, transparent 3px 9px); border-radius: 2px; box-shadow: 0 1px 0 rgba(255,255,255,.25); -webkit-mask: linear-gradient(180deg, #000, #000); mask: linear-gradient(180deg, #000, #000); }
+.k-rack .logo { font: 700 13px/1 var(--font-display, 'Lexend Giga'), sans-serif; font-family: 'Lexend Giga', sans-serif; letter-spacing: .3em; text-transform: uppercase; color: var(--fin-ink); }
+.k-rack .sub { font-family: 'Geist Mono', monospace; letter-spacing: .06em; text-transform: none; color: var(--fin-ink); }
+.k-rack .pface { background: var(--tx-brushed), var(--tx-brushed-d), linear-gradient(180deg, var(--m-hi), var(--m-mid) 40%, var(--m-lo)); }
+.k-rack .pname { font-family: 'Lexend Giga', sans-serif; font-size: 9px; letter-spacing: .26em; }
+
+/* the classic cabinets' grilles on the stage */
+.cab.k-brit .gz, .cab.k-plate .gz, .cab.k-wood .gz, .cab.k-gain .gz { order: 0; }
+
+/* ---------- the new kits: the energy behind a cut plate, a mesh between ---------- */
+.hw.new .face { background: #040306; }
+.hw.new .pface { background: #040306; }
+.en { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+.mesh { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.plw { position: absolute; inset: 0; z-index: 2; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,.92)) drop-shadow(0 0 1px rgba(0,0,0,.8)); }
+.pl { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.dec { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
+.hw.new .ui, .hw.new .gz, .hw.new .cplate, .hw.new .pplate { background: none; }
+.hw.new .logo { font: 600 15px/1 'Lexend Giga', sans-serif; letter-spacing: .34em; color: #ece9f1; text-shadow: 0 1px 0 rgba(255,255,255,.08), 0 -1px 0 rgba(0,0,0,.9); }
+.hw.new .sub { font-family: 'Geist Mono', monospace; letter-spacing: .04em; text-transform: none; font-size: 10px; color: #b9b4c2; }
+.hw.new .lb { font-family: 'Lexend Giga', sans-serif; font-size: 7.5px; letter-spacing: .2em; color: #d9d5e0; }
+.hw.new .st { font-family: 'Geist Mono', monospace; font-size: 7.5px; letter-spacing: .02em; text-transform: none; color: #a9a4b2; }
+.hw.new .pname { font: 600 9px/1 'Lexend Giga', sans-serif; letter-spacing: .3em; color: #ece9f1; }
+.hw.new .pwr { border-left-color: rgba(255,255,255,.1); }
+.hw.new .cabinet { background: linear-gradient(180deg, #2a2b31, #131418); box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(255,255,255,.04); }
+.hw.new .face { border-radius: 6px; box-shadow: 0 0 0 1px rgba(0,0,0,.8); }
+
+.mat-gunmetal { background: var(--tx-brushed), linear-gradient(180deg, #3d3f46 0%, #25272c 42%, #1b1c20 100%); }
+.mat-satin { background: var(--tx-grain), linear-gradient(180deg, #1f1f23, #131316); }
+.mat-graphite { background: repeating-linear-gradient(45deg, rgba(255,255,255,.035) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(0,0,0,.25) 0 1px, transparent 1px 4px), linear-gradient(180deg, #33343a, #1d1e22); }
+.mat-piano { background: linear-gradient(115deg, transparent 0 38%, rgba(255,255,255,.07) 44%, transparent 52%), linear-gradient(180deg, #121216, #050507); }
+.mat-glass { background: linear-gradient(115deg, transparent 0 30%, rgba(255,255,255,.05) 38%, transparent 48%), linear-gradient(180deg, #121519, #090a0d); }
+.mat-titanium { background: var(--tx-brushed), linear-gradient(90deg, rgba(90,110,170,.0) 0%, rgba(90,110,170,.22) 55%, rgba(200,150,90,.18) 80%, rgba(90,110,170,.1)), linear-gradient(180deg, #6c7079, #4a4e56 45%, #3a3d44); }
+.mat-carbon { background: linear-gradient(180deg, rgba(255,255,255,.07), transparent 40%, rgba(0,0,0,.25)), var(--tx-carbon); background-size: auto, 12px 12px; }
+.mat-crinkle { background: var(--tx-crinkle), #1b1b1d; background-size: 140px 140px, auto; background-blend-mode: multiply, normal; }
+.mat-blackchrome { background: linear-gradient(180deg, #55585f 0%, #17181b 30%, #2c2e33 52%, #0b0b0d 70%, #202226 100%); }
+.hw.new .cabinet.mat-carbon, .hw.new .cabinet.mat-titanium, .hw.new .cabinet.mat-blackchrome, .hw.new .cabinet.mat-crinkle { }
+
+.k-reactor .cabinet { background: linear-gradient(180deg, #34363d, #17181c); }
+.k-tesla .cabinet { background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 1px, transparent 1px 4px), linear-gradient(180deg, #2c2d32, #141518); }
+.k-warp .cabinet { background: linear-gradient(180deg, #1a1a1f, #050506); box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px #9aa0a6, inset 0 0 0 2px #000, inset 0 2px 0 rgba(255,255,255,.3); }
+.k-circuit .cabinet { background: linear-gradient(180deg, #141619, #08090b); box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px color-mix(in oklab, var(--fin) 45%, transparent), inset 0 1px 0 rgba(255,255,255,.12); }
+.k-jet .cabinet { background: var(--tx-brushed), linear-gradient(180deg, #5d626b, #33363c); }
+.k-carbon .cabinet { background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 40%, rgba(0,0,0,.3)), var(--tx-carbon); background-size: auto, 12px 12px; }
+.k-valve .cabinet { background: var(--tx-crinkle), #19191b; background-size: 140px 140px, auto; background-blend-mode: multiply, normal; box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px #000, inset 0 0 0 3px rgba(200,205,210,.25); }
+.k-ferro .cabinet { background: linear-gradient(180deg, #5b5e65 0%, #18191c 32%, #2c2e33 55%, #0b0b0d 100%); }
+
+/* ---------- the builder, the questions, the summary ---------- */
+.builder { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 310px); gap: 16px 18px; padding: 16px; border-radius: calc(var(--r) + 4px); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.bctl { display: grid; gap: 10px; align-content: start; }
+.bctl label { display: grid; gap: 4px; font-size: 11.5px; color: var(--text-faint); }
+.bctl select { font: 500 12.5px var(--font-ui); color: var(--text); background: var(--field); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 6px 10px; width: 100%; }
+.qs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.q { display: grid; gap: 10px; align-content: start; padding: 16px; border-radius: var(--r); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.q h3 { font-size: calc(11.5px * var(--d-scale)); color: var(--text); line-height: 1.4; text-transform: none; letter-spacing: .02em; font-family: var(--font-ui); font-size: 14px; font-weight: 600; }
+.q .why { color: var(--text-dim); font-size: 12.5px; }
+.opts { display: grid; gap: 6px; }
+.opt { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; text-align: left; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--panel-2); color: var(--text-dim); cursor: pointer; font-size: 12.5px; }
+.opt:hover { border-color: var(--line-2); color: var(--text); }
+.opt .rd { width: 14px; height: 14px; margin-top: 2px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-faint); }
+.opt[aria-pressed="true"] { border-color: color-mix(in oklab, var(--accent) 60%, transparent); background: color-mix(in oklab, var(--accent) 10%, var(--panel-2)); color: var(--text); }
+.opt[aria-pressed="true"] .rd { box-shadow: inset 0 0 0 4px var(--accent); }
+.opt b { color: var(--text); font-weight: 600; }
+.opt .rec { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.sum { padding: 14px 16px; border-radius: var(--r); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); display: grid; gap: 6px; align-content: start; }
+.sum .big { font: 600 22px/1 var(--font-display); letter-spacing: .04em; color: var(--text); font-variant-numeric: tabular-nums; }
+.sum ul { margin: 0; padding-left: 16px; color: var(--text-dim); font-size: 12px; }
+.gen { display: grid; gap: 8px; }
+.foot { color: var(--text-faint); font-size: 11.5px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 4px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; max-width: calc(100vw - 32px); padding: 9px 14px; border-radius: var(--r-sm); background: var(--popover); color: var(--text); box-shadow: 0 10px 30px rgba(0,0,0,.4), inset 0 0 0 1px var(--line-2); font-size: 12.5px; }
+
+/* ---------- narrower screens ---------- */
+@media (max-width: 1080px) {
+  .kit, .builder { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'show' 'info'; }
+  .intro { grid-template-columns: minmax(0, 1fr); }
+  .mchain { flex-wrap: wrap; }
+  .mchain > .amp { order: -1; flex-basis: 100%; }
+  .mchain > .cab { flex: 1 1 180px; }
+}
+@media (max-width: 640px) {
+  .floor { padding: 14px 10px; gap: 12px; justify-content: center; }
+  .ui { padding: 10px 8px 8px; }
+  .pwr { padding-left: 0; border-left: 0; }
+  .gz { padding: 8px 10px; min-height: 84px; }
+  .k-brit .logo, .k-black .logo, .k-tweed .logo { font-size: 36px; }
+  .k-gain .logo, .k-plate .logo, .k-hammer .logo { font-size: 32px; }
+  .k-rack .face { padding: 0 26px; } .k-rack .ear.l { left: 14px; } .k-rack .ear.r { right: 14px; } .k-rack .face::before { left: 6px; } .k-rack .face::after { right: 6px; }
+  .save { margin-left: 0; flex-basis: 100%; white-space: normal; }
+  .labbar-in .ctl { flex-wrap: wrap; }
+  .kit, .builder { padding: 12px; }
+  .mboard { padding: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <pattern id="mesh-hex" width="12" height="20.785" patternUnits="userSpaceOnUse"><path d="M6 0L12 3.464V10.392L6 13.856L0 10.392V3.464Z M6 13.856V20.785" fill="none" stroke="#0a0a0d" stroke-width="1.1"/><path d="M6 .6L11.4 3.7" fill="none" stroke="rgba(255,255,255,.09)" stroke-width=".5"/></pattern>
+  <pattern id="mesh-perf" width="7" height="12.124" patternUnits="userSpaceOnUse"><path fill-rule="evenodd" fill="#0c0c0f" d="M0 0H7V12.124H0Z M-2.75 0a2.75 2.75 0 1 0 5.5 0a2.75 2.75 0 1 0 -5.5 0Z M4.25 0a2.75 2.75 0 1 0 5.5 0a2.75 2.75 0 1 0 -5.5 0Z M0.75 6.062a2.75 2.75 0 1 0 5.5 0a2.75 2.75 0 1 0 -5.5 0Z M-2.75 12.124a2.75 2.75 0 1 0 5.5 0a2.75 2.75 0 1 0 -5.5 0Z M4.25 12.124a2.75 2.75 0 1 0 5.5 0a2.75 2.75 0 1 0 -5.5 0Z"/></pattern>
+  <pattern id="mesh-weave" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1.5H6M0 4.5H6M1.5 0V6M4.5 0V6" stroke="#0b0b0e" stroke-width="1.1"/><path d="M0 1H6M1 0V6" stroke="rgba(255,255,255,.07)" stroke-width=".5"/></pattern>
+  <pattern id="mesh-expanded" width="18" height="10" patternUnits="userSpaceOnUse"><path d="M0 5L9 0L18 5L9 10Z" fill="none" stroke="#0c0c0f" stroke-width="1.6"/><path d="M0.8 4.4L9 -.2" fill="none" stroke="rgba(255,255,255,.08)" stroke-width=".6"/></pattern>
+  <linearGradient id="chr-v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6f8fa"/><stop offset=".45" stop-color="#9aa0a7"/><stop offset=".55" stop-color="#4c5259"/><stop offset="1" stop-color="#d9dde1"/></linearGradient>
+  <linearGradient id="chr-d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#8e949b"/><stop offset=".6" stop-color="#3e434a"/><stop offset="1" stop-color="#c9ced3"/></linearGradient>
+  <radialGradient id="spin-g" cx=".42" cy=".36" r=".7"><stop offset="0" stop-color="#f5f7fa"/><stop offset=".3" stop-color="#b6bcc4"/><stop offset=".7" stop-color="#5b6169"/><stop offset="1" stop-color="#25282d"/></radialGradient>
+  <radialGradient id="bolt-g" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#9aa0a6"/><stop offset="1" stop-color="#3b4046"/></radialGradient>
+  <linearGradient id="ck-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient>
+  <linearGradient id="glass-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset=".38" stop-color="#fff" stop-opacity=".03"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <radialGradient id="vu-lit" cx=".5" cy=".9" r=".9"><stop offset="0" stop-color="#ffe7a8"/><stop offset=".6" stop-color="#f2c56a"/><stop offset="1" stop-color="#b98a35"/></radialGradient>
+</defs></svg>
+
+<div class="labbar">
+  <div class="bstrip"></div>
+  <div class="wrap labbar-in">
+    <span class="brandmark">
+      <svg class="rig-mark" viewBox="-50 -50 100 100" width="28" height="28" aria-hidden="true">
+        <rect class="m-body" x="-19" y="-29" width="38" height="58" rx="6"/>
+        <circle class="m-ink" cx="-8.5" cy="-15.5" r="6.2"/><circle class="m-ink" cx="8.5" cy="-15.5" r="6.2"/>
+        <path class="m-pupil" d="M-8.5,-15.5 L-10.9,-20.2 M8.5,-15.5 L6.1,-20.2"/>
+        <circle class="m-ink" cx="0" cy="-2.5" r="2.4"/>
+        <circle class="m-ring" cx="0" cy="14" r="8.4"/><circle class="m-ink" cx="0" cy="14" r="4.4"/>
+        <path class="m-hex" d="M0,-46 L39.8,-23 L39.8,23 L0,46 L-39.8,23 L-39.8,-23 Z"/>
+      </svg>
+      <span class="bn"><span class="c">CRBN</span><span class="n">Rig</span><span class="l">Hardware Lab</span></span>
+    </span>
+    <div class="ctl"><span id="fin-l">Finish</span><div class="seg" id="finish" role="group" aria-labelledby="fin-l"></div></div>
+    <div class="ctl"><span id="look-l">Look</span><div class="seg" id="look" role="group" aria-labelledby="look-l"></div></div>
+    <div class="ctl">
+      <button class="btn" id="play" type="button" aria-pressed="true" title="A recorded riff's level drives the lights and the energy. No sound plays."><span class="minimeter" id="mini" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="play-t">Playing</span></button>
+      <button class="btn" id="motion" type="button" aria-pressed="true">Motion</button>
+    </div>
+    <span class="save" id="save" data-s="wait"><i></i><span id="save-t">Reaching your saved picks…</span></span>
+  </div>
+</div>
+
+<main class="wrap">
+  <section class="intro" aria-labelledby="intro-h">
+    <div>
+      <h1 id="intro-h">Knobs, switches, lights and faceplates</h1>
+      <p class="lede">Nineteen hardware kits for CRBN Rig: each draws the amp and its pedals as one family, with the real
+        controls (Input, Gate, Bass, Middle, Treble and Output, the Gate and EQ switches, the pilot light with Power and
+        Standby). Ten are classic, after the gear players already know. Nine are new: the energy from Pavillion Hub's
+        logo window sits inside the amp, behind cut faceplates and the meshes between. Turn the knobs, flip the switches,
+        stomp the pedals. Everything on this page is live.</p>
+    </div>
+    <div class="how">
+      <b>How to pick</b>
+      <ul>
+        <li><b>Keep</b>, <b>Maybe</b> or <b>Cut</b> on each kit: the ones you keep become players' choices in the look menu.</li>
+        <li><b>Make it the default</b> on the one Rig opens in. <b>Try it on the page</b> puts a kit on Rig's page above.</li>
+        <li>A note on any kit is saved as you type. The questions at the end settle how the kits behave.</li>
+        <li>Switch the finish, the look and <b>Playing</b> in the bar: a recorded riff drives the lights and the energy (no sound).</li>
+      </ul>
+      <p class="rule">Classic kits are after the gear named, never copies of it: no maker's name, logo, script or panel layout
+        ships, and every amp's name is Rig's or the loaded capture's. Today's page is at
+        <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
+    </div>
+  </section>
+
+  <section class="stage" aria-labelledby="stage-h">
+    <div class="shead">
+      <h2 id="stage-h">On Rig's page</h2>
+      <p>The kit you try sits in the page's real layout: pedals, then the amp, its cabinet and the meters.</p>
+      <span class="sp"></span>
+      <div class="stage-ctl">
+        <button class="btn ghost" type="button" data-stage-step="-1" aria-label="The kit before">&larr;</button>
+        <label class="sr" for="stage-kit" hidden>Kit on the page</label>
+        <select id="stage-kit" aria-label="Kit on the page"></select>
+        <button class="btn ghost" type="button" data-stage-step="1" aria-label="The next kit">&rarr;</button>
+      </div>
+    </div>
+    <div class="mock">
+      <div class="mbar">
+        <span class="brandmark">
+          <svg class="rig-mark" viewBox="-50 -50 100 100" width="22" height="22" aria-hidden="true">
+            <rect class="m-body" x="-19" y="-29" width="38" height="58" rx="6"/>
+            <circle class="m-ink" cx="-8.5" cy="-15.5" r="6.2"/><circle class="m-ink" cx="8.5" cy="-15.5" r="6.2"/>
+            <path class="m-pupil" d="M-8.5,-15.5 L-10.9,-20.2 M8.5,-15.5 L6.1,-20.2"/>
+            <circle class="m-ink" cx="0" cy="-2.5" r="2.4"/>
+            <circle class="m-ring" cx="0" cy="14" r="8.4"/><circle class="m-ink" cx="0" cy="14" r="4.4"/>
+            <path class="m-hex" d="M0,-46 L39.8,-23 L39.8,23 L0,46 L-39.8,23 L-39.8,-23 Z"/>
+          </svg>
+          <span class="bn"><span class="c">CRBN</span><span class="n">Rig</span></span>
+        </span>
+        <span class="status" id="m-status"><i></i><span id="m-status-t">Playing · demo riff</span></span>
+        <span class="tag" id="m-kit">Kit</span>
+      </div>
+      <div class="mboard" id="m-board"></div>
+    </div>
+  </section>
+
+  <nav aria-labelledby="index-h">
+    <div class="shead"><h2 id="index-h">The kits</h2><p>Jump to any kit. The mark on each shows your pick so far.</p></div>
+    <div class="index" id="index"></div>
+  </nav>
+
+  <section class="fam" id="fam-classic" aria-labelledby="classic-h">
+    <div class="shead"><h2 id="classic-h">Classic</h2><p>The visuals players are used to, from British stacks and American combos to the pedals on every board. Each opens in its own colours; the finish in the bar recolours its metal and its light.</p></div>
+    <div class="fam" id="kits-classic"></div>
+  </section>
+
+  <section class="fam" id="fam-new" aria-labelledby="new-h">
+    <div class="shead"><h2 id="new-h">New</h2><p>Energy inside the amp. Each kit puts one of the Hub's logo-window effects (or a new one) behind a faceplate with cutouts, and a mesh between. The energy answers your playing: level, pick attack and the Input knob. A slot of light round every knob shows its setting.</p></div>
+    <div class="fam" id="kits-new"></div>
+  </section>
+
+  <section aria-labelledby="builder-h">
+    <div class="shead"><h2 id="builder-h">Build an energy kit</h2><p>The new kits are made of five parts. Put any together here; if one is better than the kits above, keep it.</p></div>
+    <div class="builder" id="builder">
+      <div class="floor" id="b-floor"></div>
+      <div class="bctl" id="b-ctl"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="q-h">
+    <div class="shead"><h2 id="q-h">Questions</h2><p>How the kits behave once they are in Rig. The recommendation is first in each.</p></div>
+    <div class="qs" id="qs"></div>
+  </section>
+
+  <section aria-labelledby="sum-h">
+    <div class="shead"><h2 id="sum-h">Your picks</h2></div>
+    <div class="summary" id="summary"></div>
+    <div class="gen" style="margin-top:14px">
+      <label class="sec" for="note-general">Anything else</label>
+      <textarea class="note" id="note-general" data-note="general" placeholder="A note on the whole range: what's missing, what to push further…"></textarea>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>CRBN Rig · Hardware Lab · build plan R1 · the energy effects are Pavillion Hub's logo window (Reactor, Heartbeat, Storm, Warp, Circuit, Turbine, Lattice), with Valve and Ferro new here.</span>
+    <span>Based on Neural Amp Modeler by Steven Atkinson. Captures belong to their authors; the names on these amps are examples.</span>
+  </footer>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+'use strict'
+// ---------------------------------------------------------------- the kits
+// own: the kit's own colour (its metal, paint or energy) when the finish is "Kit's own"; lamp: its own light colour.
+// Classic kits are after the gear named, never copies: no maker's name, logo, script or panel layout.
+const KITS = [
+  { id: 'brit', fam: 'classic', name: 'Brit Gold', after: 'Marshall’s plexi and JCM heads', own: '#c9a24e', lamp: '#e5312f',
+    knob: 'cap', scale: '', pwr: 'rocker', tg: 'rocker', lampT: 'jewel', foot: '3pdt', led: 'led', logo: 'Rig',
+    capture: 'Plexi crunch', pedal: 'Overdrive', pedal2: 'Boost',
+    pitch: 'A brushed gold panel along the bottom, a black basketweave grille above it and a white script name: the British stack.',
+    parts: [['Faceplate', 'Brushed gold with a black keyline; black condensed capitals.'], ['Knobs', 'Black knurled top hats with spun-metal caps and a white line.'], ['Switches', 'Black rockers for Power, Standby, Gate and EQ.'], ['Light', 'A big faceted jewel, red.'], ['Cabinet', 'Black levant tolex, white piping, a gold-flecked basketweave grille.'], ['Pedal', 'Black, its knobs on a strip of the gold panel; a chrome stomp switch.']],
+    reach: 'The panel, the knob caps and the jewel.' },
+  { id: 'black', fam: 'classic', name: 'Black Panel', after: 'Fender’s blackface amps of the mid-1960s', own: '#c9ced4', lamp: '#e3342f',
+    knob: 'skirt', scale: 'mark', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'jewel-sm', logo: 'Rig',
+    capture: 'Blackface clean', pedal: 'Boost', pedal2: 'Reverb',
+    pitch: 'A black panel with white legends, numbered skirt knobs and a silver grille with a chrome script name: the American clean.',
+    parts: [['Faceplate', 'Gloss black, a chrome strip along the top, white legends.'], ['Knobs', 'Black skirted knobs numbered 1 to 10, read at the mark above each.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A red jewel.'], ['Cabinet', 'Black tolex and silver sparkle grille cloth.'], ['Pedal', 'Black and chrome to match, with a small jewel.']],
+    reach: 'The strip along the top and the jewel.' },
+  { id: 'tweed', fam: 'classic', name: 'Tweed', after: 'Fender’s tweed amps of the 1950s', own: '#be9851', lamp: '#f0a33a',
+    knob: 'chicken', ck: '#5b3a20', ckLine: '#f1e6cf', scale: 'tweed12', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'jewel-sm', logo: 'Rig',
+    capture: 'Tweed breakup', pedal: 'Fuzz', pedal2: 'Tremolo',
+    pitch: 'Lacquered tweed, a chrome panel scaled 1 to 12, brown pointer knobs and an oxblood grille: the 1950s.',
+    parts: [['Faceplate', 'Chrome with black legends; every knob is scaled 1 to 12.'], ['Knobs', 'Brown pointer knobs with a cream line.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'An amber jewel.'], ['Cabinet', 'Lacquered tweed with an oxblood grille.'], ['Pedal', 'Covered in the same tweed, with the chrome panel.']],
+    reach: 'The jewel and the script name.' },
+  { id: 'boost', fam: 'classic', name: 'Top Boost', after: 'Vox’s AC30', own: '#b8703f', lamp: '#e3342f',
+    knob: 'chicken', ck: '#efe4cb', ckLine: '#2a1a0c', scale: 'ticks', pwr: 'bat black', tg: 'bat black', lampT: 'jewel', foot: '3pdt', led: 'jewel-sm', logo: 'Rig',
+    capture: 'Chime and jangle', pedal: 'Treble boost', pedal2: 'Echo',
+    pitch: 'A copper panel with cream chicken-head knobs over a diamond-pattern grille: the British chime.',
+    parts: [['Faceplate', 'Brushed copper, black condensed legends, ticks round each knob.'], ['Knobs', 'Cream chicken heads with a dark line.'], ['Switches', 'Black-tipped toggles.'], ['Light', 'A red jewel.'], ['Cabinet', 'Black tolex, fawn piping, a diamond-pattern grille and a trapezoid badge.'], ['Pedal', 'Copper all over, like a treble booster.']],
+    reach: 'The copper panel and the jewel.' },
+  { id: 'plate', fam: 'classic', name: 'Diamond Plate', after: 'Mesa/Boogie’s Rectifier heads', own: '#c3c8ce', lamp: '#e3342f',
+    knob: 'insert', scale: '', pwr: 'rocker', tg: 'bat mini', lampT: 'led', foot: '3pdt', led: 'led', logo: 'RIG',
+    capture: 'Modern high gain', pedal: 'Noise gate', pedal2: 'Boost',
+    pitch: 'Chrome diamond plate with the controls on a recessed black strip, under a black steel grille: the modern metal head.',
+    parts: [['Faceplate', 'Chrome tread plate round a recessed black control strip; white legends.'], ['Knobs', 'Black knurled knobs with metal inserts.'], ['Switches', 'Black rockers for power, small chrome toggles for Gate and EQ.'], ['Light', 'A red LED in a chrome bezel.'], ['Cabinet', 'Black tolex and a perforated black steel grille, the name in chrome.'], ['Pedal', 'Diamond plate, its knobs on a black strip.']],
+    reach: 'The knob inserts and the LED.' },
+  { id: 'wood', fam: 'classic', name: 'Hardwood', after: 'Mesa/Boogie’s Mark combos and boutique hardwood cabinets', own: '#d6b46c', lamp: '#e3342f',
+    knob: 'insert', scale: '', eq: 'faders', pwr: 'bat mini', tg: 'bat mini', lampT: 'jewel-sm', foot: '3pdt', led: 'led', logo: 'RIG',
+    capture: 'Boutique lead', pedal: 'Compressor', pedal2: 'Chorus',
+    pitch: 'A hardwood cabinet with a cane grille, a black panel, and the EQ on faders: the boutique combo.',
+    parts: [['Faceplate', 'Black with cream legends; Bass, Middle and Treble are faders.'], ['Knobs', 'Small black knobs with metal inserts.'], ['Switches', 'Small chrome toggles.'], ['Light', 'A small red jewel.'], ['Cabinet', 'Oiled hardwood, a cane wicker grille and an oval brass badge.'], ['Pedal', 'A black panel between hardwood cheeks.']],
+    reach: 'The fader caps, the knob inserts and the badge.' },
+  { id: 'gain', fam: 'classic', name: 'High Gain', after: 'Peavey’s 5150 and the 1990s high-gain heads', own: '#d8262e', lamp: '#ff3b30',
+    knob: 'knurl', scale: '', pwr: 'rocker', tg: 'push', lampT: 'led', foot: '3pdt', led: 'led', logo: 'RIG',
+    capture: '90s metal rhythm', pedal: 'Tight drive', pedal2: 'Gate',
+    pitch: 'Black anodised metal with a red stripe, knurled knobs and lit push buttons: the 1990s metal head.',
+    parts: [['Faceplate', 'Black anodised, a red stripe along the top, silver condensed legends.'], ['Knobs', 'Black knurled knobs with a red line and a silver ring.'], ['Switches', 'Push buttons with a lamp above for Gate and EQ; black rockers for power.'], ['Light', 'A red LED.'], ['Cabinet', 'Black tolex, black cloth and a big italic name with a red shadow.'], ['Pedal', 'Black with the red stripe.']],
+    reach: 'The stripe, the knob lines, the button lamps and the LED.' },
+  { id: 'compact', fam: 'classic', name: 'Compact', after: 'Boss compact pedals', own: '#2f6fd1', lamp: '#ff3b2f',
+    knob: 'compact', scale: '', pwr: 'pad', tg: 'pad', lampT: 'led', foot: 'pad', led: 'led', logo: 'RG-1 Combo',
+    capture: 'Practice combo', pedal: 'Overdrive', pedal2: 'Chorus',
+    pitch: 'Painted metal and a rubber pad you can stomp anywhere: the compact pedal, and an amp built in its language.',
+    parts: [['Faceplate', 'Enamel paint in the finish, printed legends, a black name strip.'], ['Knobs', 'Small black knurled knobs with a silver ring and a white line.'], ['Switches', 'Ribbed rubber pads with a lamp above.'], ['Light', 'A red check LED.'], ['Cabinet', 'The same painted case round a square black mesh.'], ['Pedal', 'The rubber pad covers the lower half, with the name strip on it.']],
+    reach: 'The paint. The legends turn white on a dark paint.' },
+  { id: 'hammer', fam: 'classic', name: 'Hammertone', after: 'the 1970s American pedals: hammered paint, big knobs, a metal stomp switch', own: '#7f95a3', lamp: '#ff3b2f',
+    knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'led', foot: '3pdt', led: 'led', logo: 'rig',
+    capture: 'Fuzz into clean', pedal: 'fuzz', pedal2: 'phase',
+    pitch: 'Hammered paint, big domed knobs and a chunky lowercase name: the 1970s pedal, and an amp to match.',
+    parts: [['Faceplate', 'Hammered paint, printed legends in a heavy condensed face.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A red LED in a chrome bezel.'], ['Cabinet', 'Hammered paint round black cloth.'], ['Pedal', 'Wide and hammered: three big knobs and a metal stomp switch.']],
+    reach: 'The paint.' },
+  { id: 'rack', fam: 'classic', name: 'Rack', after: 'studio and rack gear: brushed aluminium, ears and handles, a VU meter', own: '#c6cbd0', lamp: '#ffb340',
+    knob: 'alu', scale: 'ticks', pwr: 'bat mini', tg: 'lit', lampT: 'vu', foot: '3pdt', led: 'led', logo: 'CRBN Rig',
+    capture: 'Studio direct', pedal: 'Controller', pedal2: 'Expression',
+    pitch: 'A 2U rack unit in brushed aluminium, with handles, lit buttons and a VU meter that moves with your playing.',
+    parts: [['Faceplate', 'Brushed aluminium, anodised in the finish, with ears, handles and vents.'], ['Knobs', 'Knurled aluminium with a dot.'], ['Switches', 'Square buttons lit from inside; a small toggle for power.'], ['Light', 'A backlit VU meter, beside the pilot.'], ['Cabinet', 'None: it is a rack unit. Its IR sits in a matching unit.'], ['Pedal', 'A brushed aluminium floor unit.']],
+    reach: 'The anodising, silver by default.' },
+
+  { id: 'reactor', fam: 'new', name: 'Reactor', after: 'Energy: the Hub’s Reactor', own: '#d92b52',
+    fx: 'reactor', cut: 'mark', mesh: 'hex', mat: 'gunmetal', knob: 'halo', pwr: 'guard', tg: 'glow', lampT: 'bead', foot: 'ring',
+    capture: 'High-gain lead', pedal: 'Plasma drive', pedal2: 'Boost',
+    pitch: 'The Hub’s plasma core, seen through Rig’s own mark cut out of a gunmetal plate: the stompbox’s eyes and footswitch glow with it.',
+    parts: [['Energy', 'Reactor, the Hub’s plasma. It surges with your level, burns hotter as Input goes up, and flares on a hard pick.'], ['Cutouts', 'Rig’s mark (the hex, the eyes, the footswitch) with three slots streaming into it; a ring round each knob.'], ['Mesh', 'Fine hex wire.'], ['Faceplate', 'Brushed gunmetal.'], ['Knobs', 'Dark glass with a lit line.'], ['Switches', 'Power under a flip-up guard; Gate and EQ as lit capsules.'], ['Light', 'A glass bead lit from inside.'], ['Pedal', 'The mark again, small, over the same plasma.']],
+    reach: 'The energy, the slots of light and the lamps. The mark’s body stays cherry.' },
+  { id: 'pulse', fam: 'new', name: 'Pulse', after: 'Energy: the Hub’s Heartbeat', own: '#f29077',
+    fx: 'pulse', cut: 'rings', mesh: 'perf', mat: 'satin', knob: 'halo', pwr: 'glow', tg: 'glow', lampT: 'ring', foot: 'ring',
+    capture: 'Edge-of-breakup', pedal: 'Heartbeat', pedal2: 'Boost',
+    pitch: 'Rings cut round a centre port, and a heartbeat behind them: every note you pick sends a shockwave out through the rings.',
+    parts: [['Energy', 'Heartbeat, from the Hub. At rest, a slow double pulse; while you play, every pick is a beat.'], ['Cutouts', 'Rings of slots round a centre port, broken by bridges; a ring round each knob.'], ['Mesh', 'Perforated sheet.'], ['Faceplate', 'Satin black, bead-blasted.'], ['Knobs', 'Dark glass with a lit line.'], ['Switches', 'Lit capsules for everything.'], ['Light', 'A ring that lights.'], ['Pedal', 'A small ring port.']],
+    reach: 'The energy, the slots of light and the lamps. Its own colour is Rig’s rose gold.' },
+  { id: 'tesla', fam: 'new', name: 'Tesla', after: 'Energy: the Hub’s Storm', own: '#6aa8ff',
+    fx: 'storm', cut: 'louvre', mesh: 'expanded', mat: 'graphite', knob: 'machined', pwr: 'guard', tg: 'tip', lampT: 'bead', foot: 'ring',
+    capture: 'Fuzz lead', pedal: 'Arc fuzz', pedal2: 'Boost',
+    pitch: 'Louvred vents round a spark gap: arcs of current crack across behind the slots, one for every pick.',
+    parts: [['Energy', 'Storm, from the Hub: arcs from the core to the far ends of the slots. Each pick strikes; a chord strikes several.'], ['Cutouts', 'Louvre slots round a round spark port.'], ['Mesh', 'Expanded metal.'], ['Faceplate', 'Graphite with a fine knurl.'], ['Knobs', 'Machined dark titanium with a glowing slot.'], ['Switches', 'Power under a guard; toggles with lit tips.'], ['Light', 'A lit bead.'], ['Pedal', 'Louvres and a small spark port.']],
+    reach: 'The arcs, the slots of light and the lamps.' },
+  { id: 'warp', fam: 'new', name: 'Warp', after: 'Energy: the Hub’s Warp', own: '#9a7dff',
+    fx: 'warp', cut: 'tunnel', mesh: 'none', mat: 'piano', knob: 'obsidian', pwr: 'glow', tg: 'glow', lampT: 'slit', foot: 'ring',
+    capture: 'Ambient swell', pedal: 'Shimmer', pedal2: 'Delay',
+    pitch: 'A stepped tunnel into piano black, with light streaking out of it towards you. The harder you play, the faster it goes.',
+    parts: [['Energy', 'Warp, from the Hub: streaks out of the core. Their speed follows your level; a big chord surges.'], ['Cutouts', 'One window stepped three times into a tunnel, under smoked glass.'], ['Mesh', 'None.'], ['Faceplate', 'Piano black with a chrome edge.'], ['Knobs', 'Gloss black glass with a lit slit.'], ['Switches', 'Lit capsules.'], ['Light', 'A slit of light.'], ['Pedal', 'A small tunnel.']],
+    reach: 'The streaks, the slots of light and the lamps.' },
+  { id: 'circuit', fam: 'new', name: 'Circuit', after: 'Energy: the Hub’s Circuit', own: '#3fd9e8',
+    fx: 'circuit', cut: 'glass', mesh: 'none', mat: 'glass', knob: 'machined', pwr: 'glow', tg: 'glow', lampT: 'ring', foot: 'ring',
+    capture: 'Clean DI', pedal: 'Bit drive', pedal2: 'Boost',
+    pitch: 'Black glass with its circuit etched right through: current runs in along the traces to the core, and the core fires it all back out.',
+    parts: [['Energy', 'Circuit, from the Hub: a pulse runs in along a trace for each pick; a hard pick fires them all back out.'], ['Cutouts', 'Hairline traces etched through the glass, a pad at each end and a window over the core.'], ['Mesh', 'None.'], ['Faceplate', 'Black glass.'], ['Knobs', 'Machined dark titanium with a glowing slot.'], ['Switches', 'Lit capsules.'], ['Light', 'A lit ring.'], ['Pedal', 'Traces into a small core.']],
+    reach: 'The current, the slots of light and the lamps.' },
+  { id: 'jet', fam: 'new', name: 'Jet', after: 'Energy: the Hub’s Turbine', own: '#ff9a3c',
+    fx: 'turbine', cut: 'intake', mesh: 'weave', mat: 'titanium', knob: 'spinner', pwr: 'guard', tg: 'tip', lampT: 'ring', foot: 'ring',
+    capture: 'Big rock rhythm', pedal: 'Afterburner', pedal2: 'Boost',
+    pitch: 'A jet intake in heat-tinted titanium: the fan spins up as you play and glows from behind.',
+    parts: [['Energy', 'Turbine, from the Hub: a backlit fan whose speed follows your level.'], ['Cutouts', 'A round intake with stator spokes and a spinner, rivets round it.'], ['Mesh', 'Woven wire, like an intake screen.'], ['Faceplate', 'Titanium, brushed and heat-tinted.'], ['Knobs', 'Spinner hubs with a swirl that turns.'], ['Switches', 'Power under a guard; toggles with lit tips.'], ['Light', 'A lit ring.'], ['Pedal', 'A small intake.']],
+    reach: 'The glow, the slots of light and the lamps.' },
+  { id: 'carbon', fam: 'new', name: 'Carbon', after: 'Energy: the Hub’s Lattice', own: '#be9851',
+    fx: 'lattice', cut: 'honeycomb', mesh: 'none', mat: 'carbon', knob: 'gem', pwr: 'glow', tg: 'glow', lampT: 'hex', foot: 'ring',
+    capture: 'Studio crunch', pedal: 'Crystal', pedal2: 'Boost',
+    pitch: 'Carbon fibre, as in CRBN, cut with a honeycomb of hex windows that grow towards a turning lattice: the suite’s hex, made of light.',
+    parts: [['Energy', 'Lattice, from the Hub: a turning geodesic lattice with sparks running its struts, more of them while you play.'], ['Cutouts', 'Hex windows, large near the core and smaller away from it.'], ['Mesh', 'None.'], ['Faceplate', '2×2 twill carbon fibre under clear lacquer.'], ['Knobs', 'Faceted hex crystals.'], ['Switches', 'Lit capsules.'], ['Light', 'A hex lamp.'], ['Pedal', 'Carbon with a hex window.']],
+    reach: 'The lattice, the crystals, the slots of light and the lamps. Its own colour is Rig’s tweed gold.' },
+  { id: 'valve', fam: 'new', name: 'Valve', after: 'Energy: new, the amp’s own valves', own: '#ff9447', lamp: '#55f0a0',
+    fx: 'valve', cut: 'window', mesh: 'perf', mat: 'crinkle', knob: 'insert', pwr: 'bat', tg: 'bat', lampT: 'eye', foot: '3pdt',
+    capture: 'Class A chime', pedal: 'Valve drive', pedal2: 'Boost',
+    pitch: 'A window onto the amp’s own valves behind a perforated cage: the heaters glow, the plates warm as you play, and a magic eye closes on every note.',
+    parts: [['Energy', 'Valve, new here: three preamp valves and four power valves. They brighten with your level and flash blue on a hard pick.'], ['Cutouts', 'One wide window with a chrome trim.'], ['Mesh', 'A perforated valve cage.'], ['Faceplate', 'Black crinkle paint.'], ['Knobs', 'Black with metal inserts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A magic-eye tuning valve: its shadow closes as you play.'], ['Pedal', 'One valve in a small window.']],
+    reach: 'The valves’ glow, the knob inserts and the magic eye.' },
+  { id: 'ferro', fam: 'new', name: 'Ferro', after: 'Energy: new, ferrofluid', own: '#9fd8ff',
+    fx: 'ferro', cut: 'porthole', mesh: 'none', mat: 'blackchrome', knob: 'obsidian', pwr: 'glow', tg: 'glow', lampT: 'slit', foot: 'ring',
+    capture: 'Low-tuned riff', pedal: 'Magnet', pedal2: 'Boost',
+    pitch: 'A porthole onto a pool of ferrofluid lit from behind: its spikes rise as you play and leap on every pick.',
+    parts: [['Energy', 'Ferro, new here: black liquid in a magnetic field. The spikes follow your level and jump on a pick.'], ['Cutouts', 'A porthole with a chrome bezel, bolts and a glass glare.'], ['Mesh', 'None: glass.'], ['Faceplate', 'Black chrome.'], ['Knobs', 'Gloss black glass with a lit slit.'], ['Switches', 'Lit capsules.'], ['Light', 'A slit of light.'], ['Pedal', 'A small porthole.']],
+    reach: 'The backlight, the slots of light and the lamps.' }
+]
+const KIT = Object.fromEntries(KITS.map(k => [k.id, k]))
+
+// ---------------------------------------------------------------- the finishes (D-RIG-008) and the looks (D-CRBN-019)
+const FINISHES = [['own', 'Kit’s own', 'conic-gradient(#c9a24e, #d92b52, #3fd9e8, #9a7dff, #c9a24e)'], ['cherry', 'Cherry', '#d92b52'], ['gold', 'Gold', '#be9851'], ['rose', 'Rose gold', '#f29077']]
+const FIN_HEX = { cherry: '#d92b52', gold: '#be9851', rose: '#f29077' }
+const LOOKS = [['capsule', 'Capsule'], ['holo', 'Holo'], ['redline', 'Redline'], ['daylight', 'Daylight']]
+
+// ---------------------------------------------------------------- the builder's parts
+const B_OPTS = {
+  fx: ['Energy', [['reactor', 'Reactor (the Hub)'], ['pulse', 'Heartbeat (the Hub)'], ['storm', 'Storm (the Hub)'], ['warp', 'Warp (the Hub)'], ['circuit', 'Circuit (the Hub)'], ['turbine', 'Turbine (the Hub)'], ['lattice', 'Lattice (the Hub)'], ['valve', 'Valve (new)'], ['ferro', 'Ferro (new)']]],
+  cut: ['Cutouts', [['mark', 'Rig’s mark'], ['rings', 'Rings'], ['louvre', 'Louvres'], ['tunnel', 'Tunnel'], ['glass', 'Etched traces'], ['intake', 'Intake'], ['honeycomb', 'Honeycomb'], ['window', 'Window'], ['porthole', 'Porthole']]],
+  mesh: ['Mesh', [['hex', 'Hex wire'], ['perf', 'Perforated'], ['weave', 'Woven wire'], ['expanded', 'Expanded metal'], ['none', 'None (glass)']]],
+  mat: ['Faceplate', [['gunmetal', 'Gunmetal'], ['satin', 'Satin black'], ['graphite', 'Graphite'], ['piano', 'Piano black'], ['glass', 'Black glass'], ['titanium', 'Titanium'], ['carbon', 'Carbon fibre'], ['crinkle', 'Crinkle black'], ['blackchrome', 'Black chrome']]],
+  knob: ['Knobs', [['halo', 'Dark glass'], ['machined', 'Machined'], ['obsidian', 'Obsidian'], ['gem', 'Hex crystal'], ['spinner', 'Spinner']]],
+  own: ['Colour (with Kit’s own)', [['#d92b52', 'Cherry'], ['#be9851', 'Tweed gold'], ['#f29077', 'Rose gold'], ['#6aa8ff', 'Electric blue'], ['#9a7dff', 'Violet'], ['#3fd9e8', 'Cyan'], ['#ff9a3c', 'Afterburner'], ['#9fd8ff', 'Ice']]]
+}
+const BUILDER = { id: 'builder', fam: 'new', name: 'Your kit', after: 'Built here', fx: 'reactor', cut: 'honeycomb', mesh: 'hex', mat: 'carbon', knob: 'halo', own: '#d92b52',
+  pwr: 'glow', tg: 'glow', lampT: 'bead', foot: 'ring', capture: 'Your capture', pedal: 'Your pedal', pedal2: 'Boost' }
+
+// ---------------------------------------------------------------- the questions
+const QS = [
+  { id: 'default', q: 'Which kit does Rig open in?', why: 'The star on a kit picks it. This settles whether one kit serves every look.', opts: [
+    ['one', 'One kit for every look', 'The starred kit, whatever the look. The store pictures show it.'],
+    ['perlook', 'A kit for each look', 'Capsule, Holo, Redline and Daylight each open in a kit of their own. Name them in a note.'],
+    ['ask', 'Ask on the first start', 'A small chooser the first time Rig opens, with the starred kit picked.']] },
+  { id: 'pedals', q: 'Do the pedals follow the amp?', why: 'Real boards mix makers: a compact pedal next to a hammertone one, in front of a British head.', opts: [
+    ['follow-override', 'They follow the amp, and any pedal can change', 'The amp’s kit by default; a pedal’s own menu picks another enclosure.'],
+    ['follow', 'They always follow the amp', 'One kit for the whole rig.'],
+    ['own', 'Each pedal has its own', 'Every pedal picks its enclosure; the kit is only the amp’s.']] },
+  { id: 'finish', q: 'How does a finish meet a kit?', why: 'Rig’s finishes today: the look’s own, cherry, gold, rose gold and your own colour (D-RIG-008).', opts: [
+    ['own-then-finish', 'Each kit opens in its own colours; a finish recolours it', 'Brit Gold is gold until you pick cherry; each energy kit glows its own colour until you pick one.'],
+    ['rig', 'Every kit wears Rig’s finish', 'Cherry by default in Capsule, tweed gold in Holo and Daylight.'],
+    ['fixed', 'Kits keep their own colours', 'The finish changes the page and the meters only.']] },
+  { id: 'react', q: 'Should the energy answer your playing?', why: 'In the lab a recorded riff stands in for your guitar.', opts: [
+    ['full', 'Yes: level, pick attack and Input', 'Hard picks strike and flare. A clip flares too, with the word CLIP beside the meter.'],
+    ['level', 'Gently: level only', 'It breathes with how loud you play, with no strikes.'],
+    ['loop', 'No: it runs on its own loop', 'As the Hub’s logo does.']] },
+  { id: 'mix', q: 'Can players mix the parts?', why: 'The builder above shows what mixing the energy kits looks like.', opts: [
+    ['builder', 'Kits, plus the builder for the energy kits', 'Players pick a kit, or build an energy kit from its five parts.'],
+    ['kits', 'Kits only', 'Every combination is designed, so nothing can look wrong.'],
+    ['all', 'Every part, across every kit', 'Gold top-hat knobs on a Reactor plate: the most freedom, and the most ways to look wrong.']] },
+  { id: 'motion', q: 'When does the energy run?', why: 'The energy kits draw every frame. On a laptop on battery that costs power.', opts: [
+    ['always-still', 'Always, and still when the system asks for less motion', 'Reduce motion freezes it on a lit frame.'],
+    ['playing', 'Only while sound is playing', 'Standby and silence let it rest on a dim glow.'],
+    ['setting', 'Always, with a switch in the look menu', 'Players turn it off themselves.']] }
+]
+
+// ---------------------------------------------------------------- textures (SVG, set as CSS variables on <html>)
+const NS = 'xmlns="http://www.w3.org/2000/svg"'
+const TEX = {
+  grain: `<svg ${NS} width="140" height="140"><filter id="f"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .7 -.32"/></filter><rect width="100%" height="100%" filter="url(#f)" opacity=".28"/></svg>`,
+  'grain-d': `<svg ${NS} width="140" height="140"><filter id="f"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="5" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .8 -.35"/></filter><rect width="100%" height="100%" filter="url(#f)" opacity=".3"/></svg>`,
+  brushed: `<svg ${NS} width="600" height="160"><filter id="f"><feTurbulence type="fractalNoise" baseFrequency=".003 .6" numOctaves="2" seed="4" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.2 -.55"/></filter><rect width="100%" height="100%" filter="url(#f)" opacity=".24"/></svg>`,
+  'brushed-d': `<svg ${NS} width="600" height="160"><filter id="f"><feTurbulence type="fractalNoise" baseFrequency=".004 .7" numOctaves="2" seed="9" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.2 -.55"/></filter><rect width="100%" height="100%" filter="url(#f)" opacity=".28"/></svg>`,
+  basket: `<svg ${NS} width="12" height="12"><rect width="12" height="12" fill="#15120f"/><path d="M0 1.5H6M0 4.5H6M6 7.5H12M6 10.5H12M7.5 0V6M10.5 0V6M1.5 6V12M4.5 6V12" stroke="#312a23" stroke-width="2.3"/><path d="M0 .8H6M0 3.8H6M6 6.8H12M6 9.8H12M6.8 0V6M9.8 0V6M.8 6V12M3.8 6V12" stroke="#4d4236" stroke-width=".6"/><path d="M0 4.5H6M10.5 0V6M6 10.5H12M1.5 6V12" stroke="#8f7642" stroke-width=".55" opacity=".6"/></svg>`,
+  silver: `<svg ${NS} width="6" height="6"><rect width="6" height="6" fill="#5f656c"/><path d="M0 1.5H6M0 4.5H6" stroke="#d6dade" stroke-width="1.3"/><path d="M1.5 0V6M4.5 0V6" stroke="#8e959c" stroke-width="1.1"/><path d="M1.5 1.5h.01M4.5 4.5h.01" stroke="#f4f6f8" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  sparkle: `<svg ${NS} width="140" height="140"><filter id="f"><feTurbulence type="fractalNoise" baseFrequency=".75" seed="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 8 -6.7"/></filter><rect width="100%" height="100%" filter="url(#f)"/></svg>`,
+  tweed: `<svg ${NS} width="14" height="14"><rect width="14" height="14" fill="#d8bf8a"/><path d="M-3.5 3.5L3.5 -3.5M0 14L14 0M10.5 17.5L17.5 10.5" stroke="#8f6e3d" stroke-width="2.4"/><path d="M-3.5 10.5L10.5 -3.5M3.5 17.5L17.5 3.5" stroke="#b9995f" stroke-width="1.3"/></svg>`,
+  oxblood: `<svg ${NS} width="6" height="10"><rect width="6" height="10" fill="#4a1714"/><path d="M0 2H6M0 5H6M0 8H6" stroke="#5f241e" stroke-width="1.4"/><path d="M0 9.5H6" stroke="#a07a3a" stroke-width=".7" opacity=".8"/></svg>`,
+  diamond: `<svg ${NS} width="18" height="18"><rect width="18" height="18" fill="#2e2319"/><path d="M9 0L18 9L9 18L0 9Z" fill="#5a4630"/><path d="M9 2.4L15.6 9L9 15.6L2.4 9Z" fill="#3b2d20"/><path d="M9 0L18 9L9 18L0 9Z" fill="none" stroke="#a88b5f" stroke-width=".9"/></svg>`,
+  perf: `<svg ${NS} width="8" height="8"><rect width="8" height="8" fill="#131315"/><circle cx="4" cy="4" r="2.5" fill="#000"/><path d="M1.8 5.1a2.5 2.5 0 0 0 4.4 0" stroke="rgba(255,255,255,.13)" stroke-width=".6" fill="none"/></svg>`,
+  tread: `<svg ${NS} width="22" height="22"><g transform="rotate(45 5.5 5.5)"><ellipse cx="6.1" cy="6" rx="4.8" ry="1.5" fill="#4a5056"/><ellipse cx="5.5" cy="5.2" rx="4.8" ry="1.3" fill="#f6f8fa"/></g><g transform="rotate(-45 16.5 16.5)"><ellipse cx="16.5" cy="17.2" rx="4.8" ry="1.5" fill="#4a5056"/><ellipse cx="16.5" cy="16.4" rx="4.8" ry="1.3" fill="#eef1f3"/></g></svg>`,
+  wood: `<svg ${NS} width="480" height="220"><rect width="100%" height="100%" fill="#7c4b27"/><filter id="f"><feTurbulence type="fractalNoise" baseFrequency=".004 .09" numOctaves="3" seed="11" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .2  0 0 0 0 .09  0 0 0 0 .03  0 0 0 1.4 -.5"/></filter><filter id="g"><feTurbulence type="fractalNoise" baseFrequency=".006 .14" numOctaves="2" seed="5" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .95  0 0 0 0 .7  0 0 0 0 .42  0 0 0 1 -.55"/></filter><rect width="100%" height="100%" filter="url(#f)"/><rect width="100%" height="100%" filter="url(#g)" opacity=".55"/></svg>`,
+  wicker: `<svg ${NS} width="14" height="14"><rect width="14" height="14" fill="#1b120a"/><path d="M0 7H14M7 0V14" stroke="#caa66c" stroke-width="2.6"/><path d="M0 0L14 14M14 0L0 14" stroke="#ad8650" stroke-width="1.8"/><path d="M0 6.2H14M6.2 0V14" stroke="#e7cc98" stroke-width=".5" opacity=".7"/></svg>`,
+  cloth: `<svg ${NS} width="3" height="3"><rect width="3" height="3" fill="#141416"/><path d="M0 .75H3M0 2.25H3" stroke="#212124" stroke-width=".9"/><path d="M.75 0V3M2.25 0V3" stroke="#0a0a0b" stroke-width=".7"/></svg>`,
+  square: `<svg ${NS} width="6" height="6"><rect width="6" height="6" fill="#0b0b0c"/><rect x="1.2" y="1.2" width="3.6" height="3.6" fill="#000"/><path d="M0 .6H6M.6 0V6" stroke="rgba(255,255,255,.12)" stroke-width=".6"/></svg>`,
+  hammer: `<svg ${NS} width="200" height="200"><filter id="f" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="7" stitchTiles="stitch" result="t"/><feDiffuseLighting in="t" surfaceScale="3.2" lighting-color="#fff"><feDistantLight azimuth="225" elevation="40"/></feDiffuseLighting></filter><rect width="100%" height="100%" filter="url(#f)"/></svg>`,
+  crinkle: `<svg ${NS} width="140" height="140"><filter id="f" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".22" numOctaves="2" seed="3" stitchTiles="stitch" result="t"/><feDiffuseLighting in="t" surfaceScale="2.2" lighting-color="#fff"><feDistantLight azimuth="225" elevation="48"/></feDiffuseLighting></filter><rect width="100%" height="100%" filter="url(#f)"/></svg>`,
+  carbon: (() => {
+    let cells = ''
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) cells += `<rect x="${c * 3}" y="${r * 3}" width="3" height="3" fill="url(#${((c - r) & 3) < 2 ? 'h' : 'v'})"/>`
+    return `<svg ${NS} width="12" height="12"><defs><linearGradient id="h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e2e33"/><stop offset=".5" stop-color="#111114"/><stop offset="1" stop-color="#242428"/></linearGradient><linearGradient id="v" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1b1b1f"/><stop offset=".5" stop-color="#09090b"/><stop offset="1" stop-color="#19191c"/></linearGradient></defs>${cells}</svg>`
+  })()
+}
+for (const [k, s] of Object.entries(TEX)) document.documentElement.style.setProperty('--tx-' + k, `url("data:image/svg+xml,${encodeURIComponent(s)}")`)
+</script>
+
+<script>
+'use strict'
+const $ = (s, el = document) => el.querySelector(s)
+const $$ = (s, el = document) => [...el.querySelectorAll(s)]
+const TAU = Math.PI * 2
+const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x
+const ang = v => -135 + 270 * v
+const f1 = n => Math.round(n * 10) / 10
+const kitOf = hw => hw.dataset.kit === 'builder' ? BUILDER : KIT[hw.dataset.kit]
+const SIZES = { '': 40, md: 32, sm: 26 }
+const AMP_KNOBS = [['Input', .5], ['Gate', .3], ['Bass', .55], ['Middle', .62], ['Treble', .6], ['Output', .5]]
+const PED_KNOBS = [['Level', .6], ['Drive', .55], ['Tone', .5]]
+
+// ---------------------------------------------------------------- knobs
+const CK = 'M-6,-45 C-2,-47.5 2,-47.5 6,-45 L22.2,-17 A28,28 0 1,1 -22.2,-17 Z'
+const GEM = (() => {
+  const P = (r, k) => { const a = (-90 + 60 * k) * Math.PI / 180; return `${f1(r * Math.cos(a))},${f1(r * Math.sin(a))}` }
+  let s = ''
+  for (let k = 0; k < 6; k++) s += `<path class="f${k}" d="M${P(46, k)} L${P(46, k + 1)} L${P(23, k + 1)} L${P(23, k)} Z"/>`
+  return s + `<path class="tb" d="M${[0, 1, 2, 3, 4, 5].map(k => P(23, k)).join(' L')} Z"/><circle class="pt" cx="0" cy="-35" r="3.4"/>`
+})()
+function knobInner (t, kit) {
+  switch (t) {
+    case 'cap': return '<i class="sh"></i><i class="body r"></i><i class="top"></i><i class="cap"></i><i class="ln r"></i>'
+    case 'skirt': { let n = ''; for (let i = 1; i <= 10; i++) n += `<b style="--t:${135 - 30 * (i - 1)}deg">${i}</b>`; return `<i class="sh"></i><i class="skirt r">${n}</i><i class="top"></i><i class="gl"></i><i class="ln r"></i>` }
+    case 'chicken': return `<i class="sh"></i><i class="r"><svg viewBox="-50 -50 100 100"><circle r="33" fill="rgba(0,0,0,.4)"/><path d="${CK}" style="fill:${kit.ck}"/><path d="${CK}" fill="url(#ck-shade)"/><path d="M0,-41 L0,-15" style="stroke:${kit.ckLine}" stroke-width="3.6" stroke-linecap="round"/></svg></i><i class="gl"></i>`
+    case 'insert': return '<i class="sh"></i><i class="body r"></i><i class="top"></i><i class="ins"></i><i class="ln r"></i>'
+    case 'dome': return '<i class="sh"></i><i class="base"></i><i class="dome"></i><i class="ln r"></i><i class="gl"></i>'
+    case 'halo': return '<i class="sh"></i><i class="body"></i><i class="kf"></i><i class="ln r"></i>'
+    case 'obsidian': return '<i class="sh"></i><i class="body"></i><i class="gl"></i><i class="ln r"></i>'
+    case 'gem': return `<i class="sh"></i><i class="r"><svg viewBox="-50 -50 100 100">${GEM}</svg></i>`
+    case 'spinner': return '<i class="sh"></i><i class="body r"></i><i class="cone"></i><i class="r sp"><svg viewBox="-50 -50 100 100"><path d="M0,0 C9,-3 13,-14 4,-22 C-6,-30 -24,-20 -23,-2"/></svg></i>'
+    default: return '<i class="sh"></i><i class="body r"></i><i class="top"></i><i class="ln r"></i>' // knurl, compact, alu, machined
+  }
+}
+function scaleSVG (kind, s) {
+  if (!kind) return ''
+  const R = s / 2 + 3.5, h = s / 2 + 6, vb = `${-h} ${-h} ${2 * h} ${2 * h}`
+  if (kind === 'mark') return `<svg class="sc" viewBox="${vb}" aria-hidden="true"><path d="M-2.6,${f1(-R - 2.5)} L2.6,${f1(-R - 2.5)} L0,${f1(-R + 1.5)} Z" fill="currentColor"/></svg>`
+  const n = kind === 'tweed12' ? 12 : 11
+  let p = ''
+  for (let i = 0; i < n; i++) {
+    const a = (ang(i / (n - 1))) * Math.PI / 180, sx = Math.sin(a), cy = -Math.cos(a)
+    if (kind === 'tweed12') p += `<text x="${f1(sx * (R + 2.5))}" y="${f1(cy * (R + 2.5) + 2)}" text-anchor="middle" font-size="5.6" font-weight="700" fill="currentColor" font-family="Barlow Semi Condensed, sans-serif">${i + 1}</text>`
+    else p += `<path d="M${f1(sx * R)},${f1(cy * R)} L${f1(sx * (R + 3.5))},${f1(cy * (R + 3.5))}" stroke="currentColor" stroke-width="${i % 5 === 0 ? 1.4 : .9}"/>`
+  }
+  return `<svg class="sc" viewBox="${vb}" aria-hidden="true">${p}</svg>`
+}
+function arcPath (s) {
+  const R = s / 2 + 5, p = a => { const r = a * Math.PI / 180; return `${f1(R * Math.sin(r))},${f1(-R * Math.cos(r))}` }
+  return `M${p(-135)} A${f1(R)},${f1(R)} 0 1,1 ${p(135)}`
+}
+function arcSVG (s, v) {
+  const h = s / 2 + 6, d = arcPath(s)
+  return `<svg class="arc" viewBox="${-h} ${-h} ${2 * h} ${2 * h}" aria-hidden="true"><path class="trk" d="${d}"/><path class="val" d="${d}" pathLength="100" stroke-dasharray="${f1(v * 100)} 200"/></svg>`
+}
+function knobCell (kit, label, v, size) {
+  const s = SIZES[size], isNew = kit.fam === 'new'
+  return `<div class="cc"><span class="lb">${label}</span><div class="kw ${size}">${isNew ? arcSVG(s, v) : scaleSVG(kit.scale, s)}<div class="kn kn-${kit.knob}" role="slider" tabindex="0" aria-label="${label}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${(v * 10).toFixed(1)}" data-v="${v}" data-label="${label}" style="--a:${ang(v)}deg">${knobInner(kit.knob, kit)}</div></div></div>`
+}
+function faderCell (label, v) {
+  return `<div class="cc"><span class="lb">${label}</span><div class="fd" role="slider" tabindex="0" aria-label="${label}" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${(v * 10).toFixed(1)}" data-v="${v}" data-label="${label}" style="--v:${v}"><i class="tk"></i><i class="cap"></i></div></div>`
+}
+
+// ---------------------------------------------------------------- switches and lights
+const STATE_WORD = { power: ['Off', 'On'], standby: ['Standby', 'Play'], gate: ['Off', 'On'], eq: ['Off', 'On'], ir: ['Off', 'On'] }
+function swHTML (type, role, label, on) {
+  let [t, ...mods] = type.split(' ')
+  if (t === 'tip') { t = 'bat'; mods.push('tip') }
+  const inner = { rocker: '<i class="a"></i><i class="b"></i>', bat: '<i class="nut"></i><i class="bat"></i>', push: '<i class="led"></i>', lit: '<i class="cap"></i>', pad: '<i class="led"></i>', guard: '<i class="base"></i><i class="tgl"></i><i class="lid"></i>', glow: '<i class="bar"></i>' }[t] || ''
+  const w = STATE_WORD[role]
+  return `<div class="cc"><span class="lb">${label}</span><button class="sw sw-${t} ${mods.join(' ')}" type="button" data-role="${role}" aria-pressed="${on}" aria-label="${label}">${inner}</button><span class="st">${w[on ? 1 : 0]}</span></div>`
+}
+const VU = (() => {
+  const cx = 37, cy = 52, R = 36, pt = (a, r) => `${f1(cx + r * Math.sin(a * Math.PI / 180))},${f1(cy - r * Math.cos(a * Math.PI / 180))}`
+  let ticks = ''
+  for (let i = 0; i <= 10; i++) { const a = -48 + 9.6 * i; ticks += `<path class="${i >= 8 ? 'scr' : 'sc'}" d="M${pt(a, R)} L${pt(a, R - (i % 5 === 0 ? 6 : 4))}"/>` }
+  return `<svg viewBox="0 0 74 44" aria-hidden="true"><rect class="vf" width="74" height="44"/><path class="sc" d="M${pt(-48, R)} A${R},${R} 0 0,1 ${pt(28.8, R)}"/><path class="scr" d="M${pt(28.8, R)} A${R},${R} 0 0,1 ${pt(48, R)}"/>${ticks}<text x="37" y="36" text-anchor="middle">VU</text><line class="nd" x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - R - 2}" transform="rotate(-46 ${cx} ${cy})"/></svg>`
+})()
+const LAMP = { jewel: 'lp-jewel', 'jewel-sm': 'lp-jewel sm', led: 'lp-led', eye: 'lp-eye', ring: 'lp-ring', bead: 'lp-bead', slit: 'lp-slit', hex: 'lp-hex' }
+function lampHTML (kit) {
+  if (kit.lampT === 'vu') return `<div class="cc"><span class="lb">Level</span><span class="lp lp-vu">${VU}</span><span class="st"></span></div><div class="cc"><span class="lb">Pilot</span><span class="lp lp-led" aria-hidden="true"></span><span class="st" data-pilot>On</span></div>`
+  return `<div class="cc"><span class="lb">Pilot</span><span class="lp ${LAMP[kit.lampT]}" aria-hidden="true"></span><span class="st" data-pilot>On</span></div>`
+}
+
+// ---------------------------------------------------------------- an amp, a pedal, a cabinet
+function layersHTML (kit) {
+  return `<canvas class="en" aria-hidden="true"></canvas><svg class="mesh" aria-hidden="true">${kit.mesh !== 'none' ? `<rect width="100%" height="100%" fill="url(#mesh-${kit.mesh})"/>` : ''}</svg><div class="plw"><div class="pl mat-${kit.mat}"></div></div><svg class="dec" aria-hidden="true"></svg>`
+}
+function ampHTML (kit) {
+  const isNew = kit.fam === 'new'
+  let knobs = ''
+  for (const [lb, v] of AMP_KNOBS) {
+    if (kit.eq === 'faders' && (lb === 'Bass' || lb === 'Middle' || lb === 'Treble')) { if (lb === 'Bass') knobs += `<div class="eq">${faderCell('Bass', .55)}${faderCell('Middle', .62)}${faderCell('Treble', .6)}</div>`; continue }
+    knobs += knobCell(kit, lb, v, '')
+  }
+  const sb = kit.pwr === 'guard' ? kit.tg : kit.pwr
+  const tgs = swHTML(kit.tg, 'gate', 'Gate', true) + swHTML(kit.tg, 'eq', 'EQ', true)
+  const pwr = lampHTML(kit) + swHTML(kit.pwr, 'power', 'Power', true) + swHTML(sb, 'standby', 'Standby', true)
+  const gz = kit.id === 'rack'
+    ? `<div class="logo-box"><span class="logo">${kit.logo}</span><span class="sub">RG-2 · ${kit.capture}</span></div><span class="vents" aria-hidden="true"></span>`
+    : `<div class="logo-box"><span class="logo">${isNew ? 'RIG' : kit.logo}</span><span class="sub">${kit.capture}</span></div>`
+  return `<div class="hw amp ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="amp" data-standby="false"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}${kit.id === 'rack' ? '<i class="ear l"></i><i class="ear r"></i>' : ''}<div class="ui"><div class="knobs">${knobs}</div><div class="tgs">${tgs}</div><div class="pwr">${pwr}</div></div><div class="gz">${gz}</div></div></div></div>`
+}
+function pedalHTML (kit, name) {
+  const isNew = kit.fam === 'new', size = kit.id === 'hammer' ? 'md' : 'sm'
+  const knobs = PED_KNOBS.map(([lb, v]) => knobCell(kit, lb, v, size)).join('')
+  const led = `<span class="lp ${kit.led === 'jewel-sm' ? 'lp-jewel sm' : isNew ? 'lp-ring' : 'lp-led'}" aria-hidden="true"></span>`
+  const aria = `aria-pressed="true" aria-label="${name}: engaged"`
+  if (kit.foot === 'pad') return `<div class="hw pedal classic k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal"><div class="pface"><div class="pled">${led}<span class="lb">Check</span></div><div class="pknobs">${knobs}</div><button class="fs fs-pad" type="button" data-role="foot" ${aria}><span class="strip">${name}<small>RG-1</small></span></button></div></div>`
+  const foot = kit.foot === 'ring' ? `<button class="fs fs-ring" type="button" data-role="foot" ${aria}></button>` : `<button class="fs fs-3pdt" type="button" data-role="foot" ${aria}><i class="nut"></i><i class="cap"></i></button>`
+  return `<div class="hw pedal ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal"><div class="pface">${isNew ? layersHTML(kit) : ''}<div class="pled">${led}</div><div class="pplate"><div class="pknobs">${knobs}</div></div><div class="pname">${name}</div>${isNew ? '<div class="gz"></div>' : ''}${foot}</div></div>`
+}
+function cabHTML (kit) {
+  const isNew = kit.fam === 'new'
+  const inner = isNew ? '' : kit.id === 'rack' ? '<span class="vents" aria-hidden="true"></span>' : '<i class="spk"></i><i class="spk"></i>'
+  return `<div class="hw cab ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="cab"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}<div class="gz">${inner}</div><div class="cplate"><span class="lb">Cabinet IR</span><b>2×12 open back</b><small>Dynamic mic, on axis</small>${swHTML(kit.tg, 'ir', 'IR', true)}</div></div></div></div>`
+}
+function meterHTML (label, id) {
+  let leds = ''
+  for (let i = 0; i < 14; i++) leds += `<i class="${i < 9 ? 'g' : i < 12 ? 'y' : 'r'}"></i>`
+  return `<div class="meter" id="${id}" aria-label="${label} level"><span class="clip">CLIP</span><div class="ladder">${leds}</div><span class="m-l">${label}</span></div>`
+}
+
+// ---------------------------------------------------------------- the cutouts (paths in the face's pixels)
+const C = (x, y, r) => `M${f1(x - r)} ${f1(y)}a${f1(r)} ${f1(r)} 0 1 0 ${f1(2 * r)} 0a${f1(r)} ${f1(r)} 0 1 0 ${f1(-2 * r)} 0Z`
+const RR = (x, y, w, h, r) => { r = Math.max(0, Math.min(r, w / 2, h / 2)); return `M${f1(x + r)} ${f1(y)}H${f1(x + w - r)}A${f1(r)} ${f1(r)} 0 0 1 ${f1(x + w)} ${f1(y + r)}V${f1(y + h - r)}A${f1(r)} ${f1(r)} 0 0 1 ${f1(x + w - r)} ${f1(y + h)}H${f1(x + r)}A${f1(r)} ${f1(r)} 0 0 1 ${f1(x)} ${f1(y + h - r)}V${f1(y + r)}A${f1(r)} ${f1(r)} 0 0 1 ${f1(x + r)} ${f1(y)}Z` }
+const POLY = pts => 'M' + pts.map(p => `${f1(p[0])} ${f1(p[1])}`).join('L') + 'Z'
+const HEXP = (x, y, r) => POLY([0, 1, 2, 3, 4, 5].map(k => { const a = (-90 + 60 * k) * Math.PI / 180; return [x + r * Math.cos(a), y + r * Math.sin(a)] }))
+const annSector = (cx, cy, ra, rb, a0, a1) => { const p = (r, a) => `${f1(cx + r * Math.cos(a))} ${f1(cy + r * Math.sin(a))}`; const lg = a1 - a0 > Math.PI ? 1 : 0; return `M${p(ra, a0)}A${f1(ra)} ${f1(ra)} 0 ${lg} 1 ${p(ra, a1)}L${p(rb, a1)}A${f1(rb)} ${f1(rb)} 0 ${lg} 0 ${p(rb, a0)}Z` }
+function mulberry (seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+
+// Circuit's traces: from the zone's top and bottom edges, down to a lane, along it, and into the core. A trace farther
+// from the core takes a lane nearer the middle, so no two cross.
+function genTraces (R, P, kind) {
+  const rnd = mulberry(kind === 'amp' ? 2257 : 991), lane = kind === 'amp' ? 5 : 4, out = []
+  const fit = Math.max(1, Math.floor((R.h / 2 - 5) / lane))
+  for (const side of [-1, 1]) {
+    for (const dir of [1, -1]) {
+      const a = dir > 0 ? R.x + 4 : P.x + P.r + 12, b = dir > 0 ? P.x - P.r - 12 : R.x + R.w - 4
+      const span = b - a
+      if (span < 10) continue
+      const n = Math.min(fit, Math.max(1, Math.floor(span / (kind === 'amp' ? 15 : 11))))
+      const xs = []
+      for (let i = 0; i < n; i++) xs.push(a + span * (i + .5 + (rnd() - .5) * .5) / n)
+      if (dir < 0) xs.reverse() // far first
+      xs.forEach((x, i) => {
+        const dy = 3 + i * lane, ly = P.y + side * dy, edge = side < 0 ? R.y - 2 : R.y + R.h + 2
+        const x2 = P.x - dir * (P.r + 6 + dy * .5)
+        const th = Math.atan2(ly - P.y, x2 - P.x), ex = P.x + Math.cos(th) * (P.r + 1), ey = P.y + Math.sin(th) * (P.r + 1)
+        const pts = [[x, edge], [x, ly], [x2, ly], [ex, ey]]
+        const seg = []; let len = 0
+        for (let k = 1; k < pts.length; k++) { const d = Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); seg.push(d); len += d }
+        out.push({ pts, seg, len, flash: 0 })
+      })
+    }
+  }
+  return out
+}
+function genTubes (R, kind) {
+  if (kind !== 'amp') { const h = R.h * .9, w = Math.min(R.w * .4, h * .42); return [{ x: R.x + R.w / 2 - w / 2, y: R.y + R.h - h, w, h }] }
+  const ph = R.h * .9, sh = ph * .64
+  let pw = Math.min(ph * .4, 30), sw = pw * .64, gp = pw * .5, gs = sw * .65, mid = 22
+  const k = Math.min(1, (R.w - 16) / (3 * sw + 2 * gs + mid + 4 * pw + 3 * gp))
+  pw *= k; sw *= k; gp *= k; gs *= k; mid *= k
+  const total = 3 * sw + 2 * gs + mid + 4 * pw + 3 * gp, base = R.y + R.h * .96, tubes = []
+  let x = R.x + (R.w - total) / 2
+  for (let i = 0; i < 3; i++) { tubes.push({ x, y: base - sh, w: sw, h: sh }); x += sw + (i < 2 ? gs : mid) }
+  for (let i = 0; i < 4; i++) { tubes.push({ x, y: base - ph, w: pw, h: ph }); x += pw + gp }
+  return tubes
+}
+const CUTS = {
+  mark (R, kind) {
+    const rh = Math.min(R.h * .5, kind === 'amp' ? R.w * .3 : R.w * .5), s = rh / 48.5
+    const cx = kind === 'amp' ? R.x + R.w - rh * .9 - 2 : R.x + R.w / 2, cy = R.y + R.h / 2
+    let d = HEXP(cx, cy, 48.5 * s) + HEXP(cx, cy, 43.5 * s)
+    const eyes = C(cx - 8.5 * s, cy - 15.5 * s, 6.2 * s) + C(cx + 8.5 * s, cy - 15.5 * s, 6.2 * s) + C(cx, cy - 2.5 * s, 2.4 * s)
+    d += eyes + C(cx, cy + 14 * s, 9.7 * s) + C(cx, cy + 14 * s, 7.1 * s) + C(cx, cy + 14 * s, 4.4 * s)
+    const body = RR(cx - 19 * s, cy - 29 * s, 38 * s, 58 * s, 6 * s)
+    const decor = `<path fill-rule="evenodd" d="${body}${eyes}${C(cx, cy + 14 * s, 9.7 * s)}" style="fill:rgba(217,43,82,.3)"/><path d="${body}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1"/>`
+    if (kind === 'amp') {
+      const x1 = cx - 43.5 * s * .87 - 12, x0 = R.x
+      if (x1 - x0 > 40) for (const [dy, f] of [[-13, .55], [0, 1], [13, .78]]) { const len = (x1 - x0) * f; d += RR(x1 - len, cy + dy - 3, len, 6, 3) }
+    }
+    return { d, decor, port: { x: cx, y: cy, r: rh * 1.25 } }
+  },
+  rings (R, kind) {
+    const r0 = Math.min(R.h, R.w) * (kind === 'amp' ? .17 : .2)
+    const cx = kind === 'amp' ? Math.min(R.x + R.w * .7, R.x + R.w - R.h * .5) : R.x + R.w / 2, cy = R.y + R.h / 2
+    let d = C(cx, cy, r0)
+    const inR = (x, y) => x >= R.x - .5 && x <= R.x + R.w + .5 && y >= R.y - .5 && y <= R.y + R.h + .5
+    const maxR = Math.max(Math.hypot(cx - R.x, R.h / 2), Math.hypot(R.x + R.w - cx, R.h / 2))
+    const sw = kind === 'amp' ? 5 : 3.5, gap = kind === 'amp' ? 6 : 4.5
+    for (let ra = r0 + gap, k = 0; ra + sw < maxR; ra += sw + gap, k++) {
+      const rb = ra + sw, nseg = Math.max(6, Math.round(TAU * ra / 34)), step = TAU / nseg, off = (k % 2) * step / 2
+      for (let i = 0; i < nseg; i++) {
+        const a0 = i * step + off + 2.2 / ra, a1 = (i + 1) * step + off - 2.2 / ra, am = (a0 + a1) / 2
+        if ([a0, am, a1].every(a => inR(cx + rb * Math.cos(a), cy + rb * Math.sin(a)) && inR(cx + ra * Math.cos(a), cy + ra * Math.sin(a)))) d += annSector(cx, cy, ra, rb, a0, a1)
+      }
+    }
+    return { d, port: { x: cx, y: cy, r: r0 * 1.6 } }
+  },
+  louvre (R, kind) {
+    const pr = kind === 'amp' ? R.h * .36 : Math.min(R.w, R.h) * .3
+    const cx = kind === 'amp' ? R.x + R.w - pr - 10 : R.x + R.w / 2, cy = R.y + R.h / 2
+    let d = C(cx, cy, pr)
+    const sh = kind === 'amp' ? 6 : 4, gap = kind === 'amp' ? 6 : 5, n = Math.floor((R.h + gap) / (sh + gap)), y0 = cy - (n * (sh + gap) - gap) / 2, clear = pr + 7
+    for (let i = 0; i < n; i++) {
+      const y = y0 + i * (sh + gap), dy = Math.abs(y + sh / 2 - cy)
+      const segs = dy < clear ? (() => { const hw = Math.sqrt(clear * clear - dy * dy); return [[R.x, cx - hw], [cx + hw, R.x + R.w]] })() : [[R.x, R.x + R.w]]
+      for (const [a, b] of segs) if (b - a > 10) d += RR(a, y, b - a, sh, sh / 2)
+    }
+    return { d, port: { x: cx, y: cy, r: pr }, decor: `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(pr + 2.5)}" fill="none" stroke="url(#chr-v)" stroke-width="2.5" opacity=".75"/>` }
+  },
+  tunnel (R, kind) {
+    const r = kind === 'amp' ? 12 : 8, d = RR(R.x, R.y, R.w, R.h, r)
+    const steps = kind === 'amp' ? [8, 16, 24] : [5, 10, 15], fills = ['rgba(28,29,35,.66)', 'rgba(18,19,24,.52)', 'rgba(12,12,16,.4)']
+    let decor = '', prev = [R.x, R.y, R.w, R.h, r]
+    steps.forEach((ins, i) => {
+      const nx = R.x + ins, ny = R.y + ins * .7, nw = R.w - 2 * ins, nh = R.h - 1.4 * ins, nr = Math.max(3, r - ins * .3)
+      decor += `<path fill-rule="evenodd" d="${RR(...prev)}${RR(nx, ny, nw, nh, nr)}" fill="${fills[i]}"/><path d="${RR(nx, ny, nw, nh, nr)}" fill="none" stroke="url(#chr-v)" stroke-width="1" opacity="${(.55 - i * .14).toFixed(2)}"/>`
+      prev = [nx, ny, nw, nh, nr]
+    })
+    decor += `<path d="${d}" fill="none" stroke="url(#chr-v)" stroke-width="2" opacity=".9"/>`
+    const [ix, iy, iw, ih] = prev
+    return { d, decor, port: { x: ix + iw / 2, y: iy + ih / 2, r: Math.min(iw, ih) / 2 } }
+  },
+  glass (R, kind) {
+    const pr = kind === 'amp' ? R.h * .3 : Math.min(R.w, R.h) * .26
+    const cx = kind === 'amp' ? R.x + R.w - R.h * .55 : R.x + R.w / 2, cy = R.y + R.h / 2, port = { x: cx, y: cy, r: pr }
+    const traces = genTraces(R, port, kind)
+    let d = C(cx, cy, pr * .7)
+    let decor = `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(pr)}" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.2"/>`
+    for (const t of traces) { const e = t.pts[3]; d += C(e[0], e[1], kind === 'amp' ? 2 : 1.5); decor += `<circle cx="${f1(t.pts[1][0])}" cy="${f1(t.pts[1][1])}" r="1.6" fill="rgba(255,255,255,.12)"/>` }
+    const slits = traces.map(t => 'M' + t.pts.map(p => `${f1(p[0])} ${f1(p[1])}`).join('L')).join('')
+    return { d, slits, slitW: kind === 'amp' ? 1.8 : 1.4, decor, port, traces }
+  },
+  intake (R, kind) {
+    const r = kind === 'amp' ? R.h * .48 : Math.min(R.w, R.h) * .44
+    const cx = kind === 'amp' ? R.x + R.w - r - 10 : R.x + R.w / 2, cy = R.y + R.h / 2
+    const rh = r * .26, N = 7, w = kind === 'amp' ? 2.2 : 1.6, rs = rh + .6, re = Math.sqrt((r - .7) ** 2 - w * w)
+    let d = C(cx, cy, r) + C(cx, cy, rh)
+    for (let k = 0; k < N; k++) {
+      const a = k / N * TAU - Math.PI / 2, ux = Math.cos(a), uy = Math.sin(a), nx = -uy * w, ny = ux * w
+      d += POLY([[cx + ux * rs + nx, cy + uy * rs + ny], [cx + ux * re + nx, cy + uy * re + ny], [cx + ux * re - nx, cy + uy * re - ny], [cx + ux * rs - nx, cy + uy * rs - ny]])
+    }
+    const sc = rh / 24
+    let decor = `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r + 2)}" fill="none" stroke="url(#chr-v)" stroke-width="${kind === 'amp' ? 4 : 3}"/><circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(rh)}" fill="url(#spin-g)" stroke="rgba(0,0,0,.6)" stroke-width="1"/><path transform="translate(${f1(cx)} ${f1(cy)}) scale(${sc.toFixed(3)})" d="M0,0 C9,-3 13,-14 4,-22 C-6,-30 -24,-20 -23,-2" fill="none" style="stroke:color-mix(in oklab, var(--fin) 70%, white)" stroke-width="5" stroke-linecap="round"/>`
+    if (kind === 'amp') {
+      for (let k = 0; k < 16; k++) { const a = k / 16 * TAU, bx = cx + Math.cos(a) * (r + 8.5), by = cy + Math.sin(a) * (r + 8.5); if (by > R.y - 6 && by < R.y + R.h + 6) decor += `<circle cx="${f1(bx)}" cy="${f1(by)}" r="1.7" fill="url(#bolt-g)"/>` }
+      const x1 = cx - r - 16
+      if (x1 - R.x > 40) for (const [dy, f] of [[-8, .7], [8, 1]]) { const len = (x1 - R.x) * f; d += RR(x1 - len, cy + dy - 3, len, 6, 3) }
+    }
+    return { d, decor, port: { x: cx, y: cy, r } }
+  },
+  honeycomb (R, kind) {
+    const cr = kind === 'amp' ? 11 : 8, dx = Math.sqrt(3) * cr, dy = 1.5 * cr
+    const P = kind === 'amp' ? { x: Math.min(R.x + R.w * .72, R.x + R.w - R.h * .5), y: R.y + R.h / 2 } : { x: R.x + R.w / 2, y: R.y + R.h / 2 }
+    let d = ''
+    for (let j = 0, y = R.y + cr; y + cr <= R.y + R.h + .5; j++, y += dy) {
+      for (let x = R.x + dx / 2 + (j % 2 ? dx / 2 : 0); x + dx / 2 <= R.x + R.w + .5; x += dx) {
+        const sc = Math.max(.3, Math.min(1, 1.12 - Math.hypot(x - P.x, y - P.y) / (kind === 'amp' ? R.w * .62 : R.w * .9)))
+        d += HEXP(x, y, (cr - 1.8) * sc)
+      }
+    }
+    return { d, port: { x: P.x, y: P.y, r: R.h * .5 } }
+  },
+  window (R, kind) {
+    const d = RR(R.x, R.y, R.w, R.h, kind === 'amp' ? 10 : 7)
+    return { d, decor: `<path d="${d}" fill="none" stroke="url(#chr-v)" stroke-width="${kind === 'amp' ? 3 : 2}"/>`, port: { x: R.x + R.w / 2, y: R.y + R.h / 2, r: R.h / 2 }, tubes: genTubes(R, kind) }
+  },
+  porthole (R, kind) {
+    const r = kind === 'amp' ? R.h * .44 : Math.min(R.w, R.h) * .4
+    const cx = kind === 'amp' ? R.x + R.w - r - 14 : R.x + R.w / 2, cy = R.y + R.h / 2
+    let d = C(cx, cy, r)
+    const p = (rr, a) => `${f1(cx + rr * Math.cos(a))} ${f1(cy + rr * Math.sin(a))}`
+    let decor = `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r + 4)}" fill="none" stroke="url(#chr-d)" stroke-width="${kind === 'amp' ? 8 : 5}"/><circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r + .5)}" fill="none" stroke="rgba(0,0,0,.7)" stroke-width="1.2"/>`
+    const nb = kind === 'amp' ? 8 : 6
+    for (let k = 0; k < nb; k++) { const a = k / nb * TAU + TAU / 16; decor += `<circle cx="${f1(cx + (r + 4) * Math.cos(a))}" cy="${f1(cy + (r + 4) * Math.sin(a))}" r="${kind === 'amp' ? 2.2 : 1.5}" fill="url(#bolt-g)"/>` }
+    decor += `<path d="M${p(r - 5, 3.5)} A${f1(r - 5)} ${f1(r - 5)} 0 0 1 ${p(r - 5, 4.6)}" fill="none" stroke="rgba(255,255,255,.24)" stroke-width="3" stroke-linecap="round"/>`
+    if (kind === 'amp') { const x1 = cx - r - 22; if (x1 - R.x > 40) d += RR(R.x, cy - 3, x1 - R.x, 6, 3) }
+    return { d, decor, port: { x: cx, y: cy, r } }
+  }
+}
+
+// ---------------------------------------------------------------- laying out a new kit's face: the mask, the bevels, the energy's geometry
+const bevel = d => `<path d="${d}" fill="none" stroke="rgba(0,0,0,.8)" stroke-width="1.6" transform="translate(0,-.7)"/><path d="${d}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1" transform="translate(0,.9)"/>`
+function layoutHW (hw) {
+  const face = hw.__face, kit = kitOf(hw), kind = hw.dataset.kind
+  if (!face || !kit) return
+  const W = face.clientWidth, H = face.clientHeight
+  if (W < 20 || H < 20) return
+  const fr = face.getBoundingClientRect(), sx = fr.width / W || 1
+  const rel = el => { const r = el.getBoundingClientRect(); return { x: (r.left - fr.left) / sx, y: (r.top - fr.top) / sx, w: r.width / sx, h: r.height / sx } }
+  let R = rel($('.gz', face))
+  if (kind === 'amp') { const lb = $('.logo-box', face); if (lb) { const L = rel(lb); const x0 = L.x + L.w + 18; R = { x: x0, y: R.y, w: R.x + R.w - x0, h: R.h } } }
+  const pad = kind === 'amp' ? 8 : kind === 'cab' ? 10 : 4
+  R = { x: R.x + pad, y: R.y + pad, w: Math.max(24, R.w - 2 * pad), h: Math.max(24, R.h - 2 * pad) }
+  const geo = CUTS[kit.cut](R, kind)
+  if (kit.fx === 'circuit' && !geo.traces) geo.traces = genTraces(R, geo.port, kind)
+  if (kit.fx === 'valve' && !geo.tubes) geo.tubes = genTubes(R, kind)
+  let rings = ''
+  for (const kn of $$('.kn', face)) { if (kn.closest('.cplate')) continue; const k = rel(kn), cx = k.x + k.w / 2, cy = k.y + k.h / 2, r = k.w / 2; rings += C(cx, cy, r + 7) + C(cx, cy, r + 3) }
+  const holes = geo.d + rings
+  const mask = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><mask id="m"><rect width="${W}" height="${H}" fill="#fff"/><path d="${holes}" fill="#000" fill-rule="evenodd"/>${geo.slits ? `<path d="${geo.slits}" fill="none" stroke="#000" stroke-width="${geo.slitW}" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</mask><rect width="${W}" height="${H}" fill="#fff" mask="url(#m)"/></svg>`
+  const pl = $('.pl', face), u = `url("data:image/svg+xml,${encodeURIComponent(mask)}")`
+  pl.style.webkitMaskImage = u; pl.style.maskImage = u
+  const dec = $('.dec', face)
+  dec.setAttribute('viewBox', `0 0 ${W} ${H}`)
+  dec.innerHTML = bevel(holes) + (geo.slits ? `<path d="${geo.slits}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1" transform="translate(0,1.1)"/>` : '') + (kit.mesh === 'none' ? `<path d="${geo.d}" fill="url(#glass-g)" fill-rule="evenodd"/>` : '') + (geo.decor || '')
+  const s = hw.__surf
+  const P = geo.port, ext = Math.max(...[[0, 0], [W, 0], [0, H], [W, H]].map(([x, y]) => Math.hypot(x - P.x, y - P.y))) / P.r
+  s.geo = { W, H, P, R, traces: geo.traces, tubes: geo.tubes, ext }
+  sizeSurface(s)
+}
+
+// ---------------------------------------------------------------- building cards, the stage and the builder
+function cardHTML (kit) {
+  const vbtn = (v, t) => `<button type="button" data-verdict="${kit.id}" data-val="${v}" aria-pressed="false">${t}</button>`
+  return `<article class="kit" id="kit-${kit.id}" data-kit="${kit.id}">
+    <header class="khead"><h3>${kit.name}</h3><span class="after">${kit.fam === 'classic' ? 'After ' + kit.after : kit.after}</span><span class="tags"><span class="tag def" data-deftag hidden>Default</span><span class="tag">${kit.fam === 'classic' ? 'Classic' : 'New'}</span></span><p class="pitch"><span>${kit.pitch}</span></p></header>
+    <div class="show"><div class="floor">${ampHTML(kit)}${pedalHTML(kit, kit.pedal)}</div></div>
+    <div class="info">
+      <dl class="parts">${kit.parts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}<div class="reach"><dt>Finish</dt><dd>${kit.reach}</dd></div></dl>
+      <div class="verdict">
+        <div class="vrow"><div class="vseg" role="group" aria-label="Your verdict on ${kit.name}">${vbtn('keep', 'Keep')}${vbtn('maybe', 'Maybe')}${vbtn('cut', 'Cut')}</div></div>
+        <div class="vrow"><button class="btn" type="button" data-default="${kit.id}" aria-pressed="false">★ Make it the default</button><button class="btn ghost" type="button" data-try="${kit.id}">Try it on the page ↑</button></div>
+        <textarea class="note" data-note="${kit.id}" aria-label="Your note on ${kit.name}" placeholder="A note: what to change, what works…"></textarea>
+      </div>
+    </div>
+  </article>`
+}
+const ro = new ResizeObserver(es => { for (const e of es) if (e.target.__hw) layoutHW(e.target.__hw) })
+const io = new IntersectionObserver(es => { for (const e of es) { const s = e.target.__hw && e.target.__hw.__surf; if (s) s.vis = e.isIntersecting } }, { rootMargin: '120px' })
+function hydrate (root) {
+  for (const hw of $$('.hw', root)) {
+    hw.__vals = {}
+    for (const el of $$('[data-label]', hw)) hw.__vals[el.dataset.label] = +el.dataset.v
+    if (hw.classList.contains('new')) {
+      const face = $('.face, .pface', hw)
+      face.__hw = hw; hw.__face = face
+      hw.__surf = makeSurface(hw, face)
+      ro.observe(face); io.observe(face)
+    }
+  }
+  applyFinish(root)
+  collectLive()
+}
+function forget (root) { for (const hw of $$('.hw.new', root)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) } }
+
+// ---------------------------------------------------------------- finish and look
+let FINISH = 'own', LOOK = 'capsule'
+const hex2rgb = h => { const m = /^#?([0-9a-f]{6})$/i.exec((h || '').trim()); if (!m) return { r: 217, g: 43, b: 82 }; const n = parseInt(m[1], 16); return { r: n >> 16 & 255, g: n >> 8 & 255, b: n & 255 } }
+const lum = h => { const c = hex2rgb(h), f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4) }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b) }
+function finFor (kit) { return FINISH === 'own' ? kit.own : FIN_HEX[FINISH] }
+function applyFinish (root = document) {
+  for (const hw of $$('.hw', root)) {
+    const kit = kitOf(hw); if (!kit) continue
+    const fin = finFor(kit), lamp = FINISH === 'own' ? (kit.lamp || kit.own) : fin
+    hw.style.setProperty('--fin', fin); hw.style.setProperty('--lampc', lamp)
+    hw.style.setProperty('--fin-ink', (1.05) / (lum(fin) + .05) > (lum(fin) + .05) / .05 ? '#ffffff' : '#141414')
+    if (hw.__surf) hw.__surf.col = hex2rgb(fin)
+  }
+}
+
+// ---------------------------------------------------------------- the controls
+function setKnob (el, v) {
+  v = clamp01(v)
+  el.dataset.v = v
+  el.setAttribute('aria-valuenow', (v * 10).toFixed(1))
+  if (el.classList.contains('fd')) el.style.setProperty('--v', v)
+  else {
+    el.style.setProperty('--a', ang(v) + 'deg')
+    const val = el.parentElement.querySelector('.arc .val'); if (val) val.setAttribute('stroke-dasharray', `${f1(v * 100)} 200`)
+  }
+  const hw = el.closest('.hw'); if (hw && hw.__vals) hw.__vals[el.dataset.label] = v
+  if (!MOTION) stillSoon()
+}
+let drag = null
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.kn, .fd'); if (!el) return
+  e.preventDefault(); el.focus({ preventScroll: true })
+  drag = { el, y: e.clientY, v: +el.dataset.v, span: el.classList.contains('fd') ? el.clientHeight - 21 : 150 }
+  el.setPointerCapture(e.pointerId)
+})
+document.addEventListener('pointermove', e => { if (drag) setKnob(drag.el, drag.v + (drag.y - e.clientY) / drag.span) })
+const endDrag = () => { drag = null }
+document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag)
+document.addEventListener('keydown', e => {
+  const el = e.target.closest && e.target.closest('.kn, .fd'); if (!el) return
+  const v = +el.dataset.v, step = { ArrowUp: .02, ArrowRight: .02, ArrowDown: -.02, ArrowLeft: -.02, PageUp: .1, PageDown: -.1 }[e.key]
+  if (step !== undefined) { e.preventDefault(); setKnob(el, v + step) } else if (e.key === 'Home') { e.preventDefault(); setKnob(el, 0) } else if (e.key === 'End') { e.preventDefault(); setKnob(el, 1) }
+})
+function flip (btn) {
+  const on = btn.getAttribute('aria-pressed') !== 'true', role = btn.dataset.role, hw = btn.closest('.hw')
+  btn.setAttribute('aria-pressed', String(on))
+  const st = btn.parentElement.querySelector('.st'); if (st && STATE_WORD[role]) st.textContent = STATE_WORD[role][on ? 1 : 0]
+  if (role === 'power') { hw.classList.toggle('on', on); const p = $('[data-pilot]', hw); if (p) p.textContent = on ? 'On' : 'Off' }
+  if (role === 'standby') hw.dataset.standby = String(!on)
+  if (role === 'foot') { hw.classList.toggle('on', on); const name = btn.getAttribute('aria-label').split(':')[0]; btn.setAttribute('aria-label', `${name}: ${on ? 'engaged' : 'bypassed'}`) }
+  if (!MOTION) stillSoon()
+}
+</script>
+
+<script>
+'use strict'
+// ---------------------------------------------------------------- the energy
+// Pavillion Hub's logo-window layers (pavillion_client hub/apps/web/src/shell/logo-window/effects.ts and reactor.ts),
+// the same maths, drawn behind a faceplate instead of inside the ring: a layer's disc (radius 1) sits on the kit's port,
+// and the far edges of the face are `ext` discs out. Valve and Ferro are new here. Colours come from the finish.
+const rgba = (c, a) => `rgba(${c.r | 0},${c.g | 0},${c.b | 0},${clamp01(a).toFixed(3)})`
+const hot = (c, k) => ({ r: c.r + (255 - c.r) * k, g: c.g + (255 - c.g) * k, b: c.b + (255 - c.b) * k })
+const mix = (a, b, k) => ({ r: a.r + (b.r - a.r) * k, g: a.g + (b.g - a.g) * k, b: a.b + (b.b - a.b) * k })
+const pol = (r, a) => [Math.cos(a) * r, Math.sin(a) * r]
+const WHITE = { r: 255, g: 255, b: 255 }, DEEP = { r: 4, g: 3, b: 7 }
+function glowDisc (g, x, y, r, col, a) {
+  if (a <= .003 || r <= 0) return
+  const gr = g.createRadialGradient(x, y, 0, x, y, r)
+  gr.addColorStop(0, rgba(col, a)); gr.addColorStop(.35, rgba(col, a * .45)); gr.addColorStop(1, rgba(col, 0))
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill()
+}
+function band (g, r, w, col, a) {
+  if (a <= .003) return
+  const r0 = Math.max(0, r - w), r1 = r + w, gr = g.createRadialGradient(0, 0, r0, 0, 0, r1)
+  gr.addColorStop(0, rgba(col, 0)); gr.addColorStop(.5, rgba(col, a)); gr.addColorStop(1, rgba(col, 0))
+  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, r1, 0, TAU); g.fill()
+}
+function line (g, pts, w, style) { g.lineWidth = w; g.strokeStyle = style; g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.stroke() }
+function inDisc (g, P, fn) { g.save(); g.translate(P.x, P.y); g.scale(P.r, P.r); fn(1 / P.r); g.restore() }
+
+// Heartbeat: a double pulse at rest; while playing, every pick is a beat. Each beat's shockwave runs out across the face.
+const beat = x => x < 0 ? 0 : (1 - Math.exp(-x / .018)) * Math.exp(-x / .17)
+const pulse = {
+  init: () => ({ beats: [], next: 0 }),
+  draw (g, st, t, dt, E) {
+    if (E.playing) { if (E.atk > .05) st.beats.push({ t0: t, s: Math.min(1.2, .4 + E.atk) }) } else if (t >= st.next) { st.beats.push({ t0: t, s: 1 }, { t0: t + .19, s: .62 }); st.next = t + 1.45 }
+    if (st.next > t + 3) st.next = t
+    st.beats = st.beats.filter(b => t - b.t0 < 1.3 && t - b.t0 > -1)
+    let env = 0
+    for (const b of st.beats) env += beat(t - b.t0) * b.s
+    const A = E.amp, col = E.col, ext = E.geo.ext
+    inDisc(g, E.geo.P, () => {
+      glowDisc(g, 0, 0, .9 + .3 * env, col, (.3 + .55 * env) * A)
+      glowDisc(g, 0, 0, .45, hot(col, .55), .65 * env * A)
+      for (const b of st.beats) {
+        const k = (t - b.t0) / 1.15
+        if (k < 0 || k > 1) continue
+        const r = .45 + (ext - .45) * (1 - Math.pow(1 - k, 2.2))
+        band(g, r, (.08 + .1 * (1 - k)) * (1 + r * .12), col, Math.pow(1 - k, 1.3) * .9 * b.s * A)
+      }
+      glowDisc(g, 0, 0, ext * .9, col, .07 * A)
+    })
+  }
+}
+
+// Storm: arcs of current crack from the core across the face; each pick strikes, a chord strikes several.
+function bolt (a, b, rough, levels) {
+  let pts = [a, b]
+  for (let l = 0; l < levels; l++) {
+    const out = [pts[0]]
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i], dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy) || 1, off = (Math.random() - .5) * len * rough
+      out.push([(p[0] + q[0]) / 2 - dy / len * off, (p[1] + q[1]) / 2 + dx / len * off], q)
+    }
+    pts = out
+  }
+  return pts
+}
+function newArc (t, ext) {
+  const th = Math.random() * TAU, r0 = .42 + Math.random() * .12, th1 = th + (Math.random() - .5), reach = 1 + Math.random() * Math.max(0, ext * .85 - 1)
+  return { from: pol(r0, th), to: pol(reach, th1), born: t, life: .1 + Math.random() * .26, jit: -1, pts: null, fk: null, fork: Math.random() < .55, forkTo: pol(reach * (.6 + Math.random() * .3), th1 + (Math.random() - .5) * .9) }
+}
+const storm = {
+  init: () => ({ arcs: [], next: .2, flash: 0 }),
+  draw (g, st, t, dt, E) {
+    const col = E.col, A = E.amp, ext = E.geo.ext
+    let n = 0
+    if (E.playing) { if (E.atk > .08) n = 1 + Math.round(E.atk * 2.4); if (t >= st.next) { n = Math.max(n, Math.random() < .5 ? 1 : 0); st.next = t + .25 + Math.random() * .6 } } else if (t >= st.next) { n = Math.random() < .3 ? 2 + ((Math.random() * 2) | 0) : 1; st.next = t + .06 + Math.random() * Math.random() * .7 }
+    if (st.next > t + 3) st.next = t
+    if (A > .05) for (let i = 0; i < n; i++) st.arcs.push(newArc(t, ext))
+    st.flash = Math.min(1.5, st.flash + .55 * n) * Math.exp(-dt * 7)
+    inDisc(g, E.geo.P, u => {
+      glowDisc(g, 0, 0, E.geo.ext * .85, col, .1 * A); glowDisc(g, 0, 0, 1.3, col, (.32 + .4 * st.flash) * A)
+      glowDisc(g, 0, 0, .5, hot(col, .5), .3 * st.flash * A)
+      g.lineCap = 'round'; g.lineJoin = 'round'
+      st.arcs = st.arcs.filter(a => t - a.born < a.life && t >= a.born)
+      for (const a of st.arcs) {
+        if (!a.pts || t - a.jit > .045) { a.pts = bolt(a.from, a.to, .3, 6); a.fk = a.fork ? bolt(a.pts[(a.pts.length * .45) | 0], a.forkTo, .34, 5) : null; a.jit = t }
+        const k = (t - a.born) / a.life, al = (k < .15 ? 1 : 1 - (k - .15) / .85) * A
+        for (const pts of a.fk ? [a.pts, a.fk] : [a.pts]) { line(g, pts, 7 * u, rgba(col, .14 * al)); line(g, pts, 3 * u, rgba(col, .5 * al)); line(g, pts, 1.4 * u, rgba(hot(col, .85), .95 * al)) }
+        glowDisc(g, a.to[0], a.to[1], .25, hot(col, .4), .7 * al)
+      }
+    })
+  }
+}
+
+// Warp: light streaks out of the core towards you; its speed follows your level, and a big chord surges.
+function star (initial) { const a = Math.random() * TAU, d = .03 + Math.random() * .4; return { x: Math.cos(a) * d, y: Math.sin(a) * d, z: initial ? .06 + Math.random() * .94 : 1, sp: .75 + Math.random() * .5 } }
+const warp = {
+  init: () => ({ s: Array.from({ length: 300 }, () => star(true)), kick: 0 }),
+  draw (g, st, t, dt, E) {
+    const col = E.col, A = E.amp, ext = E.geo.ext
+    st.kick = Math.max(st.kick * Math.exp(-dt * 2.5), E.atk > .7 ? E.atk : 0)
+    const cyc = t % 7, surge = E.playing ? Math.min(1, st.kick) : (cyc > 5 ? Math.sin((cyc - 5) / 2 * Math.PI) : 0)
+    const v = (.42 + 1.9 * surge * surge + (E.playing ? E.lvl * 1.2 : 0)) * (.25 + .75 * A), f = .2 * ext / 1.9
+    inDisc(g, E.geo.P, u => {
+      glowDisc(g, 0, 0, 1.1, col, (.4 + .35 * surge) * A)
+      glowDisc(g, 0, 0, .45, hot(col, .6), (.35 + .4 * surge) * A)
+      g.lineCap = 'round'
+      for (const s of st.s) {
+        const z0 = s.z
+        s.z -= v * dt * s.sp
+        if (s.z <= .045) { Object.assign(s, star(false)); continue }
+        const x0 = s.x / z0 * f, y0 = s.y / z0 * f, x1 = s.x / s.z * f, y1 = s.y / s.z * f
+        if (x1 * x1 + y1 * y1 > ext * ext) { Object.assign(s, star(false)); continue }
+        const tail = 3 + surge * 7, near = 1 - s.z
+        g.strokeStyle = rgba(near > .75 ? hot(col, .75) : col, (.32 + .68 * near) * A)
+        g.lineWidth = (.6 + 2.2 * near * near) * u
+        g.beginPath(); g.moveTo(x1 - (x1 - x0) * tail, y1 - (y1 - y0) * tail); g.lineTo(x1, y1); g.stroke()
+      }
+    })
+  }
+}
+
+// Circuit: a pulse runs in along a trace for each pick; a hard pick fires them all back out (in the face's pixels).
+function along (tr, s) {
+  s = Math.max(0, Math.min(tr.len, s))
+  for (let k = 0; k < tr.seg.length; k++) { if (s <= tr.seg[k]) { const a = tr.pts[k], b = tr.pts[k + 1], w = s / tr.seg[k]; return [a[0] + (b[0] - a[0]) * w, a[1] + (b[1] - a[1]) * w] } s -= tr.seg[k] }
+  return tr.pts[tr.pts.length - 1]
+}
+function comet (g, tr, s, dir, tail, col, amp) {
+  const K = 9
+  for (let k = 0; k < K; k++) {
+    const s0 = s - dir * tail * (1 - k / K), s1 = s - dir * tail * (1 - (k + 1) / K)
+    if (s1 < 0 || s1 > tr.len) continue
+    const a = along(tr, s0), b = along(tr, s1), w = (k + 1) / K
+    g.strokeStyle = rgba(w > .8 ? hot(col, .6) : col, w * w * .95 * amp); g.lineWidth = 1 + 1.8 * w
+    g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke()
+  }
+  const h = along(tr, s); glowDisc(g, h[0], h[1], 8, hot(col, .7), .9 * amp)
+}
+const circuit = {
+  init: () => ({ p: [], next: 0, surge: 3.5, charge: 0 }),
+  draw (g, st, t, dt, E) {
+    const col = E.col, A = E.amp, tr = E.geo.traces || [], P = E.geo.P
+    if (!tr.length) return
+    glowDisc(g, P.x, P.y, P.r * 2.4, col, (.22 + .55 * st.charge) * A)
+    g.lineCap = 'round'; g.lineJoin = 'round'
+    for (const x of tr) line(g, x.pts, 1.8, rgba(col, (.18 + .6 * x.flash) * A))
+    const pick = () => tr[(Math.random() * tr.length) | 0]
+    if (E.playing) {
+      if (E.atk > .05) for (let i = 0, n = 1 + Math.round(E.atk * 4); i < n; i++) st.p.push({ tr: pick(), s: 0, v: 140 + Math.random() * 120, dir: 1 })
+      if (E.atk > .9) { for (const x of tr) st.p.push({ tr: x, s: x.len, v: 220, dir: -1 }); st.charge = 1.3 }
+    } else {
+      if (t >= st.next) { st.p.push({ tr: pick(), s: 0, v: 110 + Math.random() * 90, dir: 1 }); st.next = t + .04 + Math.random() * .16 }
+      if (t >= st.surge) { for (const x of tr) st.p.push({ tr: x, s: x.len, v: 200, dir: -1 }); st.surge = t + 6; st.charge = 1.3 }
+    }
+    if (st.next > t + 3) st.next = t
+    if (st.surge > t + 12) st.surge = t + 3
+    st.charge *= Math.exp(-dt * 1.3)
+    for (const p of st.p) {
+      p.s += p.dir * p.v * dt
+      comet(g, p.tr, p.s, p.dir, 26, col, A)
+      if (p.dir > 0 && p.s >= p.tr.len) { p.dead = true; p.tr.flash = 1; st.charge = Math.min(1.3, st.charge + .06) }
+      if (p.dir < 0 && p.s <= 0) p.dead = true
+    }
+    st.p = st.p.filter(p => !p.dead)
+    if (st.p.length > 400) st.p.splice(0, st.p.length - 400)
+    for (const x of tr) x.flash *= Math.exp(-dt * 4)
+  }
+}
+
+// Turbine: a backlit fan whose speed follows your level; its blades the cavity's darkest over the light.
+function blade (g, a) { g.save(); g.rotate(a); g.beginPath(); g.moveTo(.16, -.015); g.quadraticCurveTo(.62, 0, 1.06, .13); g.lineTo(1.06, .27); g.quadraticCurveTo(.6, .12, .16, .035); g.closePath(); g.fill(); g.restore() }
+function bladeEdge (g, a) { g.save(); g.rotate(a); g.beginPath(); g.moveTo(.3, -.008); g.quadraticCurveTo(.62, 0, 1.06, .13); g.stroke(); g.restore() }
+const turbine = {
+  init: () => ({ a: Math.random() * TAU, w: 2.3 }),
+  draw (g, st, t, dt, E) {
+    const col = E.col, A = E.amp, N = 22
+    const target = (E.playing ? 1.4 + 11 * Math.min(1, E.lvl) : 2.3 * (1 + .5 * Math.sin(t * .5))) * (.15 + .85 * A)
+    st.w += (target - st.w) * Math.min(1, dt * 2.5); st.a += st.w * dt
+    inDisc(g, E.geo.P, u => {
+      glowDisc(g, 0, 0, 1.3, col, .62 * A); glowDisc(g, 0, 0, .6, hot(col, .55), .55 * A); glowDisc(g, 0, 0, E.geo.ext * .8, col, .08 * A)
+      g.globalCompositeOperation = 'source-over'
+      for (let pass = 2; pass >= 0; pass--) { g.fillStyle = rgba(DEEP, [.92, .4, .2][pass]); for (let i = 0; i < N; i++) blade(g, st.a - pass * st.w * .014 + i * TAU / N) }
+      g.globalCompositeOperation = 'lighter'
+      g.strokeStyle = rgba(hot(col, .35), .5 * A); g.lineWidth = Math.max(u, .006)
+      for (let i = 0; i < N; i++) bladeEdge(g, st.a + i * TAU / N)
+    })
+  }
+}
+
+// Lattice: a turning geodesic lattice (a once-subdivided icosahedron) with sparks running its struts; picks add sparks.
+const GEO = (() => {
+  const p = (1 + Math.sqrt(5)) / 2, nrm = v => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l] }
+  const v = [[-1, p, 0], [1, p, 0], [-1, -p, 0], [1, -p, 0], [0, -1, p], [0, 1, p], [0, -1, -p], [0, 1, -p], [p, 0, -1], [p, 0, 1], [-p, 0, -1], [-p, 0, 1]].map(nrm)
+  const f = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]]
+  const key = (a, b) => (a < b ? a * 1000 + b : b * 1000 + a), mids = new Map()
+  const mid = (a, b) => { const k = key(a, b); if (!mids.has(k)) { v.push(nrm([(v[a][0] + v[b][0]) / 2, (v[a][1] + v[b][1]) / 2, (v[a][2] + v[b][2]) / 2])); mids.set(k, v.length - 1) } return mids.get(k) }
+  const faces = []
+  for (const [a, b, c] of f) { const ab = mid(a, b), bc = mid(b, c), ca = mid(c, a); faces.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]) }
+  const idx = new Map(), e = [], adj = v.map(() => [])
+  for (const [a, b, c] of faces) for (const [x, y] of [[a, b], [b, c], [c, a]]) { const k = key(x, y); if (!idx.has(k)) { idx.set(k, e.length); e.push([x, y]); adj[x].push(y); adj[y].push(x) } }
+  return { v, e, adj, idx, key }
+})()
+function proj (pt, ax, ay) {
+  let [x, y, z] = pt
+  const cy = Math.cos(ay), sy = Math.sin(ay); [x, z] = [x * cy + z * sy, -x * sy + z * cy]
+  const cx = Math.cos(ax), sx = Math.sin(ax); [y, z] = [y * cx - z * sx, y * sx + z * cx]
+  const k = .72 / (1 - z * .3)
+  return [x * k, y * k, z]
+}
+const lattice = {
+  init: () => ({ lit: new Float32Array(GEO.e.length), w: Array.from({ length: 5 }, () => ({ at: (Math.random() * GEO.v.length) | 0, to: -1, k: 0 })), extra: [] }),
+  draw (g, st, t, dt, E) {
+    const col = E.col, A = E.amp, ay = t * .32, ax = .45 + .18 * Math.sin(t * .23), P = GEO.v.map(p => proj(p, ax, ay))
+    if (E.playing && E.atk > .1) for (let i = 0, n = 1 + Math.round(E.atk * 2); i < n; i++) st.extra.push({ at: (Math.random() * GEO.v.length) | 0, to: -1, k: 0, life: 1.2 })
+    if (st.extra.length > 24) st.extra.splice(0, st.extra.length - 24)
+    const speed = 2.6 * (1 + (E.playing ? 1.5 * Math.min(1, E.lvl) : 0))
+    inDisc(g, E.geo.P, u => {
+      glowDisc(g, 0, 0, 1.1, col, .3 * A); glowDisc(g, 0, 0, E.geo.ext * .7, col, .06 * A)
+      g.lineCap = 'round'
+      for (let i = 0; i < GEO.e.length; i++) {
+        const [a, b] = GEO.e[i], pa = P[a], pb = P[b], d = (pa[2] + pb[2] + 2) / 4, lit = st.lit[i]
+        g.strokeStyle = rgba(lit > .1 ? hot(col, .5 * lit) : col, (.1 + .32 * d + .9 * lit) * A)
+        g.lineWidth = (.8 + 1 * d + 2.4 * lit) * u
+        g.beginPath(); g.moveTo(pa[0], pa[1]); g.lineTo(pb[0], pb[1]); g.stroke()
+        st.lit[i] = lit * Math.exp(-dt * 1.7)
+      }
+      for (const p of P) { const d = (p[2] + 1) / 2; g.fillStyle = rgba(col, (.2 + .6 * d) * A); g.beginPath(); g.arc(p[0], p[1], (1.2 + 1.6 * d) * u, 0, TAU); g.fill() }
+      for (const w of st.w.concat(st.extra)) {
+        if (w.to < 0) { const nb = GEO.adj[w.at]; w.to = nb[(Math.random() * nb.length) | 0]; w.k = 0 }
+        w.k = Math.min(1, w.k + dt * speed)
+        if (w.life !== undefined) w.life -= dt
+        const ei = GEO.idx.get(GEO.key(w.at, w.to))
+        st.lit[ei] = Math.max(st.lit[ei], w.k)
+        const pa = P[w.at], pb = P[w.to]
+        glowDisc(g, pa[0] + (pb[0] - pa[0]) * w.k, pa[1] + (pb[1] - pa[1]) * w.k, .14, hot(col, .65), .95 * A)
+        if (w.k >= 1) { w.at = w.to; w.to = -1 }
+      }
+      st.extra = st.extra.filter(w => w.life > 0)
+    })
+  }
+}
+
+// Reactor: the Hub's plasma (a domain-warped noise field on the GPU), its core on the kit's port. Its drifts come home
+// every minute and its stream is one field drawn at two phases, as in the Hub, so time never reaches the GPU as a growing number.
+const FRAG = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec2 uRes; uniform vec3 uP; uniform vec3 uC; uniform vec4 uQ; uniform vec4 uS; uniform float uPh; uniform float uSurge; uniform float uAmp; uniform float uHeat;
+float h(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+float n(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+  return mix(mix(h(i), h(i+vec2(1.0,0.0)), u.x), mix(h(i+vec2(0.0,1.0)), h(i+vec2(1.0,1.0)), u.x), u.y); }
+float fbm(vec2 p){ float v=0.0; float a=0.5; for(int i=0;i<5;i++){ v+=a*n(p); p=mat2(1.6,1.2,-1.2,1.6)*p; a*=0.5; } return v; }
+void main(){
+  vec2 uv = (gl_FragCoord.xy - uP.xy) / uP.z;
+  float r = length(uv);
+  vec2 dir = uv / max(r, 0.001);
+  vec2 p = uv * 1.8;
+  vec2 q = vec2(fbm(p + uQ.xy), fbm(p + vec2(5.2, 1.3) + uQ.zw));
+  vec2 s = vec2(fbm(p + 3.0*q + vec2(1.7, 9.2) + uS.xy), fbm(p + 3.0*q + vec2(8.3, 2.8) + uS.zw));
+  vec2 b = p + 3.5*s;
+  float wa = 1.0 - abs(2.0*uPh - 1.0); float wb = 1.0 - wa;
+  float fa = fbm(b - dir*(uPh*1.75));
+  float fb = fbm(b - dir*(fract(uPh + 0.5)*1.75));
+  float f = 0.484 + (fa*wa + fb*wb - 0.484) / sqrt(wa*wa + wb*wb);
+  float core = exp(-r*r*(2.6/uHeat)) * uSurge * uHeat;
+  float fil = smoothstep(0.45, 0.95, f + 0.25*core) * max(0.42, 1.15 - 0.32*r);
+  float heat = core*0.95 + fil*1.25 + 0.12*f;
+  vec3 col = mix(uC*0.22, uC, smoothstep(0.1, 0.65, heat));
+  col = mix(col, vec3(1.0), smoothstep(0.95, 1.7, heat));
+  float a = clamp(heat*1.15, 0.0, 1.0) * uAmp;
+  gl_FragColor = vec4(col*a, a);
+}`
+const GL = { ok: undefined, W: 512, H: 256 }
+function glGet () {
+  if (GL.ok !== undefined) return GL.ok
+  try {
+    const c = document.createElement('canvas'); c.width = GL.W; c.height = GL.H
+    const g = c.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false, preserveDrawingBuffer: true })
+    if (!g) return (GL.ok = false)
+    const sh = (type, src) => { const s = g.createShader(type); g.shaderSource(s, src); g.compileShader(s); return g.getShaderParameter(s, g.COMPILE_STATUS) ? s : null }
+    const vs = sh(g.VERTEX_SHADER, 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }'), fs = sh(g.FRAGMENT_SHADER, FRAG)
+    if (!vs || !fs) return (GL.ok = false)
+    const pr = g.createProgram(); g.attachShader(pr, vs); g.attachShader(pr, fs); g.linkProgram(pr)
+    if (!g.getProgramParameter(pr, g.LINK_STATUS)) return (GL.ok = false)
+    g.useProgram(pr); g.bindBuffer(g.ARRAY_BUFFER, g.createBuffer()); g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), g.STATIC_DRAW)
+    const loc = g.getAttribLocation(pr, 'p'); g.enableVertexAttribArray(loc); g.vertexAttribPointer(loc, 2, g.FLOAT, false, 0, 0)
+    const u = n => g.getUniformLocation(pr, n)
+    Object.assign(GL, { c, g, u: { res: u('uRes'), P: u('uP'), C: u('uC'), Q: u('uQ'), S: u('uS'), ph: u('uPh'), surge: u('uSurge'), amp: u('uAmp'), heat: u('uHeat') } })
+    c.addEventListener('webglcontextlost', e => { e.preventDefault(); GL.ok = false })
+    return (GL.ok = true)
+  } catch (e) { return (GL.ok = false) }
+}
+const within = (t, period) => ((t % period) + period) % period / period
+function reactorUniforms (t) {
+  const loop = within(t, 60), orbit = (k, r, ph) => { const a = TAU * (k * loop + ph); return [r * Math.cos(a), r * Math.sin(a)] }
+  return { q: [...orbit(2, 1, 0), ...orbit(-2, .8, .25)], s: [...orbit(3, .55, .5), ...orbit(-3, .45, .75)], ph: within(t, 5), surge: .6 + .4 * Math.pow(.5 + .5 * Math.sin(t * .9), 3) + .25 * Math.pow(.5 + .5 * Math.sin(t * 2.3 + 1.7), 8) }
+}
+const reactor = {
+  init: () => ({ kick: 0 }),
+  draw (g, st, t, dt, E) {
+    const { W, H, P } = E.geo, col = E.col, A = E.amp
+    st.kick = Math.max(st.kick * Math.exp(-dt * 5), E.atk)
+    if (!glGet()) { inDisc(g, P, () => { glowDisc(g, 0, 0, 1.4, col, .8 * A); glowDisc(g, 0, 0, .6, hot(col, .6), .6 * A) }); return }
+    const gl = GL.g, k = Math.min(GL.W / W, GL.H / H), vw = Math.max(1, Math.round(W * k)), vh = Math.max(1, Math.round(H * k)), U = reactorUniforms(t)
+    gl.viewport(0, 0, vw, vh); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT)
+    gl.uniform2f(GL.u.res, vw, vh); gl.uniform3f(GL.u.P, P.x * k, vh - P.y * k, P.r * k); gl.uniform3f(GL.u.C, col.r / 255, col.g / 255, col.b / 255)
+    gl.uniform4f(GL.u.Q, ...U.q); gl.uniform4f(GL.u.S, ...U.s); gl.uniform1f(GL.u.ph, U.ph)
+    gl.uniform1f(GL.u.surge, U.surge * (E.playing ? .7 + .6 * Math.min(1, E.lvl) : 1) + .6 * st.kick); gl.uniform1f(GL.u.amp, A); gl.uniform1f(GL.u.heat, Math.max(1, E.heat))
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
+    g.drawImage(GL.c, 0, GL.H - vh, vw, vh, 0, 0, W, H)
+  }
+}
+
+// Valve (new): the amp's own valves, three preamp and four power, behind the cage. They brighten with your level and
+// flash blue (the glass's fluorescence) on a hard pick.
+const HEATER = { r: 255, g: 122, b: 44 }, BLUE = { r: 110, g: 125, b: 255 }
+function envPath (g, x, y, w, h) { const r = w / 2; g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + r); g.arc(x + r, y + r, r, Math.PI, 0); g.lineTo(x + w, y + h); g.closePath() }
+const valve = {
+  init: () => ({ blue: 0, lv: .3 }),
+  draw (g, st, t, dt, E) {
+    const tubes = E.geo.tubes || [], A = E.amp, glow = mix(HEATER, E.col, .4), R = E.geo.R
+    st.blue = Math.max(st.blue * Math.exp(-dt * 6), E.atk > .75 ? E.atk : 0)
+    st.lv += ((E.playing ? Math.min(1.1, E.lvl) : .25) - st.lv) * Math.min(1, dt * 10)
+    glowDisc(g, R.x + R.w / 2, R.y + R.h * .7, R.w * .6, glow, .24 * A)
+    for (const tb of tubes) {
+      const { x, y, w, h } = tb, cx = x + w / 2
+      const lv = A * (.5 + .5 * st.lv) * (.93 + .07 * Math.sin(t * 23 + x) * Math.sin(t * 7.1 + x * .3))
+      glowDisc(g, cx, y + h * .6, w * 1.9, glow, .48 * lv)
+      g.globalCompositeOperation = 'source-over'
+      envPath(g, x, y, w, h); g.fillStyle = 'rgba(190,200,220,.1)'; g.fill()
+      g.save(); envPath(g, x, y, w, h); g.clip()
+      const gt = g.createRadialGradient(cx, y + w * .3, 0, cx, y + w * .3, w * .62)
+      gt.addColorStop(0, 'rgba(225,228,236,.6)'); gt.addColorStop(.6, 'rgba(150,155,170,.25)'); gt.addColorStop(1, 'rgba(150,155,170,0)')
+      g.fillStyle = gt; g.fillRect(x, y, w, w * .9)
+      const px = cx - w * .3, py = y + h * .32, pw = w * .6, ph = h * .44
+      const pg = g.createLinearGradient(px, 0, px + pw, 0); pg.addColorStop(0, '#16171a'); pg.addColorStop(.5, '#3a3c42'); pg.addColorStop(1, '#141518')
+      g.fillStyle = pg; g.fillRect(px, py, pw, ph)
+      g.fillStyle = '#0b0b0d'; g.fillRect(px + pw * .2, py + ph, pw * .6, h * .14)
+      g.restore()
+      g.globalCompositeOperation = 'lighter'
+      g.fillStyle = rgba(hot(HEATER, .45), .85 * lv); g.fillRect(cx - .8, py + 2, 1.6, ph - 4)
+      glowDisc(g, cx, py - 1, w * .42, HEATER, .95 * lv); glowDisc(g, cx, py + ph + 1, w * .32, HEATER, .7 * lv)
+      if (st.blue > .02) { envPath(g, x + 1, y + 1, w - 2, h - 2); g.strokeStyle = rgba(BLUE, .65 * st.blue * A); g.lineWidth = 2.2; g.stroke(); glowDisc(g, cx, py + ph * .5, w * .9, BLUE, .4 * st.blue * A) }
+      g.globalCompositeOperation = 'source-over'
+      envPath(g, x, y, w, h); g.strokeStyle = 'rgba(255,255,255,.34)'; g.lineWidth = 1.2; g.stroke()
+      g.fillStyle = '#121214'; g.fillRect(x - 2, y + h - 3, w + 4, 4)
+      g.globalCompositeOperation = 'lighter'
+    }
+  }
+}
+
+// Ferro (new): ferrofluid in a magnetic field, lit from behind. The spikes follow your level and jump on a pick.
+const ferro = {
+  init: () => ({ kick: 0, lv: .3, sp: Array.from({ length: 24 }, () => ({ ph: Math.random() * TAU, f: .7 + Math.random() * .8 })) }),
+  draw (g, st, t, dt, E) {
+    const A = E.amp, col = E.col
+    st.kick = Math.max(st.kick * Math.exp(-dt * 5), E.atk)
+    st.lv += ((E.playing ? Math.min(1.1, E.lvl) : .22 + .08 * Math.sin(t * .8)) - st.lv) * Math.min(1, dt * 8)
+    inDisc(g, E.geo.P, u => {
+      glowDisc(g, 0, 0, 1.35, col, .85 * A); band(g, .72, .28, hot(col, .25), .5 * A); glowDisc(g, 0, 0, E.geo.ext * .6, col, .06 * A)
+      g.globalCompositeOperation = 'source-over'
+      const N = st.sp.length, b = .42, H = .1 + .62 * Math.min(1.1, st.lv) + .3 * st.kick
+      g.beginPath()
+      for (let i = 0; i < N; i++) {
+        const sp = st.sp[i], a = i / N * TAU, da = TAU / N
+        const h = H * (.55 + .45 * Math.sin(t * sp.f * 2 + sp.ph)) * (.72 + .28 * Math.sin(a * 3 + t * .7))
+        const v0 = pol(b, a - da / 2), tip = pol(b + h, a), v1 = pol(b, a + da / 2), c0 = pol(b + h * .16, a - da * .1), c1 = pol(b + h * .16, a + da * .1)
+        if (i === 0) g.moveTo(v0[0], v0[1])
+        g.quadraticCurveTo(c0[0], c0[1], tip[0], tip[1]); g.quadraticCurveTo(c1[0], c1[1], v1[0], v1[1])
+      }
+      g.closePath()
+      const gr = g.createRadialGradient(-.12, -.15, .04, 0, 0, b + H)
+      gr.addColorStop(0, '#2b2b31'); gr.addColorStop(.45, '#0a0a0d'); gr.addColorStop(1, '#000')
+      g.fillStyle = gr; g.fill()
+      g.globalCompositeOperation = 'lighter'
+      g.strokeStyle = rgba(hot(col, .4), .55 * A); g.lineWidth = 1.3 * u; g.stroke()
+      glowDisc(g, -.13, -.15, .12, WHITE, .3)
+    })
+  }
+}
+const FX = { reactor, pulse, storm, warp, circuit, turbine, lattice, valve, ferro }
+
+// ---------------------------------------------------------------- surfaces: one canvas per new amp, pedal and cabinet
+const SURFACES = new Set()
+function makeSurface (hw, face) { const canvas = $('canvas.en', face); const s = { hw, face, canvas, g: canvas.getContext('2d'), st: null, geo: null, vis: false, amp: 1, dpr: 1, col: hex2rgb(finFor(kitOf(hw))), t0: Math.random() * 20 }; SURFACES.add(s); return s }
+function sizeSurface (s) {
+  s.dpr = Math.min(1.75, window.devicePixelRatio || 1)
+  s.canvas.width = Math.max(1, Math.round(s.geo.W * s.dpr)); s.canvas.height = Math.max(1, Math.round(s.geo.H * s.dpr))
+  s.st = FX[kitOf(s.hw).fx].init()
+  if (!MOTION) stillSoon()
+}
+const stageAmp = () => $('#m-board .amp')
+const ampLevel = hw => hw.classList.contains('on') ? (hw.dataset.standby === 'true' ? .22 : 1) : 0
+function drawSurface (s, t, dt) {
+  const hw = s.hw, kind = hw.dataset.kind, kit = kitOf(hw)
+  const target = kind === 'amp' ? ampLevel(hw) : kind === 'pedal' ? (hw.classList.contains('on') ? 1 : .14) : (stageAmp() ? ampLevel(stageAmp()) : 1)
+  s.amp += (target - s.amp) * Math.min(1, dt * 6)
+  const inV = hw.__vals.Input ?? hw.__vals.Drive ?? .5, playing = SIG.on && target > .5
+  const E = { geo: s.geo, col: s.col, amp: s.amp, playing, lvl: playing ? SIG.level * (.35 + 1.3 * inV) : 0, atk: playing ? SIG.atk * (.5 + inV) : 0, heat: .9 + inV }
+  const g = s.g
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, s.canvas.width, s.canvas.height)
+  g.setTransform(s.dpr, 0, 0, s.dpr, 0, 0)
+  g.globalCompositeOperation = 'lighter'
+  FX[kit.fx].draw(g, s.st, t, dt, E)
+  g.globalCompositeOperation = 'source-over'
+}
+
+// ---------------------------------------------------------------- the riff: a recorded level stands in for a guitar (no sound plays)
+const SIG = { on: true, level: 0, atk: 0, t: 0 }
+const BEAT = 60 / 132, LOOP = 16
+const RIFF = [[0, .85, .16], [.5, .5, .07], [.75, .5, .07], [1, .55, .07], [1.5, .95, .55], [2.5, .5, .07], [2.75, .5, .07], [3, .6, .08], [3.5, .9, .45],
+  [4, 1, 1], [5.5, .55, .08], [5.75, .55, .08], [6, .75, .3], [7, .85, .35], [7.5, .6, .1],
+  [8, .7, .35], [8.5, .6, .25], [9, .75, .4], [9.75, .55, .2], [10, .8, .6], [11, .65, .25], [11.5, .7, .3],
+  [12, 1.05, 1.6], [14, .5, .08], [14.25, .5, .08], [14.5, .6, .08], [15, .7, .1], [15.5, .95, .4]]
+function sigStep (dt) {
+  if (!SIG.on) { SIG.level *= Math.exp(-dt * 6); SIG.atk = 0; return }
+  SIG.t += dt
+  const bl = (SIG.t / BEAT) % LOOP
+  let lv = 0, atk = 0
+  for (const [pos, str, dec] of RIFF) {
+    let e = bl - pos
+    if (e < 0) e += LOOP
+    e *= BEAT
+    if (e < dec * 5) lv += str * (1 - Math.exp(-e / .006)) * Math.exp(-e / dec)
+    if (e < dt) atk = Math.max(atk, str)
+  }
+  SIG.level = Math.min(1.3, lv); SIG.atk = atk
+}
+let mIn = 0, mOut = 0, clipIn = 0, clipOut = 0
+function setMeter (sel, v, clip) { const m = $(sel); if (!m) return; const n = Math.round(clamp01(v / 1.05) * 14); m.querySelectorAll('.ladder i').forEach((el, i) => el.classList.toggle('on', i < n)); m.querySelector('.clip').classList.toggle('lit', clip) }
+function meters (dt) {
+  const a = stageAmp(); if (!a || !a.__vals) return
+  const live = ampLevel(a) > .5 && SIG.on, inV = a.__vals.Input ?? .5, outV = a.__vals.Output ?? .5
+  const lin = live ? SIG.level * (.35 + 1.3 * inV) : 0, lout = lin * (.3 + outV)
+  mIn = Math.max(lin, mIn * Math.exp(-dt * 5)); mOut = Math.max(lout, mOut * Math.exp(-dt * 5))
+  if (lin > 1.02) clipIn = .35
+  if (lout > 1.02) clipOut = .35
+  clipIn -= dt; clipOut -= dt
+  setMeter('#m-in', mIn, clipIn > 0); setMeter('#m-out', mOut, clipOut > 0)
+}
+let LIVE = []
+function collectLive () { LIVE = [...$$('.lp-eye'), ...$$('.lp-vu')].map(el => ({ el, hw: el.closest('.hw'), nd: el.querySelector('.nd'), v: 0 })) }
+function liveStep (dt) {
+  for (const L of LIVE) {
+    if (!L.el.isConnected || !L.hw.__vals) continue
+    const live = ampLevel(L.hw) > .5 && SIG.on, lv = live ? clamp01(SIG.level * (.35 + 1.3 * (L.hw.__vals.Input ?? .5))) : 0
+    L.v += (lv - L.v) * Math.min(1, dt * (lv > L.v ? 18 : 4))
+    if (L.nd) L.nd.setAttribute('transform', `rotate(${f1(-46 + 92 * L.v)} 37 52)`)
+    else L.el.style.setProperty('--eye', f1(84 - 76 * L.v) + 'deg')
+  }
+}
+function mini () { const n = SIG.on ? Math.round(clamp01(SIG.level / 1.1) * 4) : 0; $$('#mini i').forEach((el, i) => el.classList.toggle('on', i < n)) }
+
+// ---------------------------------------------------------------- the loop; a still, lit frame when motion is off
+let MOTION = !matchMedia('(prefers-reduced-motion: reduce)').matches, raf = 0, last = 0, T = 0
+function frame (now) {
+  const dt = Math.min(.05, last ? (now - last) / 1000 : .016); last = now; T += dt
+  sigStep(dt); meters(dt); liveStep(dt); mini()
+  for (const s of SURFACES) { if (!s.canvas.isConnected) { SURFACES.delete(s); continue } if (s.vis && s.geo && s.st) drawSurface(s, T + s.t0, dt) }
+  raf = MOTION ? requestAnimationFrame(frame) : 0
+}
+function start () { if (!raf) { last = 0; raf = requestAnimationFrame(frame) } }
+let stillTimer = 0
+function stillSoon () { clearTimeout(stillTimer); stillTimer = setTimeout(still, 60) }
+function still () {
+  if (MOTION) return
+  const keep = SIG.level, keepA = SIG.atk
+  for (const s of SURFACES) {
+    if (!s.geo || !s.canvas.isConnected) continue
+    s.st = FX[kitOf(s.hw).fx].init()
+    for (let i = 0; i < 48; i++) { SIG.level = SIG.on ? .8 : 0; SIG.atk = SIG.on && i === 40 ? .95 : 0; drawSurface(s, 3 + s.t0 + i / 30, 1 / 30) }
+  }
+  SIG.level = SIG.on ? .8 : 0; meters(1); liveStep(1); mini(); SIG.level = keep; SIG.atk = keepA
+}
+</script>
+
+<script>
+'use strict'
+// ---------------------------------------------------------------- the picks (saved to the db as picks/<id>)
+const saved = {}, qAns = {}, qNotes = {}, noteDirty = {}
+let defKit = null, generalNote = '', builderKeep = false, builderNote = '', builderTouched = false
+let STAGE = 'reactor', stageTouched = false
+const VMARK = { keep: '✓', maybe: '?', cut: '✕' }
+let toastTimer = 0
+function toast (msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true }, 3600) }
+function prefs () { try { localStorage.setItem('crbn-rig/hwlab', JSON.stringify({ finish: FINISH, look: LOOK })) } catch (e) {} }
+
+function renderTop () {
+  $('#finish').innerHTML = FINISHES.map(([id, label, sw]) => `<button type="button" data-finish="${id}" aria-pressed="${id === FINISH}"><span class="dot" style="background:${sw}"></span>${label}</button>`).join('')
+  $('#look').innerHTML = LOOKS.map(([id, label]) => `<button type="button" data-look="${id}" aria-pressed="${id === LOOK}">${label}</button>`).join('')
+}
+function renderIndex () {
+  $('#index').innerHTML = ['classic', 'new'].map(f => `<span class="sec fam-l">${f === 'classic' ? 'Classic' : 'New'}</span>` + KITS.filter(k => k.fam === f).map(k => `<a class="ix" href="#kit-${k.id}" data-kit="${k.id}"><span class="vm" aria-hidden="true"></span>${k.name}<span class="star" hidden>★</span></a>`).join('')).join('')
+}
+function renderQs () {
+  $('#qs').innerHTML = QS.map(q => `<div class="q"><h3>${q.q}</h3><p class="why">${q.why}</p><div class="opts" role="group" aria-label="${q.q}">${q.opts.map(([v, t, d], i) => `<button class="opt" type="button" data-q="${q.id}" data-val="${v}" aria-pressed="false"><span class="rd" aria-hidden="true"></span><span><b>${t}</b>${i === 0 ? '<span class="rec">Recommended</span>' : ''}<br>${d}</span></button>`).join('')}</div><textarea class="note" data-note="q-${q.id}" aria-label="A note on: ${q.q}" placeholder="A note, if no option fits…"></textarea></div>`).join('')
+}
+function renderBuilderCtl () {
+  $('#b-ctl').innerHTML = Object.entries(B_OPTS).map(([k, [label, opts]]) => `<label>${label}<select data-b="${k}">${opts.map(([v, t]) => `<option value="${v}"${BUILDER[k] === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`).join('') +
+    '<div class="vrow"><button class="btn" type="button" id="b-keep" aria-pressed="false">Keep this kit</button><button class="btn ghost" type="button" data-try="builder">Try it on the page ↑</button></div><textarea class="note" data-note="builder" aria-label="Your note on the kit you built" placeholder="What it should be called, what to change…"></textarea>'
+}
+function renderBuilder () { const fl = $('#b-floor'); forget(fl); fl.innerHTML = ampHTML(BUILDER) + pedalHTML(BUILDER, BUILDER.pedal); hydrate(fl) }
+function setStage (id, touched = true) {
+  const kit = id === 'builder' ? BUILDER : KIT[id]
+  if (!kit) return
+  STAGE = id
+  if (touched) stageTouched = true
+  const board = $('#m-board')
+  forget(board)
+  board.innerHTML = `<div class="lane"><span class="sec lane-l">Pedals</span>${pedalHTML(kit, kit.pedal2)}${pedalHTML(kit, kit.pedal)}</div><div class="mchain">${meterHTML('In', 'm-in')}${ampHTML(kit)}${cabHTML(kit)}${meterHTML('Out', 'm-out')}</div>`
+  hydrate(board)
+  $('#stage-kit').value = id
+  $('#m-kit').textContent = `${kit.name} kit`
+}
+
+function renderPicks () {
+  const groups = { keep: [], maybe: [], cut: [], none: [] }
+  for (const k of KITS) {
+    const v = (saved[k.id] && saved[k.id].verdict) || ''
+    groups[v || 'none'].push(k.name)
+    const card = $('#kit-' + k.id)
+    card.dataset.v = v; card.dataset.default = String(defKit === k.id)
+    for (const b of $$('[data-verdict]', card)) b.setAttribute('aria-pressed', String(b.dataset.val === v))
+    const db_ = $('[data-default]', card)
+    db_.setAttribute('aria-pressed', String(defKit === k.id)); db_.textContent = defKit === k.id ? '★ The default' : '★ Make it the default'
+    $('[data-deftag]', card).hidden = defKit !== k.id
+    const ta = $('[data-note]', card)
+    if (document.activeElement !== ta && !noteDirty[k.id]) ta.value = (saved[k.id] && saved[k.id].note) || ''
+    const ix = $(`.ix[data-kit="${k.id}"]`)
+    ix.dataset.v = v; $('.vm', ix).textContent = VMARK[v] || ''; $('.star', ix).hidden = defKit !== k.id
+  }
+  for (const q of QS) {
+    for (const b of $$(`[data-q="${q.id}"]`)) b.setAttribute('aria-pressed', String(qAns[q.id] === b.dataset.val))
+    const ta = $(`[data-note="q-${q.id}"]`)
+    if (document.activeElement !== ta && !noteDirty['q-' + q.id]) ta.value = qNotes[q.id] || ''
+  }
+  const gn = $('#note-general'); if (document.activeElement !== gn && !noteDirty.general) gn.value = generalNote
+  const bk = $('#b-keep'); bk.setAttribute('aria-pressed', String(builderKeep)); bk.textContent = builderKeep ? '✓ Kept' : 'Keep this kit'
+  const bn = $('[data-note="builder"]'); if (document.activeElement !== bn && !noteDirty.builder) bn.value = builderNote
+  const answered = QS.filter(q => qAns[q.id]).length
+  const list = a => a.length ? `<ul>${a.map(n => `<li>${n}</li>`).join('')}</ul>` : ''
+  $('#summary').innerHTML =
+    `<div class="sum"><span class="sec">Default</span><span class="big">${defKit ? KIT[defKit].name : '–'}</span>${defKit ? '' : '<p class="why" style="color:var(--text-faint);font-size:12px">Star a kit to pick it.</p>'}</div>` +
+    `<div class="sum"><span class="sec">Keep</span><span class="big">${groups.keep.length}</span>${list(groups.keep)}</div>` +
+    `<div class="sum"><span class="sec">Maybe</span><span class="big">${groups.maybe.length}</span>${list(groups.maybe)}</div>` +
+    `<div class="sum"><span class="sec">Cut</span><span class="big">${groups.cut.length}</span>${list(groups.cut)}</div>` +
+    `<div class="sum"><span class="sec">Still to pick</span><span class="big">${groups.none.length}</span></div>` +
+    `<div class="sum"><span class="sec">Questions answered</span><span class="big">${answered} of ${QS.length}</span>${builderKeep ? '<ul><li>Your built kit is kept</li></ul>' : ''}</div>`
+}
+
+// ---------------------------------------------------------------- the db
+let db = null, warned = false
+const inflight = {}, again = {}
+function saveStatus (s, t) { $('#save').dataset.s = s; $('#save-t').textContent = t }
+function docData (id) {
+  const at = new Date().toISOString()
+  if (id === 'default') return { kit: defKit, at }
+  if (id === 'general') return { note: generalNote, at }
+  if (id === 'builder') return { fx: BUILDER.fx, cut: BUILDER.cut, mesh: BUILDER.mesh, mat: BUILDER.mat, knob: BUILDER.knob, own: BUILDER.own, keep: builderKeep, note: builderNote, at }
+  if (id.startsWith('q-')) { const q = id.slice(2); return { answer: qAns[q] || null, note: qNotes[q] || '', at } }
+  const v = saved[id] || {}
+  return { verdict: v.verdict || null, note: v.note || '', at }
+}
+function save (id) {
+  if (!db) { if (!warned) { warned = true; toast('Picked here, but not saved: open the lab on claude.ai to save your picks.') } return }
+  if (inflight[id]) { again[id] = true; return }
+  inflight[id] = true
+  saveStatus('saving', 'Saving…')
+  db.collection('picks').doc(id).set(docData(id))
+    .then(() => { saveStatus('saved', 'Saved'); if (!again[id]) noteDirty[id] = false })
+    .catch(() => saveStatus('off', 'Couldn’t save that: try again'))
+    .finally(() => { inflight[id] = false; if (again[id]) { again[id] = false; save(id) } })
+}
+function applySnap (snap, first) {
+  for (const d of snap.docs) {
+    const id = d.id, v = d.data() || {}
+    if (KIT[id]) saved[id] = { verdict: ['keep', 'maybe', 'cut'].includes(v.verdict) ? v.verdict : null, note: noteDirty[id] ? ((saved[id] && saved[id].note) || '') : (typeof v.note === 'string' ? v.note : '') }
+    else if (id === 'default') defKit = KIT[v.kit] ? v.kit : null
+    else if (id === 'general') { if (!noteDirty.general) generalNote = typeof v.note === 'string' ? v.note : '' }
+    else if (id.startsWith('q-')) { const q = id.slice(2); if (QS.some(x => x.id === q)) { qAns[q] = QS.find(x => x.id === q).opts.some(o => o[0] === v.answer) ? v.answer : null; if (!noteDirty[id]) qNotes[q] = typeof v.note === 'string' ? v.note : '' } }
+    else if (id === 'builder' && !builderTouched) {
+      for (const k of Object.keys(B_OPTS)) if (B_OPTS[k][1].some(o => o[0] === v[k])) BUILDER[k] = v[k]
+      builderKeep = !!v.keep
+      if (!noteDirty.builder) builderNote = typeof v.note === 'string' ? v.note : ''
+      if (first) { renderBuilderCtl(); renderBuilder() }
+    }
+  }
+  if (first && defKit && !stageTouched) setStage(defKit, false)
+  renderPicks()
+}
+async function connect () {
+  if (!window.claude) await new Promise(r => setTimeout(r, 1500))
+  try { db = window.claude ? await window.claude.use('db') : null } catch (e) { db = null }
+  if (!db) { saveStatus('off', 'Not saved in this view: open the lab on claude.ai to save picks'); return }
+  const timer = setTimeout(() => saveStatus('wait', 'Still reaching your saved picks…'), 10000)
+  let first = true
+  db.collection('picks').onSnapshot(snap => {
+    const cached = snap.metadata && snap.metadata.fromCache
+    if (!cached) clearTimeout(timer)
+    applySnap(snap, first); first = false
+    if (!cached && $('#save').dataset.s !== 'saving') saveStatus('saved', snap.size ? 'Your saved picks are loaded' : 'Ready: picks save as you make them')
+  }, () => { clearTimeout(timer); saveStatus('off', 'Couldn’t reach your saved picks') })
+}
+
+// ---------------------------------------------------------------- the page's controls
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, a.ix')
+  if (!t) return
+  if (t.matches('.sw, .fs')) { flip(t); return }
+  if (t.dataset.finish) { FINISH = t.dataset.finish; prefs(); for (const b of $$('#finish button')) b.setAttribute('aria-pressed', String(b.dataset.finish === FINISH)); applyFinish(); if (!MOTION) stillSoon(); return }
+  if (t.dataset.look) { LOOK = t.dataset.look; prefs(); document.documentElement.dataset.look = LOOK; for (const b of $$('#look button')) b.setAttribute('aria-pressed', String(b.dataset.look === LOOK)); return }
+  if (t.id === 'play') {
+    SIG.on = !SIG.on
+    t.setAttribute('aria-pressed', String(SIG.on)); $('#play-t').textContent = SIG.on ? 'Playing' : 'Not playing'
+    $('#m-status').classList.toggle('idle', !SIG.on); $('#m-status-t').textContent = SIG.on ? 'Playing · demo riff' : 'Not playing'
+    if (!MOTION) stillSoon()
+    return
+  }
+  if (t.id === 'motion') { MOTION = !MOTION; t.setAttribute('aria-pressed', String(MOTION)); if (MOTION) start(); else stillSoon(); return }
+  if (t.dataset.verdict) {
+    const id = t.dataset.verdict, cur = saved[id] || {}, v = cur.verdict === t.dataset.val ? null : t.dataset.val
+    saved[id] = { ...cur, verdict: v }
+    if (v === 'cut' && defKit === id) { defKit = null; save('default') }
+    save(id); renderPicks(); return
+  }
+  if (t.dataset.default) {
+    const id = t.dataset.default
+    defKit = defKit === id ? null : id
+    if (defKit && !(saved[id] && saved[id].verdict === 'keep')) { saved[id] = { ...(saved[id] || {}), verdict: 'keep' }; save(id) }
+    save('default'); renderPicks()
+    if (defKit) toast(`${KIT[id].name} is the default, and kept.`)
+    return
+  }
+  if (t.dataset.try) { setStage(t.dataset.try); $('.stage').scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+  if (t.dataset.stageStep) {
+    const ids = KITS.map(k => k.id).concat('builder'), i = ids.indexOf(STAGE)
+    setStage(ids[(i + +t.dataset.stageStep + ids.length) % ids.length]); return
+  }
+  if (t.matches('a.ix')) { e.preventDefault(); $('#kit-' + t.dataset.kit).scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+  if (t.dataset.q) { qAns[t.dataset.q] = qAns[t.dataset.q] === t.dataset.val ? null : t.dataset.val; save('q-' + t.dataset.q); renderPicks(); return }
+  if (t.id === 'b-keep') { builderKeep = !builderKeep; builderTouched = true; save('builder'); renderPicks() }
+})
+document.addEventListener('change', e => {
+  if (e.target.id === 'stage-kit') { setStage(e.target.value); return }
+  const k = e.target.dataset && e.target.dataset.b
+  if (k) { BUILDER[k] = e.target.value; builderTouched = true; renderBuilder(); if (STAGE === 'builder') setStage('builder'); save('builder') }
+})
+const noteTimers = {}
+document.addEventListener('input', e => {
+  const id = e.target.dataset && e.target.dataset.note
+  if (!id) return
+  const val = e.target.value
+  if (id === 'general') generalNote = val
+  else if (id === 'builder') { builderNote = val; builderTouched = true }
+  else if (id.startsWith('q-')) qNotes[id.slice(2)] = val
+  else saved[id] = { ...(saved[id] || {}), note: val }
+  noteDirty[id] = true
+  clearTimeout(noteTimers[id]); noteTimers[id] = setTimeout(() => save(id), 700)
+})
+
+// ---------------------------------------------------------------- boot
+function boot () {
+  try { const p = JSON.parse(localStorage.getItem('crbn-rig/hwlab') || '{}'); if (FINISHES.some(f => f[0] === p.finish)) FINISH = p.finish; if (LOOKS.some(l => l[0] === p.look)) LOOK = p.look } catch (e) {}
+  document.documentElement.dataset.look = LOOK
+  renderTop()
+  const opt = k => `<option value="${k.id}">${k.name}</option>`
+  $('#stage-kit').innerHTML = `<optgroup label="Classic">${KITS.filter(k => k.fam === 'classic').map(opt).join('')}</optgroup><optgroup label="New">${KITS.filter(k => k.fam === 'new').map(opt).join('')}</optgroup><option value="builder">Your kit (the builder)</option>`
+  renderIndex()
+  $('#kits-classic').innerHTML = KITS.filter(k => k.fam === 'classic').map(cardHTML).join('')
+  $('#kits-new').innerHTML = KITS.filter(k => k.fam === 'new').map(cardHTML).join('')
+  hydrate($('#kits-classic')); hydrate($('#kits-new'))
+  renderBuilderCtl(); renderBuilder()
+  renderQs()
+  setStage('reactor', false)
+  renderPicks()
+  $('#motion').setAttribute('aria-pressed', String(MOTION))
+  if (MOTION) start(); else stillSoon()
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { for (const s of SURFACES) layoutHW(s.hw) })
+  connect()
+}
+boot()
+</script>
