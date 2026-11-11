@@ -44,7 +44,9 @@ put the same page on the desktop (`docs/PLAN.md`).
   (headless Edge on loopback: the page paints in Rig's look, and the engine plays the example capture through the real
   AudioWorklet, equal to the engine run directly). `node web/engine/test.mjs` plays every NAM Core example capture
   through the wasm engine and the same source built with MSVC and compares them sample by sample (most are
-  bit-identical). `node web/shots.mjs` takes the store screenshots, one per look.
+  bit-identical). `node web/shots.mjs` takes the store screenshots, one per look. `node web/probe.mjs <steps.json>`
+  runs script, CPU measures and clipped screenshots against `dist/web` in headless Edge; `--clashes` lists class names
+  the hardware kits share with the page's stylesheet.
 - **Hosting:** `hosting/README.md` (`node hosting/kit/publish.mjs --promote` from a clean `main`).
 - **Icons:** `node packaging/icons/render.mjs` (headless Edge).
 - Builds fetch nothing. `dist/` is never committed.
