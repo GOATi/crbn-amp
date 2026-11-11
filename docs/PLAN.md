@@ -26,6 +26,11 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-008): the owner's Hardware Lab picks recorded as crbn-launcher D-RIG-009. He kept 18 kits and
+  made his own builder kit "CRBN" the default; players get the builder with share codes; "CRBN Rig" goes on every head.
+  The lab's second version answers his notes for his look before the build: the Obsidian and Spinner knobs, the
+  energy's light on the controls, the pilot lights, Jet's turbine, and Hammertone redone as Salvage.
+
 - 2026-11-11 (SYNC:RIG-007): R1 begun, widened at the owner's ask. The Hardware Lab
   (https://claude.ai/artifact/WdqG3GWav3qnqffCQeVe4m, source `docs/design/2026-11-11-hardware-lab/lab.html`) has 19
   hardware kits for the amp and pedals. Ten are classic. Nine are new: the Hub's logo-window energy behind cut

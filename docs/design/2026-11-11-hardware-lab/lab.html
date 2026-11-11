@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lexend:wght@400;500;600&family=Lexend+Giga:wght@500;600;700&family=Lexend+Mega:wght@500;600;700&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Display:wght@600;700;800;900&family=Oswald:wght@400;500;600;700&family=Yellowtail&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lexend:wght@400;500;600&family=Lexend+Giga:wght@500;600;700&family=Lexend+Mega:wght@500;600;700&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Big+Shoulders+Display:wght@600;700;800;900&family=Oswald:wght@400;500;600;700&family=Yellowtail&family=Stardos+Stencil:wght@400;700&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* CRBN Rig's Hardware Lab (crbn-amp docs/design/2026-11-11-hardware-lab, build plan R1). The owner's ask: a suite of
    looks for the amp's and the pedals' knobs, switches, lights and faceplates, classic and new, to pick a default and to
@@ -251,10 +251,8 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .kn-machined .top { inset: 12%; background: repeating-radial-gradient(circle, rgba(255,255,255,.07) 0 .6px, transparent .6px 1.5px), conic-gradient(from 200deg, #2e3036, #6d717a 15%, #3a3d44 30%, #1e2025 46%, #60646c 64%, #34373d 80%, #2e3036); }
 .kn-machined .ln { --lt: 10%; --lh: 30%; --lw: 3px; --lc: color-mix(in oklab, var(--fin) 50%, white); --lg: 0 0 5px var(--fin), 0 0 11px var(--fin); }
 
-.kn-obsidian .body { background: radial-gradient(circle at 50% 30%, #2b2b31 0, #0b0b0e 55%, #000 100%); box-shadow: 0 0 0 1px rgba(255,255,255,.11), 0 4px 8px rgba(0,0,0,.7); }
-.kn-obsidian .gl { background: radial-gradient(ellipse 58% 28% at 50% 18%, rgba(255,255,255,.34), transparent 72%), radial-gradient(ellipse 50% 18% at 50% 88%, rgba(255,255,255,.08), transparent 72%); }
-.kn-obsidian .ln { --lt: 8%; --lh: 36%; --lw: 1.6px; --lc: #ffffff; --lg: 0 0 4px var(--fin), 0 0 10px var(--fin); }
-
+.kn-obsidian .ln { --lt: 12%; --lh: 29%; --lw: 2px; --lc: #ffffff; --lg: 0 0 3px var(--fin), 0 0 8px var(--fin), 0 0 16px var(--fin); }
+.kn-obsidian .env, .kn-spinner .env, .kn-chicken .env, .kn-gem .env { display: none; }
 .kn-gem svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.7)) drop-shadow(0 0 5px color-mix(in oklab, var(--fin) 55%, transparent)); }
 .kn-gem .f0 { fill: color-mix(in oklab, var(--fin) 55%, white); } .kn-gem .f1 { fill: color-mix(in oklab, var(--fin) 85%, white); }
 .kn-gem .f2 { fill: var(--fin); } .kn-gem .f3 { fill: color-mix(in oklab, var(--fin) 60%, black); }
@@ -262,9 +260,14 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .kn-gem .tb { fill: color-mix(in oklab, var(--fin) 30%, #0c0c10); stroke: rgba(255,255,255,.35); stroke-width: 1; }
 .kn-gem .pt { fill: #fff; filter: drop-shadow(0 0 3px var(--fin)); }
 
-.kn-spinner .body { background: repeating-conic-gradient(#4d5159 0 6deg, #1b1d21 6deg 12deg); box-shadow: 0 0 0 1px #000, 0 3px 5px rgba(0,0,0,.6); }
-.kn-spinner .cone { inset: 13%; background: radial-gradient(circle at 42% 34%, #f5f7fa 0, #b6bcc4 24%, #6b717a 60%, #2c2f35 100%); box-shadow: 0 2px 4px rgba(0,0,0,.7); }
-.kn-spinner .sp path { fill: none; stroke: color-mix(in oklab, var(--fin) 80%, white); stroke-width: 5; stroke-linecap: round; }
+.kn-spinner .sp-f svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+
+/* every knob: a hint of studio light from above and a warm bounce from below; on the energy kits, the energy's own
+   light from the cutouts below, as bright as the energy is (--glow, set each frame) */
+.kn .env { inset: 0; background: radial-gradient(ellipse 66% 38% at 50% 4%, rgba(255,255,255,.16), transparent 70%), radial-gradient(ellipse 70% 36% at 50% 100%, rgba(255,222,186,.08), transparent 72%); mix-blend-mode: screen; }
+.kn .rim { inset: -2px; opacity: var(--glow, 0); background: radial-gradient(ellipse 80% 52% at 50% 106%, color-mix(in oklab, var(--fin) 60%, white) 0, color-mix(in oklab, var(--fin) 55%, transparent) 34%, transparent 64%); mix-blend-mode: screen; }
+.hw.classic .kn .rim { display: none; }
+.hw.new .sw::after, .hw.new .fs-ring::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; pointer-events: none; opacity: calc(var(--glow, 0) * .75); background: radial-gradient(ellipse 80% 55% at 50% 112%, color-mix(in oklab, var(--fin) 60%, white), color-mix(in oklab, var(--fin) 40%, transparent) 36%, transparent 66%); mix-blend-mode: screen; }
 
 /* faders (the Hardwood kit's graphic EQ) */
 .fd { position: relative; width: 26px; height: 62px; display: flex; justify-content: center; cursor: ns-resize; touch-action: none; outline: none; }
@@ -317,30 +320,60 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .sw-glow .bar { inset: 6px 8px; border-radius: 2px; background: rgba(255,255,255,.1); }
 .hw.on .sw-glow[aria-pressed="true"] .bar { background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 5px var(--fin), 0 0 12px var(--fin); }
 
-/* lights; .on on the amp or pedal lights them (Power on, or the pedal engaged) */
-.lp { position: relative; flex: none; display: block; }
-.lp-jewel { width: 26px; height: 26px; border-radius: 50%; background: var(--chr); box-shadow: 0 2px 3px rgba(0,0,0,.6); }
-.lp-jewel.sm { width: 16px; height: 16px; }
-.lp-jewel::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: repeating-conic-gradient(rgba(255,255,255,.16) 0 15deg, rgba(0,0,0,.28) 15deg 30deg), radial-gradient(circle at 40% 35%, color-mix(in oklab, var(--lampc) 40%, #000), color-mix(in oklab, var(--lampc) 14%, #000) 72%); }
-.lp-jewel.sm::before { inset: 2.5px; }
-.on .lp-jewel::before, .on.lp-jewel::before { background: repeating-conic-gradient(rgba(255,255,255,.22) 0 15deg, rgba(0,0,0,.18) 15deg 30deg), radial-gradient(circle at 42% 36%, #fff 0 6%, color-mix(in oklab, var(--lampc) 45%, white) 20%, var(--lampc) 48%, color-mix(in oklab, var(--lampc) 50%, black)); box-shadow: 0 0 10px 2px color-mix(in oklab, var(--lampc) 70%, transparent), 0 0 26px 7px color-mix(in oklab, var(--lampc) 32%, transparent); }
-.lp-led { width: 13px; height: 13px; border-radius: 50%; background: var(--chr); box-shadow: 0 1px 2px rgba(0,0,0,.6); }
-.lp-led::before { content: ''; position: absolute; inset: 2.5px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, color-mix(in oklab, var(--lampc) 42%, #000), color-mix(in oklab, var(--lampc) 14%, #000)); }
-.on .lp-led::before { background: radial-gradient(circle at 40% 35%, #fff 0 12%, var(--lampc) 48%, color-mix(in oklab, var(--lampc) 50%, black)); box-shadow: 0 0 6px 1px var(--lampc), 0 0 14px 4px color-mix(in oklab, var(--lampc) 40%, transparent); }
+/* lights: a bezel, a lens, a hot core, a specular and a bloom that spills onto the panel; .on on the amp or pedal lights them */
+.lp { position: relative; flex: none; display: block; margin: 4px 0 5px; }
+.lp > i { position: absolute; display: block; border-radius: 50%; pointer-events: none; }
+.lp .lp-bz { inset: 0; background: var(--chr); box-shadow: 0 1px 2px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.25); }
+.lp .lp-ln { inset: 18%; background: radial-gradient(circle at 50% 58%, color-mix(in oklab, var(--lampc) 30%, #000) 0, color-mix(in oklab, var(--lampc) 12%, #000) 68%, #000 100%); box-shadow: inset 0 1px 2px rgba(0,0,0,.9), inset 0 -1px 1px rgba(255,255,255,.07); }
+.lp .lp-hc { inset: 30%; opacity: 0; background: radial-gradient(circle, #ffffff 0, color-mix(in oklab, var(--lampc) 22%, #fff4dc) 38%, transparent 72%); filter: blur(1px); }
+.lp .lp-sp { left: 27%; top: 22%; width: 24%; height: 15%; background: radial-gradient(ellipse, rgba(255,255,255,.9), rgba(255,255,255,0) 72%); transform: rotate(-28deg); }
+.lp .lp-bl { inset: -170%; opacity: 0; background: radial-gradient(circle, color-mix(in oklab, var(--lampc) 55%, white) 0 3%, color-mix(in oklab, var(--lampc) 72%, transparent) 9%, color-mix(in oklab, var(--lampc) 26%, transparent) 23%, color-mix(in oklab, var(--lampc) 8%, transparent) 40%, transparent 62%); mix-blend-mode: screen; transition: opacity .3s; }
+.on .lp .lp-ln { background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.13) 0 .6px, transparent .6px 2.1px), radial-gradient(circle at 50% 50%, #ffffff 0, color-mix(in oklab, var(--lampc) 30%, white) 14%, var(--lampc) 40%, color-mix(in oklab, var(--lampc) 70%, black) 82%, color-mix(in oklab, var(--lampc) 40%, black) 100%); box-shadow: inset 0 0 3px color-mix(in oklab, var(--lampc) 40%, black), 0 0 3px 1px color-mix(in oklab, var(--lampc) 80%, transparent); }
+.on .lp .lp-hc { opacity: 1; }
+.on .lp .lp-bl { opacity: 1; animation: lamp 4.6s ease-in-out infinite; }
+@keyframes lamp { 50% { opacity: .84; } }
+/* a faceted jewel: the classic pilot */
+.lp-jewel { width: 28px; height: 28px; }
+.lp-jewel.sm { width: 17px; height: 17px; }
+.lp-jewel .lp-ln { inset: 13%; background: radial-gradient(circle, transparent 0 33%, rgba(0,0,0,.35) 34% 36%, transparent 37%), repeating-conic-gradient(from 8deg, rgba(255,255,255,.13) 0 15deg, rgba(0,0,0,.32) 15deg 30deg), radial-gradient(circle at 46% 42%, color-mix(in oklab, var(--lampc) 38%, #000), color-mix(in oklab, var(--lampc) 12%, #000) 75%); box-shadow: inset 0 -2px 3px rgba(0,0,0,.8), inset 0 1px 1px rgba(255,255,255,.15); }
+.on .lp-jewel .lp-ln { background: radial-gradient(circle, transparent 0 33%, rgba(0,0,0,.22) 34% 36%, transparent 37%), repeating-conic-gradient(from 8deg, rgba(255,255,255,.3) 0 15deg, rgba(0,0,0,.2) 15deg 30deg), radial-gradient(circle at 50% 50%, #ffffff 0, color-mix(in oklab, var(--lampc) 35%, white) 16%, var(--lampc) 44%, color-mix(in oklab, var(--lampc) 62%, black) 100%); }
+.lp-jewel .lp-hc { inset: 34%; }
+.lp-jewel .lp-sp { left: 30%; top: 22%; }
+/* an LED in a chrome bezel: the pedals and the small classic lights */
+.lp-led { width: 14px; height: 14px; }
+.lp-led .lp-ln { inset: 20%; }
+.lp-led .lp-sp { left: 30%; top: 26%; width: 22%; height: 14%; }
+/* a frosted lens in black anodising: the energy kits' pilot */
+.lp-bead { width: 20px; height: 20px; }
+.lp-bead .lp-bz { background: radial-gradient(circle at 50% 30%, #3a3b42, #121316 72%); box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255,255,255,.2), 0 2px 3px rgba(0,0,0,.6); }
+.lp-bead .lp-ln { inset: 20%; }
+.on .lp-bead .lp-ln { background: var(--tx-grain), radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--lampc) 30%, white) 0, color-mix(in oklab, var(--lampc) 70%, white) 30%, var(--lampc) 70%, color-mix(in oklab, var(--lampc) 60%, black) 100%); }
+.lp-bead .lp-hc { inset: 34%; filter: blur(1.5px); }
+/* a ring of light */
+.lp-ring { width: 20px; height: 20px; }
+.lp-ring .lp-bz { background: radial-gradient(circle at 50% 30%, #34353b, #111216 72%); box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255,255,255,.18); }
+.lp-ring .lp-ln { inset: 16%; background: radial-gradient(circle, #050506 0 46%, color-mix(in oklab, var(--lampc) 18%, #0d0d10) 50% 82%, #050506 88%); }
+.on .lp-ring .lp-ln { background: radial-gradient(circle, #060607 0 44%, color-mix(in oklab, var(--lampc) 40%, white) 52%, var(--lampc) 66%, color-mix(in oklab, var(--lampc) 50%, black) 84%, #050506 90%); box-shadow: 0 0 4px var(--lampc); }
+.lp-ring .lp-hc { display: none; }
+/* a hex lamp (Carbon) */
+.lp-hex { width: 20px; height: 22px; }
+.lp-hex > i:not(.lp-bl) { border-radius: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.lp-hex .lp-bz { background: linear-gradient(180deg, #4a4b52, #17181c); }
+.lp-hex .lp-ln { inset: 12%; }
+/* a slit of light (Warp, Ferro) */
+.lp-slit { width: 32px; height: 7px; margin: 8px 0 9px; }
+.lp-slit > i { border-radius: 4px; }
+.lp-slit .lp-bz { background: linear-gradient(180deg, #050506, #1c1d22); box-shadow: 0 1px 0 rgba(255,255,255,.12), inset 0 1px 2px #000; }
+.lp-slit .lp-ln { inset: 2px 3px; background: color-mix(in oklab, var(--lampc) 14%, #08080a); box-shadow: none; }
+.on .lp-slit .lp-ln { background: linear-gradient(90deg, color-mix(in oklab, var(--lampc) 60%, black), var(--lampc) 18%, #ffffff 50%, var(--lampc) 82%, color-mix(in oklab, var(--lampc) 60%, black)); box-shadow: 0 0 4px var(--lampc); }
+.lp-slit .lp-hc { inset: 1px 30%; border-radius: 4px; }
+.lp-slit .lp-sp { display: none; }
+.lp-slit .lp-bl { inset: -500% -70%; border-radius: 50%; }
+/* the magic eye (Valve): its shadow closes as you play */
 .lp-eye { --eye: 80deg; width: 30px; height: 30px; border-radius: 50%; background: var(--chr); box-shadow: 0 2px 3px rgba(0,0,0,.6); }
 .lp-eye::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: radial-gradient(circle, #050505 0 24%, transparent 25%), #0b120e; box-shadow: inset 0 0 4px #000; }
 .on .lp-eye::before { background: radial-gradient(circle, #0a0a0a 0 23%, rgba(0,0,0,.4) 24% 30%, transparent 31% 78%, rgba(0,0,0,.55) 100%), conic-gradient(from calc(var(--eye) / -2), #04100a 0 var(--eye), color-mix(in oklab, var(--lampc) 70%, white) 0 calc(var(--eye) + 8deg), var(--lampc) 0 calc(360deg - 8deg), color-mix(in oklab, var(--lampc) 70%, white) 0); box-shadow: inset 0 0 4px #000, 0 0 10px color-mix(in oklab, var(--lampc) 55%, transparent); }
-.lp-ring { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 3px #1c1d21, 0 0 0 1px rgba(255,255,255,.1); }
-.on .lp-ring { box-shadow: inset 0 0 0 3px color-mix(in oklab, var(--lampc) 55%, white), 0 0 8px var(--lampc), inset 0 0 7px var(--lampc), 0 0 0 1px rgba(255,255,255,.1); }
-.lp-bead { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, #1b1b1f, #08080a); box-shadow: 0 0 0 2px #2b2c31, 0 0 0 3px #000; }
-.on .lp-bead { background: radial-gradient(circle at 42% 36%, #fff 0 8%, color-mix(in oklab, var(--lampc) 50%, white) 22%, var(--lampc) 52%, color-mix(in oklab, var(--lampc) 30%, black)); box-shadow: 0 0 0 2px #2b2c31, 0 0 0 3px #000, 0 0 12px 2px var(--lampc); animation: bead 2.6s ease-in-out infinite; }
-@keyframes bead { 50% { box-shadow: 0 0 0 2px #2b2c31, 0 0 0 3px #000, 0 0 20px 5px var(--lampc); } }
-.lp-slit { width: 30px; height: 4px; border-radius: 2px; background: #0d0d10; box-shadow: inset 0 1px 1px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.09); }
-.on .lp-slit { background: linear-gradient(90deg, transparent, var(--lampc) 18%, #fff 50%, var(--lampc) 82%, transparent); box-shadow: 0 0 8px var(--lampc), 0 0 18px color-mix(in oklab, var(--lampc) 60%, transparent); }
-.lp-hex { width: 18px; height: 20px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: #2a2b30; }
-.lp-hex::before { content: ''; position: absolute; inset: 2px; clip-path: inherit; background: #101115; }
-.on .lp-hex { background: color-mix(in oklab, var(--lampc) 60%, white); filter: drop-shadow(0 0 5px var(--lampc)); }
-.on .lp-hex::before { background: radial-gradient(circle at 45% 40%, #fff 0 10%, var(--lampc) 55%, color-mix(in oklab, var(--lampc) 40%, black)); }
+.on .lp-eye::after { content: ''; position: absolute; inset: -90%; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--lampc) 28%, transparent), transparent 60%); mix-blend-mode: screen; pointer-events: none; }
 .lp-vu { width: 74px; height: 44px; border-radius: 3px; background: #15130f; box-shadow: 0 0 0 2px #0b0b0c, 0 0 0 3px rgba(255,255,255,.18), inset 0 2px 6px rgba(0,0,0,.8); overflow: hidden; }
 .lp-vu svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .lp-vu .vf { fill: #2a2418; } .on .lp-vu .vf { fill: url(#vu-lit); }
@@ -471,15 +504,17 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .k-compact .pface { padding: 10px 8px; background: var(--tx-grain-d), linear-gradient(180deg, color-mix(in oklab, var(--fin) 80%, white), var(--fin) 40%, var(--m-lo)); }
 .k-compact .pled .lb { font-size: 7px; }
 
-.k-hammer { --ink:var(--fin-ink); --kit-font:'Big Shoulders Display', sans-serif; }
-.k-hammer .cabinet, .k-hammer .pface { background: var(--tx-hammer), linear-gradient(180deg, color-mix(in oklab, var(--fin) 85%, white), var(--fin) 50%, var(--m-lo)); background-size: 200px 200px, auto; background-blend-mode: soft-light, normal; }
-.k-hammer .ui, .k-hammer.cab .cplate { background: var(--tx-hammer), linear-gradient(180deg, color-mix(in oklab, var(--fin) 85%, white), var(--fin)); background-size: 200px 200px, auto; background-blend-mode: soft-light, normal; box-shadow: inset 0 -1px 0 rgba(0,0,0,.35); }
-.k-hammer .gz { background: var(--tx-cloth); background-size: 3px 3px; box-shadow: inset 0 3px 5px rgba(0,0,0,.6); }
-.k-hammer .logo { font: 900 44px/.9 'Big Shoulders Display', sans-serif; color: var(--fin); -webkit-text-stroke: 1.5px color-mix(in oklab, var(--fin) 50%, white); letter-spacing: -.01em; text-transform: lowercase; }
-.k-hammer .sub { color: #d8d8d8; }
-.k-hammer .pname { font-size: 20px; font-weight: 900; letter-spacing: .02em; text-transform: lowercase; }
-.k-hammer .lb { font-size: 10px; letter-spacing: .08em; font-weight: 700; }
-
+.k-hammer { --ink:var(--fin-ink); --kit-font:'Stardos Stencil', 'Big Shoulders Display', sans-serif; }
+.k-hammer .cabinet { padding: 10px; border-radius: 6px; background: #6d7278; box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); }
+.k-hammer .face { border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.12); }
+.k-hammer .ui, .k-hammer.cab .cplate { background: radial-gradient(circle at 9px 9px, #d5d9dd 0 1.4px, #4a4e53 2px, rgba(0,0,0,.4) 2.8px, transparent 3.4px), radial-gradient(circle at calc(100% - 9px) 9px, #d5d9dd 0 1.4px, #4a4e53 2px, rgba(0,0,0,.4) 2.8px, transparent 3.4px); }
+.k-hammer .gz { background: radial-gradient(ellipse 40% 60% at 22% 35%, rgba(140,70,25,.55), transparent 70%), radial-gradient(ellipse 30% 70% at 78% 70%, rgba(120,58,20,.5), transparent 70%), var(--tx-perf); background-size: auto, auto, 8px 8px; box-shadow: inset 0 3px 6px rgba(0,0,0,.6); }
+.k-hammer .logo { font: 700 34px/1 'Stardos Stencil', sans-serif; letter-spacing: .08em; color: #ece6d6; text-shadow: 0 1px 0 rgba(0,0,0,.6); opacity: .92; }
+.k-hammer .sub { color: #e2dccd; font-family: 'Stardos Stencil', sans-serif; }
+.k-hammer .pface { background: #6d7278; }
+.k-hammer .pplate { background: none; }
+.k-hammer .pname { font-size: 19px; font-weight: 700; letter-spacing: .1em; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+.k-hammer .lb { font-size: 9.5px; letter-spacing: .1em; font-weight: 700; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
 .k-rack { --ink:var(--fin-ink); }
 .k-rack .cabinet { padding: 0; background: none; box-shadow: none !important; }
 .k-rack .face { padding: 0 40px; border-radius: 3px; background: var(--tx-brushed), var(--tx-brushed-d), linear-gradient(180deg, var(--m-hi), var(--m-mid) 40%, var(--m-lo)); box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.4), 0 0 0 1px rgba(0,0,0,.6); overflow: visible; }
@@ -509,7 +544,8 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .hw.new .ui, .hw.new .gz, .hw.new .cplate, .hw.new .pplate { background: none; }
 .hw.new .logo { font: 600 15px/1 'Lexend Giga', sans-serif; letter-spacing: .34em; color: #ece9f1; text-shadow: 0 1px 0 rgba(255,255,255,.08), 0 -1px 0 rgba(0,0,0,.9); }
 .hw.new .sub { font-family: 'Geist Mono', monospace; letter-spacing: .04em; text-transform: none; font-size: 10px; color: #b9b4c2; }
-.hw.new .lb { font-family: 'Lexend Giga', sans-serif; font-size: 7.5px; letter-spacing: .2em; color: #d9d5e0; }
+.hw.new .lb { font-family: 'Lexend', sans-serif; font-weight: 600; font-size: 8px; letter-spacing: .16em; color: #d9d5e0; }
+.k-jet .lb, .k-jet .st, .k-jet .sub { text-shadow: 0 1px 1px rgba(0,0,0,.75); } .k-jet .st { color: #eef0f3; }
 .hw.new .st { font-family: 'Geist Mono', monospace; font-size: 7.5px; letter-spacing: .02em; text-transform: none; color: #a9a4b2; }
 .hw.new .pname { font: 600 9px/1 'Lexend Giga', sans-serif; letter-spacing: .3em; color: #ece9f1; }
 .hw.new .pwr { border-left-color: rgba(255,255,255,.1); }
@@ -561,6 +597,22 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .foot { color: var(--text-faint); font-size: 11.5px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 4px; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 40; max-width: calc(100vw - 32px); padding: 9px 14px; border-radius: var(--r-sm); background: var(--popover); color: var(--text); box-shadow: 0 10px 30px rgba(0,0,0,.4), inset 0 0 0 1px var(--line-2); font-size: 12.5px; }
 
+/* "CRBN Rig" on every head: CRBN in small capitals beside a script "Rig" */
+.logo .cr { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .3em; letter-spacing: .24em; vertical-align: 1em; margin-right: .3em; }
+.k-black .logo .cr { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700; }
+.tag.mine { background: color-mix(in oklab, var(--brand) 18%, transparent); color: color-mix(in oklab, var(--brand) 70%, white); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brand) 45%, transparent); }
+:root[data-look="daylight"] .tag.mine { color: color-mix(in oklab, var(--brand) 80%, black); }
+.bctl input[type="text"] { font: 500 12.5px var(--font-ui); color: var(--text); background: var(--field); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 6px 10px; width: 100%; min-width: 0; }
+.builder > .floor { align-self: start; }
+.share { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.share #b-copy { grid-column: 1 / -1; justify-self: start; }
+.share .code { min-width: 0; font-family: var(--font-mono); font-size: 11.5px; border-radius: var(--r-btn); }
+.bctl .hint { margin: 0; font-size: 11.5px; color: var(--text-faint); }
+.changes { grid-column: 1 / -1; display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--r); background: color-mix(in oklab, var(--accent) 7%, var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 28%, transparent); font-size: 12.5px; color: var(--text-dim); }
+.changes b { color: var(--text); font-weight: 600; }
+.changes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; columns: 2 320px; column-gap: 32px; }
+.changes li { break-inside: avoid; }
+
 /* ---------- narrower screens ---------- */
 @media (max-width: 1080px) {
   .kit, .builder { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'show' 'info'; }
@@ -597,6 +649,13 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
   <radialGradient id="bolt-g" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#9aa0a6"/><stop offset="1" stop-color="#3b4046"/></radialGradient>
   <linearGradient id="ck-shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient>
   <linearGradient id="glass-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset=".38" stop-color="#fff" stop-opacity=".03"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="ob-skirt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a1a6ad"/><stop offset=".3" stop-color="#454950"/><stop offset=".62" stop-color="#15161a"/><stop offset="1" stop-color="#4d5158"/></linearGradient>
+  <radialGradient id="ob-dome" cx=".5" cy=".68" r=".72"><stop offset="0" stop-color="#262830"/><stop offset=".5" stop-color="#0c0d11"/><stop offset="1" stop-color="#010102"/></radialGradient>
+  <linearGradient id="ob-soft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity=".04"/></linearGradient>
+  <linearGradient id="ob-floor" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd9b0" stop-opacity="0"/><stop offset=".5" stop-color="#ffd9b0" stop-opacity=".24"/><stop offset="1" stop-color="#ffd9b0" stop-opacity="0"/></linearGradient>
+  <linearGradient id="ob-fres" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".45" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity=".17"/></linearGradient>
+  <linearGradient id="sp-blade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dde1e6"/><stop offset=".42" stop-color="#7f858e"/><stop offset="1" stop-color="#25282d"/></linearGradient>
+  <radialGradient id="spin-g2" cx=".38" cy=".32" r=".78"><stop offset="0" stop-color="#ffffff"/><stop offset=".22" stop-color="#c6cbd2"/><stop offset=".58" stop-color="#7a8089"/><stop offset=".88" stop-color="#3a3e45"/><stop offset="1" stop-color="#1e2024"/></radialGradient>
   <radialGradient id="vu-lit" cx=".5" cy=".9" r=".9"><stop offset="0" stop-color="#ffe7a8"/><stop offset=".6" stop-color="#f2c56a"/><stop offset="1" stop-color="#b98a35"/></radialGradient>
 </defs></svg>
 
@@ -628,11 +687,12 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
   <section class="intro" aria-labelledby="intro-h">
     <div>
       <h1 id="intro-h">Knobs, switches, lights and faceplates</h1>
-      <p class="lede">Nineteen hardware kits for CRBN Rig: each draws the amp and its pedals as one family, with the real
-        controls (Input, Gate, Bass, Middle, Treble and Output, the Gate and EQ switches, the pilot light with Power and
-        Standby). Ten are classic, after the gear players already know. Nine are new: the energy from Pavillion Hub's
-        logo window sits inside the amp, behind cut faceplates and the meshes between. Turn the knobs, flip the switches,
-        stomp the pedals. Everything on this page is live.</p>
+      <p class="lede">Twenty hardware kits for CRBN Rig. Each draws the amp and its pedals as one family, with the real
+        controls: Input, Gate, Bass, Middle, Treble and Output, the Gate and EQ switches, and the pilot light with
+        Power and Standby. Ten are classic, after the gear players already know. Nine are new, with the energy from
+        Pavillion Hub's logo window inside the amp, behind cut faceplates and the meshes between. The twentieth is
+        yours, CRBN, built in the builder and now the default. Turn the knobs, flip the switches, stomp the pedals:
+        everything on this page is live.</p>
     </div>
     <div class="how">
       <b>How to pick</b>
@@ -645,6 +705,20 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
       <p class="rule">Classic kits are after the gear named, never copies of it: no maker's name, logo, script or panel layout
         ships, and every amp's name is Rig's or the loaded capture's. Today's page is at
         <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
+    </div>
+    <div class="changes">
+      <b>This version: your notes, done</b>
+      <ul>
+        <li>Every amp head says <b>CRBN Rig</b>. In the script kits, CRBN sits in small capitals beside the script.</li>
+        <li><b>CRBN</b>, your builder kit, has its own card. It is the default, and the stage opens on it.</li>
+        <li>The builder is now the players' <b>Rig builder</b>: a name, Keep, and a share code to copy or open.</li>
+        <li><b>Obsidian</b> is redrawn: a dark chrome skirt, glass with studio reflections, and a lit slit inside the glass.</li>
+        <li><b>Spinner</b> is redrawn without the swirl: a machined cone over a ring of shaded fins, with a notch for the setting.</li>
+        <li>On the energy kits, knobs and switches <b>catch the energy's light</b> from below as it pulses. Every knob has a hint of studio light.</li>
+        <li><b>Pilot lights</b> are redrawn: a bezel, a lens (faceted on the classics, frosted on the energy kits), a hot core and a glow that spills onto the panel. They no longer touch their words.</li>
+        <li><b>Jet</b>: the swirl is gone. The turbine has two compressor stages turning against each other, shaded blades, a bolted hub and a machined spinner.</li>
+        <li><b>Hammertone is now Salvage</b>: recycled sheet metal with chipped paint, scratches, rust and stains. It is painted fresh for every piece, so no two match.</li>
+      </ul>
     </div>
   </section>
 
@@ -696,7 +770,7 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
   </section>
 
   <section aria-labelledby="builder-h">
-    <div class="shead"><h2 id="builder-h">Build an energy kit</h2><p>The new kits are made of five parts. Put any together here; if one is better than the kits above, keep it.</p></div>
+    <div class="shead"><h2 id="builder-h">The Rig builder</h2><p>Players get this builder, as you asked: build an energy kit from its parts, name it, keep it, and share it as a code that anyone can open. Your CRBN kit was made here.</p></div>
     <div class="builder" id="builder">
       <div class="floor" id="b-floor"></div>
       <div class="bctl" id="b-ctl"></div>
@@ -778,12 +852,12 @@ const KITS = [
     pitch: 'Painted metal and a rubber pad you can stomp anywhere: the compact pedal, and an amp built in its language.',
     parts: [['Faceplate', 'Enamel paint in the finish, printed legends, a black name strip.'], ['Knobs', 'Small black knurled knobs with a silver ring and a white line.'], ['Switches', 'Ribbed rubber pads with a lamp above.'], ['Light', 'A red check LED.'], ['Cabinet', 'The same painted case round a square black mesh.'], ['Pedal', 'The rubber pad covers the lower half, with the name strip on it.']],
     reach: 'The paint. The legends turn white on a dark paint.' },
-  { id: 'hammer', fam: 'classic', name: 'Hammertone', after: 'the 1970s American pedals: hammered paint, big knobs, a metal stomp switch', own: '#7f95a3', lamp: '#ff3b2f',
-    knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'led', foot: '3pdt', led: 'led', logo: 'rig',
-    capture: 'Fuzz into clean', pedal: 'fuzz', pedal2: 'phase',
-    pitch: 'Hammered paint, big domed knobs and a chunky lowercase name: the 1970s pedal, and an amp to match.',
-    parts: [['Faceplate', 'Hammered paint, printed legends in a heavy condensed face.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A red LED in a chrome bezel.'], ['Cabinet', 'Hammered paint round black cloth.'], ['Pedal', 'Wide and hammered: three big knobs and a metal stomp switch.']],
-    reach: 'The paint.' },
+  { id: 'hammer', fam: 'classic', name: 'Salvage', after: 'your note on Hammertone: recycled sheet metal, chipped paint, scratches, rust and stains, different on every piece', own: '#2f7d8c', lamp: '#ff3b2f',
+    knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'led', logo: 'CRBN RIG',
+    capture: 'Garage fuzz', pedal: 'Scrap fuzz', pedal2: 'Boost',
+    pitch: 'Built from salvaged sheet metal. The paint is chipped at the edges and scratched through, rust blooms where it’s gone, and old stains run down it. Every piece is painted fresh, so no two amps or pedals match.',
+    parts: [['Faceplate', 'One sheet of painted steel, chipped, scratched and stained, made new for each piece; stencilled legends and two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'The same sheet round a rusted perforated grille.'], ['Pedal', 'Its own sheet: the chips and scratches never repeat the amp’s.']],
+    reach: 'The paint. The bare metal, rust and stains stay as they are.' },
   { id: 'rack', fam: 'classic', name: 'Rack', after: 'studio and rack gear: brushed aluminium, ears and handles, a VU meter', own: '#c6cbd0', lamp: '#ffb340',
     knob: 'alu', scale: 'ticks', pwr: 'bat mini', tg: 'lit', lampT: 'vu', foot: '3pdt', led: 'led', logo: 'CRBN Rig',
     capture: 'Studio direct', pedal: 'Controller', pedal2: 'Expression',
@@ -791,6 +865,12 @@ const KITS = [
     parts: [['Faceplate', 'Brushed aluminium, anodised in the finish, with ears, handles and vents.'], ['Knobs', 'Knurled aluminium with a dot.'], ['Switches', 'Square buttons lit from inside; a small toggle for power.'], ['Light', 'A backlit VU meter, beside the pilot.'], ['Cabinet', 'None: it is a rack unit. Its IR sits in a matching unit.'], ['Pedal', 'A brushed aluminium floor unit.']],
     reach: 'The anodising, silver by default.' },
 
+  { id: 'crbn', fam: 'new', mine: true, name: 'CRBN', after: 'Your kit from the builder: the default', own: '#d92b52',
+    fx: 'circuit', cut: 'honeycomb', mesh: 'perf', mat: 'carbon', knob: 'obsidian', pwr: 'glow', tg: 'glow', lampT: 'bead', foot: 'ring',
+    capture: 'High-gain lead', pedal: 'Boost', pedal2: 'Drive',
+    pitch: 'The kit you built: carbon fibre cut with a honeycomb, a perforated cage behind it, and current running in along hidden traces to a cherry core. Rig opens in it.',
+    parts: [['Energy', 'Circuit, from the Hub: a pulse runs in for each pick and lights the honeycomb as it passes; a hard pick fires them all back out.'], ['Cutouts', 'Hex windows, large near the core and smaller away from it; a ring round each knob.'], ['Mesh', 'Perforated sheet.'], ['Faceplate', '2×2 twill carbon fibre under clear lacquer.'], ['Knobs', 'Obsidian: gloss black glass over a dark chrome skirt, with a lit slit inside the glass.'], ['Switches', 'Lit capsules.'], ['Light', 'A frosted lens in black anodising.'], ['Pedal', 'Carbon with a hex window.']],
+    reach: 'The current, the slots of light and the lamps. Cherry is its own colour.' },
   { id: 'reactor', fam: 'new', name: 'Reactor', after: 'Energy: the Hub’s Reactor', own: '#d92b52',
     fx: 'reactor', cut: 'mark', mesh: 'hex', mat: 'gunmetal', knob: 'halo', pwr: 'guard', tg: 'glow', lampT: 'bead', foot: 'ring',
     capture: 'High-gain lead', pedal: 'Plasma drive', pedal2: 'Boost',
@@ -813,7 +893,7 @@ const KITS = [
     fx: 'warp', cut: 'tunnel', mesh: 'none', mat: 'piano', knob: 'obsidian', pwr: 'glow', tg: 'glow', lampT: 'slit', foot: 'ring',
     capture: 'Ambient swell', pedal: 'Shimmer', pedal2: 'Delay',
     pitch: 'A stepped tunnel into piano black, with light streaking out of it towards you. The harder you play, the faster it goes.',
-    parts: [['Energy', 'Warp, from the Hub: streaks out of the core. Their speed follows your level; a big chord surges.'], ['Cutouts', 'One window stepped three times into a tunnel, under smoked glass.'], ['Mesh', 'None.'], ['Faceplate', 'Piano black with a chrome edge.'], ['Knobs', 'Gloss black glass with a lit slit.'], ['Switches', 'Lit capsules.'], ['Light', 'A slit of light.'], ['Pedal', 'A small tunnel.']],
+    parts: [['Energy', 'Warp, from the Hub: streaks out of the core. Their speed follows your level; a big chord surges.'], ['Cutouts', 'One window stepped three times into a tunnel, under smoked glass.'], ['Mesh', 'None.'], ['Faceplate', 'Piano black with a chrome edge.'], ['Knobs', 'Obsidian: gloss black glass over a dark chrome skirt, with a lit slit inside the glass.'], ['Switches', 'Lit capsules.'], ['Light', 'A slit of light.'], ['Pedal', 'A small tunnel.']],
     reach: 'The streaks, the slots of light and the lamps.' },
   { id: 'circuit', fam: 'new', name: 'Circuit', after: 'Energy: the Hub’s Circuit', own: '#3fd9e8',
     fx: 'circuit', cut: 'glass', mesh: 'none', mat: 'glass', knob: 'machined', pwr: 'glow', tg: 'glow', lampT: 'ring', foot: 'ring',
@@ -825,7 +905,7 @@ const KITS = [
     fx: 'turbine', cut: 'intake', mesh: 'weave', mat: 'titanium', knob: 'spinner', pwr: 'guard', tg: 'tip', lampT: 'ring', foot: 'ring',
     capture: 'Big rock rhythm', pedal: 'Afterburner', pedal2: 'Boost',
     pitch: 'A jet intake in heat-tinted titanium: the fan spins up as you play and glows from behind.',
-    parts: [['Energy', 'Turbine, from the Hub: a backlit fan whose speed follows your level.'], ['Cutouts', 'A round intake with stator spokes and a spinner, rivets round it.'], ['Mesh', 'Woven wire, like an intake screen.'], ['Faceplate', 'Titanium, brushed and heat-tinted.'], ['Knobs', 'Spinner hubs with a swirl that turns.'], ['Switches', 'Power under a guard; toggles with lit tips.'], ['Light', 'A lit ring.'], ['Pedal', 'A small intake.']],
+    parts: [['Energy', 'Turbine, from the Hub: two backlit compressor stages turning against each other, the speed following your level.'], ['Cutouts', 'A round intake with stator spokes and a machined spinner cone, rivets round it.'], ['Mesh', 'Woven wire, like an intake screen.'], ['Faceplate', 'Titanium, brushed and heat-tinted.'], ['Knobs', 'Spinners: a machined cone over a ring of shaded fins, with a notch that marks the setting.'], ['Switches', 'Power under a guard; toggles with lit tips.'], ['Light', 'A lit ring.'], ['Pedal', 'A small intake.']],
     reach: 'The glow, the slots of light and the lamps.' },
   { id: 'carbon', fam: 'new', name: 'Carbon', after: 'Energy: the Hub’s Lattice', own: '#be9851',
     fx: 'lattice', cut: 'honeycomb', mesh: 'none', mat: 'carbon', knob: 'gem', pwr: 'glow', tg: 'glow', lampT: 'hex', foot: 'ring',
@@ -843,9 +923,13 @@ const KITS = [
     fx: 'ferro', cut: 'porthole', mesh: 'none', mat: 'blackchrome', knob: 'obsidian', pwr: 'glow', tg: 'glow', lampT: 'slit', foot: 'ring',
     capture: 'Low-tuned riff', pedal: 'Magnet', pedal2: 'Boost',
     pitch: 'A porthole onto a pool of ferrofluid lit from behind: its spikes rise as you play and leap on every pick.',
-    parts: [['Energy', 'Ferro, new here: black liquid in a magnetic field. The spikes follow your level and jump on a pick.'], ['Cutouts', 'A porthole with a chrome bezel, bolts and a glass glare.'], ['Mesh', 'None: glass.'], ['Faceplate', 'Black chrome.'], ['Knobs', 'Gloss black glass with a lit slit.'], ['Switches', 'Lit capsules.'], ['Light', 'A slit of light.'], ['Pedal', 'A small porthole.']],
+    parts: [['Energy', 'Ferro, new here: black liquid in a magnetic field. The spikes follow your level and jump on a pick.'], ['Cutouts', 'A porthole with a chrome bezel, bolts and a glass glare.'], ['Mesh', 'None: glass.'], ['Faceplate', 'Black chrome.'], ['Knobs', 'Obsidian: gloss black glass over a dark chrome skirt, with a lit slit inside the glass.'], ['Switches', 'Lit capsules.'], ['Light', 'A slit of light.'], ['Pedal', 'A small porthole.']],
     reach: 'The backlight, the slots of light and the lamps.' }
 ]
+// "CRBN Rig" on every head (D-RIG-009 (d)): CRBN in small capitals beside a script "Rig", or in capitals.
+const CR = '<b class="cr">CRBN</b>Rig'
+const LOGOS = { brit: CR, black: CR, tweed: CR, boost: 'CRBN RIG', plate: 'CRBN RIG', wood: 'CRBN RIG', gain: 'CRBN RIG', compact: 'CRBN RIG · RG-1', hammer: 'CRBN RIG', rack: 'CRBN Rig' }
+for (const k of KITS) if (LOGOS[k.id]) k.logo = LOGOS[k.id]
 const KIT = Object.fromEntries(KITS.map(k => [k.id, k]))
 
 // ---------------------------------------------------------------- the finishes (D-RIG-008) and the looks (D-CRBN-019)
@@ -862,7 +946,7 @@ const B_OPTS = {
   knob: ['Knobs', [['halo', 'Dark glass'], ['machined', 'Machined'], ['obsidian', 'Obsidian'], ['gem', 'Hex crystal'], ['spinner', 'Spinner']]],
   own: ['Colour (with Kit’s own)', [['#d92b52', 'Cherry'], ['#be9851', 'Tweed gold'], ['#f29077', 'Rose gold'], ['#6aa8ff', 'Electric blue'], ['#9a7dff', 'Violet'], ['#3fd9e8', 'Cyan'], ['#ff9a3c', 'Afterburner'], ['#9fd8ff', 'Ice']]]
 }
-const BUILDER = { id: 'builder', fam: 'new', name: 'Your kit', after: 'Built here', fx: 'reactor', cut: 'honeycomb', mesh: 'hex', mat: 'carbon', knob: 'halo', own: '#d92b52',
+const BUILDER = { id: 'builder', fam: 'new', name: 'Your kit', kitName: '', after: 'Built here', fx: 'reactor', cut: 'honeycomb', mesh: 'hex', mat: 'carbon', knob: 'halo', own: '#d92b52',
   pwr: 'glow', tg: 'glow', lampT: 'bead', foot: 'ring', capture: 'Your capture', pedal: 'Your pedal', pedal2: 'Boost' }
 
 // ---------------------------------------------------------------- the questions
@@ -944,6 +1028,16 @@ const GEM = (() => {
   for (let k = 0; k < 6; k++) s += `<path class="f${k}" d="M${P(46, k)} L${P(46, k + 1)} L${P(23, k + 1)} L${P(23, k)} Z"/>`
   return s + `<path class="tb" d="M${[0, 1, 2, 3, 4, 5].map(k => P(23, k)).join(' L')} Z"/><circle class="pt" cx="0" cy="-35" r="3.4"/>`
 })()
+const OB_TICKS = (() => { let d = ''; for (let i = 0; i < 72; i++) { const a = i * 5 * Math.PI / 180, s = Math.sin(a), c = -Math.cos(a); d += `M${f1(s * 44.5)},${f1(c * 44.5)}L${f1(s * 48.6)},${f1(c * 48.6)}` } return d })()
+const OB_BASE = `<circle r="49" fill="url(#ob-skirt)"/><path d="${OB_TICKS}" stroke="rgba(0,0,0,.55)" stroke-width="1.3"/><circle r="49" fill="none" stroke="rgba(0,0,0,.8)" stroke-width="1"/><circle r="42.2" fill="#000"/><circle r="40.5" fill="url(#ob-dome)"/><circle r="33" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`
+const OB_GLASS = '<path d="M-26,-27 C-14,-38.5 14,-38.5 26,-27 C20,-22.5 11,-25 0,-25 C-11,-25 -20,-22.5 -26,-27 Z" fill="url(#ob-soft)"/><ellipse cx="-19" cy="-12" rx="4.6" ry="1.9" transform="rotate(-50 -19 -12)" fill="rgba(255,255,255,.32)"/><path d="M-30,20 A37,37 0 0,0 30,20" fill="none" stroke="url(#ob-floor)" stroke-width="3.5" stroke-linecap="round"/><circle r="40" fill="none" stroke="url(#ob-fres)" stroke-width="1.5"/>'
+const SPIN_FINS = (() => {
+  let s = '<circle r="48.5" fill="#15161a"/>'
+  for (let k = 0; k < 20; k++) s += `<path transform="rotate(${k * 18})" d="M2,-25 C6,-33 9,-40 8,-46.5 L1.5,-46.5 C2,-40 -1,-33 -3.5,-25 Z" fill="url(#sp-blade)"/>`
+  return s + '<circle r="47.5" fill="none" stroke="#3a3d44" stroke-width="2.2"/><circle r="47.5" fill="none" stroke="rgba(255,255,255,.14)" stroke-width=".6"/><path d="M-2.4,-49 L2.4,-49 L1.4,-37.5 L-1.4,-37.5 Z" style="fill:color-mix(in oklab, var(--fin) 70%, white)"/>'
+})()
+const SPIN_CONE = '<circle r="25" fill="#0b0c0e"/><circle r="23.5" fill="url(#spin-g2)"/>' + [6, 10, 14, 18, 22].map((r, i) => `<circle r="${r}" fill="none" stroke="${i % 2 ? 'rgba(0,0,0,.2)' : 'rgba(255,255,255,.1)'}" stroke-width=".8"/>`).join('') + '<path d="M0,-5 L4.3,-2.5 L4.3,2.5 L0,5 L-4.3,2.5 L-4.3,-2.5 Z" fill="url(#bolt-g)" stroke="rgba(0,0,0,.5)" stroke-width=".6"/><ellipse cx="-8" cy="-11" rx="7" ry="2.6" transform="rotate(-36 -8 -11)" fill="rgba(255,255,255,.5)"/>'
+const LP_IN = '<i class="lp-bz"></i><i class="lp-ln"></i><i class="lp-hc"></i><i class="lp-sp"></i><i class="lp-bl"></i>'
 function knobInner (t, kit) {
   switch (t) {
     case 'cap': return '<i class="sh"></i><i class="body r"></i><i class="top"></i><i class="cap"></i><i class="ln r"></i>'
@@ -952,9 +1046,9 @@ function knobInner (t, kit) {
     case 'insert': return '<i class="sh"></i><i class="body r"></i><i class="top"></i><i class="ins"></i><i class="ln r"></i>'
     case 'dome': return '<i class="sh"></i><i class="base"></i><i class="dome"></i><i class="ln r"></i><i class="gl"></i>'
     case 'halo': return '<i class="sh"></i><i class="body"></i><i class="kf"></i><i class="ln r"></i>'
-    case 'obsidian': return '<i class="sh"></i><i class="body"></i><i class="gl"></i><i class="ln r"></i>'
+    case 'obsidian': return `<i class="sh"></i><i><svg viewBox="-50 -50 100 100">${OB_BASE}</svg></i><i class="ln r"></i><i><svg viewBox="-50 -50 100 100">${OB_GLASS}</svg></i>`
     case 'gem': return `<i class="sh"></i><i class="r"><svg viewBox="-50 -50 100 100">${GEM}</svg></i>`
-    case 'spinner': return '<i class="sh"></i><i class="body r"></i><i class="cone"></i><i class="r sp"><svg viewBox="-50 -50 100 100"><path d="M0,0 C9,-3 13,-14 4,-22 C-6,-30 -24,-20 -23,-2"/></svg></i>'
+    case 'spinner': return `<i class="sh"></i><i class="r sp-f"><svg viewBox="-50 -50 100 100">${SPIN_FINS}</svg></i><i><svg viewBox="-50 -50 100 100">${SPIN_CONE}</svg></i>`
     default: return '<i class="sh"></i><i class="body r"></i><i class="top"></i><i class="ln r"></i>' // knurl, compact, alu, machined
   }
 }
@@ -981,7 +1075,7 @@ function arcSVG (s, v) {
 }
 function knobCell (kit, label, v, size) {
   const s = SIZES[size], isNew = kit.fam === 'new'
-  return `<div class="cc"><span class="lb">${label}</span><div class="kw ${size}">${isNew ? arcSVG(s, v) : scaleSVG(kit.scale, s)}<div class="kn kn-${kit.knob}" role="slider" tabindex="0" aria-label="${label}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${(v * 10).toFixed(1)}" data-v="${v}" data-label="${label}" style="--a:${ang(v)}deg">${knobInner(kit.knob, kit)}</div></div></div>`
+  return `<div class="cc"><span class="lb">${label}</span><div class="kw ${size}">${isNew ? arcSVG(s, v) : scaleSVG(kit.scale, s)}<div class="kn kn-${kit.knob}" role="slider" tabindex="0" aria-label="${label}" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${(v * 10).toFixed(1)}" data-v="${v}" data-label="${label}" style="--a:${ang(v)}deg">${knobInner(kit.knob, kit)}<i class="env"></i><i class="rim"></i></div></div></div>`
 }
 function faderCell (label, v) {
   return `<div class="cc"><span class="lb">${label}</span><div class="fd" role="slider" tabindex="0" aria-label="${label}" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${(v * 10).toFixed(1)}" data-v="${v}" data-label="${label}" style="--v:${v}"><i class="tk"></i><i class="cap"></i></div></div>`
@@ -1004,8 +1098,8 @@ const VU = (() => {
 })()
 const LAMP = { jewel: 'lp-jewel', 'jewel-sm': 'lp-jewel sm', led: 'lp-led', eye: 'lp-eye', ring: 'lp-ring', bead: 'lp-bead', slit: 'lp-slit', hex: 'lp-hex' }
 function lampHTML (kit) {
-  if (kit.lampT === 'vu') return `<div class="cc"><span class="lb">Level</span><span class="lp lp-vu">${VU}</span><span class="st"></span></div><div class="cc"><span class="lb">Pilot</span><span class="lp lp-led" aria-hidden="true"></span><span class="st" data-pilot>On</span></div>`
-  return `<div class="cc"><span class="lb">Pilot</span><span class="lp ${LAMP[kit.lampT]}" aria-hidden="true"></span><span class="st" data-pilot>On</span></div>`
+  if (kit.lampT === 'vu') return `<div class="cc"><span class="lb">Level</span><span class="lp lp-vu">${VU}</span><span class="st"></span></div><div class="cc"><span class="lb">Pilot</span><span class="lp lp-led" aria-hidden="true">${LP_IN}</span><span class="st" data-pilot>On</span></div>`
+  return `<div class="cc"><span class="lb">Pilot</span><span class="lp ${LAMP[kit.lampT]}" aria-hidden="true">${kit.lampT === 'eye' ? '' : LP_IN}</span><span class="st" data-pilot>On</span></div>`
 }
 
 // ---------------------------------------------------------------- an amp, a pedal, a cabinet
@@ -1024,13 +1118,13 @@ function ampHTML (kit) {
   const pwr = lampHTML(kit) + swHTML(kit.pwr, 'power', 'Power', true) + swHTML(sb, 'standby', 'Standby', true)
   const gz = kit.id === 'rack'
     ? `<div class="logo-box"><span class="logo">${kit.logo}</span><span class="sub">RG-2 · ${kit.capture}</span></div><span class="vents" aria-hidden="true"></span>`
-    : `<div class="logo-box"><span class="logo">${isNew ? 'RIG' : kit.logo}</span><span class="sub">${kit.capture}</span></div>`
+    : `<div class="logo-box"><span class="logo">${isNew ? 'CRBN RIG' : kit.logo}</span><span class="sub">${kit.capture}</span></div>`
   return `<div class="hw amp ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="amp" data-standby="false"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}${kit.id === 'rack' ? '<i class="ear l"></i><i class="ear r"></i>' : ''}<div class="ui"><div class="knobs">${knobs}</div><div class="tgs">${tgs}</div><div class="pwr">${pwr}</div></div><div class="gz">${gz}</div></div></div></div>`
 }
 function pedalHTML (kit, name) {
   const isNew = kit.fam === 'new', size = kit.id === 'hammer' ? 'md' : 'sm'
   const knobs = PED_KNOBS.map(([lb, v]) => knobCell(kit, lb, v, size)).join('')
-  const led = `<span class="lp ${kit.led === 'jewel-sm' ? 'lp-jewel sm' : isNew ? 'lp-ring' : 'lp-led'}" aria-hidden="true"></span>`
+  const led = `<span class="lp ${kit.led === 'jewel-sm' ? 'lp-jewel sm' : isNew ? 'lp-ring' : 'lp-led'}" aria-hidden="true">${LP_IN}</span>`
   const aria = `aria-pressed="true" aria-label="${name}: engaged"`
   if (kit.foot === 'pad') return `<div class="hw pedal classic k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal"><div class="pface"><div class="pled">${led}<span class="lb">Check</span></div><div class="pknobs">${knobs}</div><button class="fs fs-pad" type="button" data-role="foot" ${aria}><span class="strip">${name}<small>RG-1</small></span></button></div></div>`
   const foot = kit.foot === 'ring' ? `<button class="fs fs-ring" type="button" data-role="foot" ${aria}></button>` : `<button class="fs fs-3pdt" type="button" data-role="foot" ${aria}><i class="nut"></i><i class="cap"></i></button>`
@@ -1170,7 +1264,7 @@ const CUTS = {
       d += POLY([[cx + ux * rs + nx, cy + uy * rs + ny], [cx + ux * re + nx, cy + uy * re + ny], [cx + ux * re - nx, cy + uy * re - ny], [cx + ux * rs - nx, cy + uy * rs - ny]])
     }
     const sc = rh / 24
-    let decor = `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r + 2)}" fill="none" stroke="url(#chr-v)" stroke-width="${kind === 'amp' ? 4 : 3}"/><circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(rh)}" fill="url(#spin-g)" stroke="rgba(0,0,0,.6)" stroke-width="1"/><path transform="translate(${f1(cx)} ${f1(cy)}) scale(${sc.toFixed(3)})" d="M0,0 C9,-3 13,-14 4,-22 C-6,-30 -24,-20 -23,-2" fill="none" style="stroke:color-mix(in oklab, var(--fin) 70%, white)" stroke-width="5" stroke-linecap="round"/>`
+    let decor = `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(r + 2)}" fill="none" stroke="url(#chr-v)" stroke-width="${kind === 'amp' ? 4 : 3}"/><g transform="translate(${f1(cx)} ${f1(cy)}) scale(${(rh / 23.5).toFixed(3)})">${SPIN_CONE}</g>`
     if (kind === 'amp') {
       for (let k = 0; k < 16; k++) { const a = k / 16 * TAU, bx = cx + Math.cos(a) * (r + 8.5), by = cy + Math.sin(a) * (r + 8.5); if (by > R.y - 6 && by < R.y + R.h + 6) decor += `<circle cx="${f1(bx)}" cy="${f1(by)}" r="1.7" fill="url(#bolt-g)"/>` }
       const x1 = cx - r - 16
@@ -1243,7 +1337,7 @@ function layoutHW (hw) {
 function cardHTML (kit) {
   const vbtn = (v, t) => `<button type="button" data-verdict="${kit.id}" data-val="${v}" aria-pressed="false">${t}</button>`
   return `<article class="kit" id="kit-${kit.id}" data-kit="${kit.id}">
-    <header class="khead"><h3>${kit.name}</h3><span class="after">${kit.fam === 'classic' ? 'After ' + kit.after : kit.after}</span><span class="tags"><span class="tag def" data-deftag hidden>Default</span><span class="tag">${kit.fam === 'classic' ? 'Classic' : 'New'}</span></span><p class="pitch"><span>${kit.pitch}</span></p></header>
+    <header class="khead"><h3>${kit.name}</h3><span class="after">${kit.fam === 'classic' ? 'After ' + kit.after : kit.after}</span><span class="tags"><span class="tag def" data-deftag hidden>Default</span>${kit.mine ? '<span class="tag mine">Yours</span>' : ''}<span class="tag">${kit.fam === 'classic' ? 'Classic' : 'New'}</span></span><p class="pitch"><span>${kit.pitch}</span></p></header>
     <div class="show"><div class="floor">${ampHTML(kit)}${pedalHTML(kit, kit.pedal)}</div></div>
     <div class="info">
       <dl class="parts">${kit.parts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}<div class="reach"><dt>Finish</dt><dd>${kit.reach}</dd></div></dl>
@@ -1268,10 +1362,11 @@ function hydrate (root) {
       ro.observe(face); io.observe(face)
     }
   }
+  for (const el of $$('.k-hammer .cabinet, .k-hammer .pface', root)) SALV.observe(el)
   applyFinish(root)
   collectLive()
 }
-function forget (root) { for (const hw of $$('.hw.new', root)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) } }
+function forget (root) { for (const el of $$('.k-hammer .cabinet, .k-hammer .pface', root)) SALV.unobserve(el); for (const hw of $$('.hw.new', root)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) } }
 
 // ---------------------------------------------------------------- finish and look
 let FINISH = 'own', LOOK = 'capsule'
@@ -1286,6 +1381,59 @@ function applyFinish (root = document) {
     hw.style.setProperty('--fin-ink', (1.05) / (lum(fin) + .05) > (lum(fin) + .05) / .05 ? '#ffffff' : '#141414')
     if (hw.__surf) hw.__surf.col = hex2rgb(fin)
   }
+  for (const el of $$('.k-hammer .cabinet, .k-hammer .pface', root)) scheduleSalvage(el)
+}
+
+// ---------------------------------------------------------------- Salvage: a sheet of painted scrap steel, made new for each piece (D-RIG-009 (a))
+const SALV = new ResizeObserver(es => { for (const e of es) scheduleSalvage(e.target) })
+function scheduleSalvage (el) { clearTimeout(el.__st); el.__st = setTimeout(() => paintSalvage(el), 90) }
+function paintSalvage (el) {
+  if (!el.isConnected) return
+  const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight), hw = el.closest('.hw')
+  if (w < 20 || h < 20 || !hw) return
+  const fin = finFor(kitOf(hw)), key = `${w}x${h}:${fin}`
+  if (el.__sk === key) return
+  el.__sk = key
+  if (!el.__seed) el.__seed = (Math.random() * 1e9) | 0
+  el.style.backgroundImage = `url(${salvageTex(w, h, fin, el.__seed)})`
+  el.style.backgroundSize = '100% 100%'
+}
+function salvageTex (w, h, finHex, seed) {
+  const R = mulberry(seed), k = Math.min(2, window.devicePixelRatio || 1), W = Math.round(w * k), H = Math.round(h * k), rnd = (a, b) => a + R() * (b - a)
+  const c = document.createElement('canvas'); c.width = W; c.height = H
+  const g = c.getContext('2d'); g.scale(k, k)
+  // bare steel with mill streaks
+  g.fillStyle = '#7b8086'; g.fillRect(0, 0, w, h)
+  for (let i = 0; i < w * h / 60; i++) { const y = R() * h, x = R() * w, l = rnd(8, 70); g.strokeStyle = R() < .5 ? `rgba(255,255,255,${rnd(.03, .09).toFixed(3)})` : `rgba(0,0,0,${rnd(.03, .1).toFixed(3)})`; g.lineWidth = rnd(.4, 1.2); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + rnd(-.6, .6)); g.stroke() }
+  const rust = (x, y, r, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(122,58,18,${a})`); gr.addColorStop(.5, `rgba(150,78,28,${a * .6})`); gr.addColorStop(1, 'rgba(150,78,28,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill() }
+  for (let i = 0; i < 6 + R() * 8; i++) rust(R() * w, R() * h, rnd(10, 60), rnd(.35, .7))
+  for (let i = 0; i < w * h / 120; i++) { g.fillStyle = `rgba(${rnd(90, 140) | 0},${rnd(40, 70) | 0},${rnd(15, 30) | 0},${rnd(.1, .4).toFixed(2)})`; g.fillRect(R() * w, R() * h, rnd(.5, 1.6), rnd(.5, 1.6)) }
+  // the paint on its own layer, so chips and scratches cut through to the steel
+  const p = document.createElement('canvas'); p.width = W; p.height = H
+  const q = p.getContext('2d'); q.scale(k, k)
+  q.fillStyle = finHex; q.fillRect(0, 0, w, h)
+  for (let i = 0; i < 14; i++) { const x = R() * w, y = R() * h, r = rnd(30, 140), lite = R() < .5, gr = q.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, lite ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.14)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); q.fillStyle = gr; q.fillRect(x - r, y - r, 2 * r, 2 * r) }
+  const fade = q.createLinearGradient(0, 0, 0, h); fade.addColorStop(0, 'rgba(255,255,255,.1)'); fade.addColorStop(1, 'rgba(0,0,0,.08)'); q.fillStyle = fade; q.fillRect(0, 0, w, h)
+  q.globalCompositeOperation = 'destination-out'
+  const chip = (x, y, r) => { q.beginPath(); const n = 7 + (R() * 5 | 0); for (let i = 0; i < n; i++) { const a = i / n * TAU, rr = r * rnd(.45, 1.15), px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr; if (i) q.lineTo(px, py); else q.moveTo(px, py) } q.closePath(); q.fill() }
+  const per = 2 * (w + h)
+  for (let i = 0; i < per / 7; i++) { const s = R() * per; let x, y; if (s < w) { x = s; y = rnd(0, 4) } else if (s < w + h) { x = w - rnd(0, 4); y = s - w } else if (s < 2 * w + h) { x = s - w - h; y = h - rnd(0, 4) } else { x = rnd(0, 4); y = s - 2 * w - h } chip(x, y, rnd(1.5, 7)) }
+  for (const [cx, cy] of [[0, 0], [w, 0], [0, h], [w, h]]) for (let i = 0; i < 6; i++) chip(cx + rnd(-14, 14), cy + rnd(-14, 14), rnd(4, 12))
+  for (let i = 0; i < w * h / 9000 + 6; i++) chip(R() * w, R() * h, rnd(1.2, 6))
+  q.lineCap = 'round'
+  for (let i = 0; i < w * h / 2500 + 12; i++) { let x = R() * w, y = R() * h; const a = rnd(-.5, .5) + (R() < .3 ? Math.PI / 2 : 0), l = rnd(10, 110); q.lineWidth = rnd(.35, 1.4); q.beginPath(); q.moveTo(x, y); for (let j = 0; j < 6; j++) { x += Math.cos(a) * l / 6 + rnd(-1, 1); y += Math.sin(a) * l / 6 + rnd(-1, 1); q.lineTo(x, y) } q.stroke() }
+  for (let i = 0; i < 5; i++) { const x0 = R() * w, y0 = R() * h, a = rnd(0, TAU); for (let j = 0; j < 12; j++) { const x = x0 + rnd(-10, 10), y = y0 + rnd(-6, 6), l = rnd(3, 12); q.lineWidth = rnd(.3, .8); q.beginPath(); q.moveTo(x, y); q.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); q.stroke() } }
+  q.globalCompositeOperation = 'source-over'
+  // the paint over the steel, with a dark lip where it chipped
+  g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 1.6 * k; g.shadowOffsetY = .5 * k; g.drawImage(p, 0, 0, w, h); g.restore()
+  // rust bleeding through, and its runs
+  for (let i = 0; i < 5 + R() * 5; i++) { const x = R() * w, y = R() * h, l = rnd(20, 70); rust(x, y, rnd(4, 16), rnd(.25, .5)); const gr = g.createLinearGradient(0, y, 0, y + l); gr.addColorStop(0, 'rgba(110,52,16,.32)'); gr.addColorStop(1, 'rgba(110,52,16,0)'); g.fillStyle = gr; g.fillRect(x - rnd(.8, 2), y, rnd(1.5, 4), l) }
+  // water stains
+  for (let i = 0; i < 3 + R() * 3; i++) { const x = R() * w, y = R() * h, r = rnd(12, 46); g.strokeStyle = `rgba(40,30,18,${rnd(.12, .22).toFixed(2)})`; g.lineWidth = rnd(1.5, 3.5); g.filter = 'blur(1.2px)'; g.beginPath(); g.ellipse(x, y, r, r * rnd(.6, 1), rnd(0, 3), 0, TAU); g.stroke(); g.filter = 'none'; const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(60,45,25,.06)'); gr.addColorStop(1, 'rgba(60,45,25,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill() }
+  // grime towards the edges, and grain
+  for (const [x0, y0, x1, y1] of [[0, 0, 0, 22], [0, h, 0, h - 22], [0, 0, 22, 0], [w, 0, w - 22, 0]]) { const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(20,14,8,.38)'); gr.addColorStop(1, 'rgba(20,14,8,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h) }
+  for (let i = 0; i < w * h / 40; i++) { g.fillStyle = R() < .5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.07)'; g.fillRect(R() * w, R() * h, 1, 1) }
+  return c.toDataURL('image/jpeg', .86)
 }
 
 // ---------------------------------------------------------------- the controls
@@ -1469,9 +1617,10 @@ const circuit = {
   draw (g, st, t, dt, E) {
     const col = E.col, A = E.amp, tr = E.geo.traces || [], P = E.geo.P
     if (!tr.length) return
-    glowDisc(g, P.x, P.y, P.r * 2.4, col, (.22 + .55 * st.charge) * A)
+    glowDisc(g, P.x, P.y, Math.max(E.geo.W, E.geo.H) * .7, col, .08 * A)
+    glowDisc(g, P.x, P.y, P.r * 2.4, col, (.34 + .55 * st.charge) * A)
     g.lineCap = 'round'; g.lineJoin = 'round'
-    for (const x of tr) line(g, x.pts, 1.8, rgba(col, (.18 + .6 * x.flash) * A))
+    for (const x of tr) line(g, x.pts, 1.8, rgba(col, (.26 + .6 * x.flash) * A))
     const pick = () => tr[(Math.random() * tr.length) | 0]
     if (E.playing) {
       if (E.atk > .05) for (let i = 0, n = 1 + Math.round(E.atk * 4); i < n; i++) st.p.push({ tr: pick(), s: 0, v: 140 + Math.random() * 120, dir: 1 })
@@ -1495,22 +1644,36 @@ const circuit = {
   }
 }
 
-// Turbine: a backlit fan whose speed follows your level; its blades the cavity's darkest over the light.
+// Turbine: two backlit compressor stages turning against each other; the front blades shaded across their chord and
+// rim-lit by the glow behind them, a bolted hub under the spinner. The speed follows your level.
 function blade (g, a) { g.save(); g.rotate(a); g.beginPath(); g.moveTo(.16, -.015); g.quadraticCurveTo(.62, 0, 1.06, .13); g.lineTo(1.06, .27); g.quadraticCurveTo(.6, .12, .16, .035); g.closePath(); g.fill(); g.restore() }
 function bladeEdge (g, a) { g.save(); g.rotate(a); g.beginPath(); g.moveTo(.3, -.008); g.quadraticCurveTo(.62, 0, 1.06, .13); g.stroke(); g.restore() }
+function rearBlade (g, a) { g.save(); g.rotate(a); g.beginPath(); g.moveTo(.2, -.01); g.quadraticCurveTo(.6, -.05, 1.02, -.1); g.lineTo(1.02, -.035); g.quadraticCurveTo(.6, 0, .2, .02); g.closePath(); g.fill(); g.restore() }
 const turbine = {
-  init: () => ({ a: Math.random() * TAU, w: 2.3 }),
+  init: () => ({ a: Math.random() * TAU, b: Math.random() * TAU, w: 2.3 }),
   draw (g, st, t, dt, E) {
-    const col = E.col, A = E.amp, N = 22
+    const col = E.col, A = E.amp, N = 18
     const target = (E.playing ? 1.4 + 11 * Math.min(1, E.lvl) : 2.3 * (1 + .5 * Math.sin(t * .5))) * (.15 + .85 * A)
-    st.w += (target - st.w) * Math.min(1, dt * 2.5); st.a += st.w * dt
+    st.w += (target - st.w) * Math.min(1, dt * 2.5); st.a += st.w * dt; st.b -= st.w * .7 * dt
     inDisc(g, E.geo.P, u => {
-      glowDisc(g, 0, 0, 1.3, col, .62 * A); glowDisc(g, 0, 0, .6, hot(col, .55), .55 * A); glowDisc(g, 0, 0, E.geo.ext * .8, col, .08 * A)
+      glowDisc(g, 0, 0, E.geo.ext * .8, col, .08 * A)
+      glowDisc(g, 0, 0, 1.3, col, .72 * A); glowDisc(g, 0, 0, .58, hot(col, .6), .62 * A)
       g.globalCompositeOperation = 'source-over'
-      for (let pass = 2; pass >= 0; pass--) { g.fillStyle = rgba(DEEP, [.92, .4, .2][pass]); for (let i = 0; i < N; i++) blade(g, st.a - pass * st.w * .014 + i * TAU / N) }
+      g.fillStyle = rgba(DEEP, .7)
+      for (let i = 0; i < 33; i++) rearBlade(g, st.b + i * TAU / 33)
+      for (let pass = 2; pass >= 1; pass--) { g.fillStyle = rgba(DEEP, [0, .34, .18][pass]); for (let i = 0; i < N; i++) blade(g, st.a - pass * st.w * .016 + i * TAU / N) }
+      const gr = g.createLinearGradient(0, -.02, 0, .27); gr.addColorStop(0, '#50545e'); gr.addColorStop(.16, '#1b1c22'); gr.addColorStop(1, '#060608')
+      g.fillStyle = gr
+      for (let i = 0; i < N; i++) blade(g, st.a + i * TAU / N)
+      const hub = g.createRadialGradient(-.04, -.05, .01, 0, 0, .24); hub.addColorStop(0, '#3c3f47'); hub.addColorStop(1, '#0b0c0f')
+      g.fillStyle = hub; g.beginPath(); g.arc(0, 0, .24, 0, TAU); g.fill()
+      g.fillStyle = '#62676f'
+      for (let i = 0; i < 10; i++) { const p = pol(.19, st.a + i * TAU / 10); g.beginPath(); g.arc(p[0], p[1], .014, 0, TAU); g.fill() }
       g.globalCompositeOperation = 'lighter'
-      g.strokeStyle = rgba(hot(col, .35), .5 * A); g.lineWidth = Math.max(u, .006)
+      g.strokeStyle = rgba(hot(col, .45), .55 * A); g.lineWidth = 1.1 * u
       for (let i = 0; i < N; i++) bladeEdge(g, st.a + i * TAU / N)
+      g.strokeStyle = rgba(WHITE, .07); g.lineWidth = 2 * u; g.beginPath(); g.arc(0, 0, 1.04, 0, TAU); g.stroke()
+      band(g, 1, .05, col, .35 * A)
     })
   }
 }
@@ -1734,6 +1897,10 @@ function drawSurface (s, t, dt) {
   g.globalCompositeOperation = 'lighter'
   FX[kit.fx].draw(g, s.st, t, dt, E)
   g.globalCompositeOperation = 'source-over'
+  // the energy's light on the knobs and switches (D-RIG-009 (f))
+  s.kick = Math.max((s.kick || 0) * Math.exp(-dt * 6), E.atk)
+  const gv = Math.min(1, s.amp * (.3 + .55 * Math.min(1, E.lvl)) + .3 * s.kick)
+  if (Math.abs(gv - (s.gv ?? -1)) > .03) { s.gv = gv; hw.style.setProperty('--glow', gv.toFixed(2)) }
 }
 
 // ---------------------------------------------------------------- the riff: a recorded level stands in for a guitar (no sound plays)
@@ -1810,7 +1977,7 @@ function still () {
 // ---------------------------------------------------------------- the picks (saved to the db as picks/<id>)
 const saved = {}, qAns = {}, qNotes = {}, noteDirty = {}
 let defKit = null, generalNote = '', builderKeep = false, builderNote = '', builderTouched = false
-let STAGE = 'reactor', stageTouched = false
+let STAGE = 'crbn', stageTouched = false
 const VMARK = { keep: '✓', maybe: '?', cut: '✕' }
 let toastTimer = 0
 function toast (msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true }, 3600) }
@@ -1826,9 +1993,10 @@ function renderIndex () {
 function renderQs () {
   $('#qs').innerHTML = QS.map(q => `<div class="q"><h3>${q.q}</h3><p class="why">${q.why}</p><div class="opts" role="group" aria-label="${q.q}">${q.opts.map(([v, t, d], i) => `<button class="opt" type="button" data-q="${q.id}" data-val="${v}" aria-pressed="false"><span class="rd" aria-hidden="true"></span><span><b>${t}</b>${i === 0 ? '<span class="rec">Recommended</span>' : ''}<br>${d}</span></button>`).join('')}</div><textarea class="note" data-note="q-${q.id}" aria-label="A note on: ${q.q}" placeholder="A note, if no option fits…"></textarea></div>`).join('')
 }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 function renderBuilderCtl () {
-  $('#b-ctl').innerHTML = Object.entries(B_OPTS).map(([k, [label, opts]]) => `<label>${label}<select data-b="${k}">${opts.map(([v, t]) => `<option value="${v}"${BUILDER[k] === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`).join('') +
-    '<div class="vrow"><button class="btn" type="button" id="b-keep" aria-pressed="false">Keep this kit</button><button class="btn ghost" type="button" data-try="builder">Try it on the page ↑</button></div><textarea class="note" data-note="builder" aria-label="Your note on the kit you built" placeholder="What it should be called, what to change…"></textarea>'
+  $('#b-ctl').innerHTML = `<label>Name<input type="text" id="b-name" maxlength="24" value="${esc(BUILDER.kitName)}" placeholder="Name your kit" autocomplete="off"></label>` + Object.entries(B_OPTS).map(([k, [label, opts]]) => `<label>${label}<select data-b="${k}">${opts.map(([v, t]) => `<option value="${v}"${BUILDER[k] === v ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`).join('') +
+    '<div class="vrow"><button class="btn" type="button" id="b-keep" aria-pressed="false">Keep this kit</button><button class="btn ghost" type="button" data-try="builder">Try it on the page ↑</button></div><div class="share"><button class="btn" type="button" id="b-copy">Copy a share code</button><input type="text" class="code" id="b-code" placeholder="Paste a code to open a kit" aria-label="A share code" spellcheck="false" autocomplete="off"><button class="btn ghost" type="button" id="b-open">Open</button></div><p class="hint">A code holds the kit’s name and parts, nothing else. In Rig, players will share it the same way.</p><textarea class="note" data-note="builder" aria-label="Your note on the kit you built" placeholder="What it should be called, what to change…"></textarea>'
 }
 function renderBuilder () { const fl = $('#b-floor'); forget(fl); fl.innerHTML = ampHTML(BUILDER) + pedalHTML(BUILDER, BUILDER.pedal); hydrate(fl) }
 function setStage (id, touched = true) {
@@ -1887,7 +2055,7 @@ function docData (id) {
   const at = new Date().toISOString()
   if (id === 'default') return { kit: defKit, at }
   if (id === 'general') return { note: generalNote, at }
-  if (id === 'builder') return { fx: BUILDER.fx, cut: BUILDER.cut, mesh: BUILDER.mesh, mat: BUILDER.mat, knob: BUILDER.knob, own: BUILDER.own, keep: builderKeep, note: builderNote, at }
+  if (id === 'builder') return { name: BUILDER.kitName, fx: BUILDER.fx, cut: BUILDER.cut, mesh: BUILDER.mesh, mat: BUILDER.mat, knob: BUILDER.knob, own: BUILDER.own, keep: builderKeep, note: builderNote, at }
   if (id.startsWith('q-')) { const q = id.slice(2); return { answer: qAns[q] || null, note: qNotes[q] || '', at } }
   const v = saved[id] || {}
   return { verdict: v.verdict || null, note: v.note || '', at }
@@ -1912,6 +2080,7 @@ function applySnap (snap, first) {
     else if (id === 'builder' && !builderTouched) {
       for (const k of Object.keys(B_OPTS)) if (B_OPTS[k][1].some(o => o[0] === v[k])) BUILDER[k] = v[k]
       builderKeep = !!v.keep
+      if (typeof v.name === 'string') BUILDER.kitName = v.name.slice(0, 24)
       if (!noteDirty.builder) builderNote = typeof v.note === 'string' ? v.note : ''
       if (first) { renderBuilderCtl(); renderBuilder() }
     }
@@ -1969,15 +2138,47 @@ document.addEventListener('click', e => {
   }
   if (t.matches('a.ix')) { e.preventDefault(); $('#kit-' + t.dataset.kit).scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
   if (t.dataset.q) { qAns[t.dataset.q] = qAns[t.dataset.q] === t.dataset.val ? null : t.dataset.val; save('q-' + t.dataset.q); renderPicks(); return }
-  if (t.id === 'b-keep') { builderKeep = !builderKeep; builderTouched = true; save('builder'); renderPicks() }
+  if (t.id === 'b-keep') { builderKeep = !builderKeep; builderTouched = true; save('builder'); renderPicks(); return }
+  if (t.id === 'b-copy') {
+    const code = shareCode(), box = $('#b-code')
+    box.value = code
+    const done = () => toast('Share code copied: anyone who opens it gets this kit.')
+    try { navigator.clipboard.writeText(code).then(done, () => { box.select(); toast('Select the code and copy it.') }) } catch (err) { box.select(); toast('Select the code and copy it.') }
+    return
+  }
+  if (t.id === 'b-open') {
+    const kit = readCode($('#b-code').value)
+    if (!kit) { toast('That isn’t a Rig kit code. A code starts with RIG1.'); return }
+    Object.assign(BUILDER, kit); builderTouched = true
+    renderBuilderCtl(); renderBuilder(); if (STAGE === 'builder') setStage('builder'); save('builder'); renderPicks()
+    toast(`Opened ${kit.kitName ? '“' + kit.kitName + '”' : 'a kit'}.`)
+  }
 })
 document.addEventListener('change', e => {
   if (e.target.id === 'stage-kit') { setStage(e.target.value); return }
   const k = e.target.dataset && e.target.dataset.b
   if (k) { BUILDER[k] = e.target.value; builderTouched = true; renderBuilder(); if (STAGE === 'builder') setStage('builder'); save('builder') }
 })
+// A share code: RIG1. and the kit's name and parts as base64url JSON.
+const B_KEYS = Object.keys(B_OPTS)
+function shareCode () {
+  const o = { n: BUILDER.kitName }
+  for (const k of B_KEYS) o[k] = BUILDER[k]
+  return 'RIG1.' + btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+function readCode (s) {
+  try {
+    const m = /^RIG1\.([A-Za-z0-9_-]+)$/.exec((s || '').trim())
+    if (!m) return null
+    const o = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))))
+    const kit = { kitName: typeof o.n === 'string' ? o.n.slice(0, 24) : '' }
+    for (const k of B_KEYS) { if (!B_OPTS[k][1].some(x => x[0] === o[k])) return null; kit[k] = o[k] }
+    return kit
+  } catch (err) { return null }
+}
 const noteTimers = {}
 document.addEventListener('input', e => {
+  if (e.target.id === 'b-name') { BUILDER.kitName = e.target.value.slice(0, 24); builderTouched = true; clearTimeout(noteTimers.bname); noteTimers.bname = setTimeout(() => save('builder'), 700); return }
   const id = e.target.dataset && e.target.dataset.note
   if (!id) return
   const val = e.target.value
@@ -2002,7 +2203,7 @@ function boot () {
   hydrate($('#kits-classic')); hydrate($('#kits-new'))
   renderBuilderCtl(); renderBuilder()
   renderQs()
-  setStage('reactor', false)
+  setStage('crbn', false)
   renderPicks()
   $('#motion').setAttribute('aria-pressed', String(MOTION))
   if (MOTION) start(); else stillSoon()
