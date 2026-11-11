@@ -37,7 +37,8 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 
 | # | Session | Needs from the owner first | Done when |
 |---|---|---|---|
-| R1 | The look's details | His picks in a small Detail Lab | His picks built, checked, published |
+| R1 | Rig's hardware: the kits (built, SYNC:RIG-015) | Done: the Hardware Lab (D-RIG-009..015), the texture library (D-RIG-016) | The 20 kits on the page, CRBN the default, published |
+| R1b | The Rig builder, RIG1 codes, players' own art | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
 | R2 | The desktop on the page (U2) | His word on vendoring the WebView2 SDK and WIL; a SimplySign session at the end | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1) | Nothing new (D-RIG-008 (e): guard on by default) | Both builds; no false trips on real playing |
 | R4 | The library (U3) | Nothing new | Both builds; a 5,000-file folder stays fast |
@@ -88,6 +89,33 @@ setup in the app's screenshots on Pavillion (R9).
   hosting/kit/publish.mjs --promote` (allowed on this PC), `node web/check.mjs --url=https://rig.carbonlinear.com`. Re-render
   the store pictures only if the faceplate changes how they look, and upload them with new names (the CDN keeps a name
   for a day).
+
+### R1, as built (2026-11-11, SYNC:RIG-015, D-RIG-016)
+
+- **The page:** the amp's drawing **b** is "Hardware": the kit picked under "Rig's hardware" in the look menu draws the
+  amp and the cabinet. Islands and stripe stay as choices; the old CSS faceplate is gone. "Kit's own" is the default
+  finish.
+- **The code:** `web/src/hw/hw.js` holds the lab's kits, drawing, cutouts, Salvage and energy engine nearly
+  verbatim (each part marked with its lab lines), then the page's side. That side binds every knob, fader and
+  switch to Rig's settings, feeds the energy from the input level, and wires Power and Standby (page-level until
+  R3). `hw.css` is the lab's CSS scoped under `.rig-hw`.
+- **Salvage:** its sheets come from the texture library (`web/src/hw/tex/`, D-RIG-016 (a)), with his setup the
+  default and players' choices in the menu.
+- **The checks:** `node web/check.mjs` has 30 checks, 13 of them for the hardware.
+- **Not in R1:** pedals (R6) and the builder (R1b, below).
+
+### R1b. The Rig builder, share codes and players' own art
+
+The lab's builder (`lab.html`: `B_OPTS`, `BUILDER`, the builder's controls, RIG1 codes, "Your own art") for players,
+in the look menu or a panel beside it. `hw.js` already carries `B_OPTS` and `BUILDER`, and `kitOf` reads a `builder`
+kit.
+
+- **Build:** name and keep a kit locally, beside the twenty; copy and open RIG1 codes; templates of any knob or
+  switch saved as SVG (every control is already drawn as layered SVG); art imported as SVG, PNG, WebP or JPEG up to
+  2 MB, kept in IndexedDB, with a knob turning as one picture and a switch as two frames (D-RIG-010 (f)).
+- **Sharing art** beyond the codes goes through the Hub, a store for the Hub lane to host: write it as a proposal in
+  goati-sync `proposals/`.
+- **Checks:** a code round-trips a kit; imported art draws and turns; the builder's kit survives a reload.
 
 ### R2. The desktop on the page (U2): may take two sessions
 

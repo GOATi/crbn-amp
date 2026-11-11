@@ -26,6 +26,11 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-015): R1 is built and published (crbn-launcher D-RIG-016). All twenty hardware kits draw the
+  web version's amp and cabinet as its Hardware drawing, with CRBN the default. Every control is bound to the
+  settings, and the energy kits answer the input level. Salvage's sheets come from GOATi's texture library, Power
+  and Standby are wired at the page until R3, and "Kit's own" is the default finish. The Rig builder, share codes
+  and players' own art are R1b.
 - 2026-11-11 (SYNC:RIG-014): the Hardware Lab is closed (crbn-launcher D-RIG-015). Salvage's words have four
   styles for players, with On tags the default, and his Salvage setup is recorded. Salvage goes in the store's
   screenshots (R9). R1's build is next, in a fresh session.

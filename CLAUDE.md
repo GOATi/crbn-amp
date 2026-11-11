@@ -26,6 +26,7 @@ put the same page on the desktop (`docs/PLAN.md`).
 | The plug-in / standalone (C++) | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp`, `NeuralAmpModelerControls.h`, `config.h`, `Colors.h`, `resources/`) |
 | Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/` |
 | The web version | `web/` (`src/` the page, `engine/` the C++ glue compiled to wasm, `build.mjs`, `check.mjs`) |
+| Rig's hardware: the kits on the amp and cabinet (D-RIG-009..016), ported from the Hardware Lab | `web/src/hw/` (`hw.js`, `hw.css`, `tex/` Salvage's sheets, `fonts/`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
 | The Hub folder | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/` |
 | The Hub record and store page | `packaging/hub/` (`words.json`, `pictures.json`, `README.md`) |
