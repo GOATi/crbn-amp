@@ -26,6 +26,12 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-010): the owner's notes on the Hardware Lab's third version recorded as crbn-launcher
+  D-RIG-011, and the lab's fourth version answers them. Salvage is kept, a close call against CRBN for the default. Its
+  name is on a riveted scrap plate (a sprayed stencil, a punched SALVAGE, the capture's name on label tape), over
+  expanded metal and a warm glow. Every amp's state words sit closer to their switches, still on one line. Rack's
+  handles are polished bars, and its vents glow.
+
 - 2026-11-11 (SYNC:RIG-009): the owner's notes on the Hardware Lab's second version recorded as crbn-launcher D-RIG-010,
   and the lab's third version answers them. Salvage is made from photographed textures, with a crop for each piece (the
   build will use the texture library). CRBN stands straight at the script's height. Every amp has one line of words.

@@ -661,6 +661,51 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .art-in input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 #art-clear[disabled] { opacity: .45; cursor: default; }
 @media (max-width: 640px) { .art-in { grid-template-columns: 1fr; } }
+
+/* v4: the owner's notes on version 3 (D-RIG-011) */
+/* the state words move up together by half the gap under the amp's tallest switch, so they stay on one line;
+   --ch (that switch's drawn height) is set on each amp from its kit */
+.hw.amp .ui .cc { --rg: 3px; }
+.k-tweed.amp .ui .cc { --rg: 7px; }
+.hw.amp .ui .cc > .st { margin-top: calc((var(--ch, 40px) - 52px) / 4 - var(--rg) / 2); }
+/* Salvage: the name on a riveted plate cut from another scrap, over expanded metal and a warm glow */
+.k-hammer { --tx-wear: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'140'%20height%3D'70'%3E%3Cfilter%20id%3D'n'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'.09%20.14'%20numOctaves%3D'4'%20seed%3D'11'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20values%3D'0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%20-9%200%200%200%206.5'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23n)'%2F%3E%3C%2Fsvg%3E"); }
+.k-hammer .gz { position: relative; overflow: hidden; background: radial-gradient(120% 140% at 60% 120%, #2a1206, #0b0605 60%, #050303); background-size: auto; box-shadow: inset 0 4px 10px rgba(0,0,0,.85), inset 0 0 0 1px rgba(0,0,0,.6); border-radius: 2px; }
+.k-hammer .gz > .salv-glow, .k-hammer .gz > .salv-mesh { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.k-hammer .salv-glow { z-index: 0; opacity: .1; transition: opacity .5s; background: radial-gradient(22% 75% at 58% 72%, rgba(255,200,130,.95), rgba(255,120,40,.55) 40%, transparent 72%), radial-gradient(16% 60% at 79% 62%, rgba(255,170,90,.85), rgba(255,100,30,.35) 45%, transparent 75%), radial-gradient(13% 55% at 39% 68%, rgba(255,150,70,.6), transparent 70%), radial-gradient(70% 120% at 60% 112%, rgba(220,80,20,.5), transparent 70%); }
+.hw.on .salv-glow { opacity: calc(.45 + var(--heat, .6) * .55); filter: brightness(1.2) saturate(1.15); }
+.hw.on .salv-glow::after { content: ''; position: absolute; inset: 0; background: inherit; mix-blend-mode: screen; animation: salv-flick 2.9s ease-in-out infinite; }
+@keyframes salv-flick { 0%, 100% { opacity: .3; } 18% { opacity: .55; } 35% { opacity: .25; } 52% { opacity: .6; } 70% { opacity: .38; } 86% { opacity: .5; } }
+.k-hammer .salv-mesh { z-index: 1; }
+.k-hammer .gz > .logo-box, .k-hammer .gz > .spk { position: relative; z-index: 2; }
+.k-hammer.cab .gz > .spk { z-index: 0; }
+.k-hammer .logo-box { gap: 7px; justify-items: start; filter: drop-shadow(0 3px 2px rgba(0,0,0,.75)) drop-shadow(0 7px 9px rgba(0,0,0,.45)); }
+.k-hammer .salv-plate { position: relative; display: grid; justify-items: start; gap: 5px; padding: 10px 20px 9px 17px; background-color: #6b5a4a; clip-path: polygon(0 7%, 2.5% 0, 97% 3%, 100% 13%, 99.2% 91%, 96% 100%, 3% 97%, .4% 89%); }
+.k-hammer .salv-plate .logo { font: 700 30px/1 'Stardos Stencil', sans-serif; letter-spacing: .06em; color: var(--ink); text-shadow: 0 0 1px var(--ink), 0 0 6px color-mix(in srgb, var(--ink) 32%, transparent); -webkit-mask-image: var(--tx-wear); mask-image: var(--tx-wear); -webkit-mask-size: 140px 70px; mask-size: 140px 70px; }
+.k-hammer .salv-name { position: relative; display: flex; gap: .26em; font: 600 12px/1 'IBM Plex Mono', monospace; text-transform: uppercase; padding-left: 2px; }
+.k-hammer .salv-name b { display: inline-block; font-weight: 600; transform: translateY(var(--y)) rotate(var(--r)); color: rgba(22,15,10,.66); text-shadow: 0 1px 0 rgba(255,255,255,.42), 0 -1px 0 rgba(0,0,0,.45); }
+.k-hammer .salv-name .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.k-hammer .salv-plate .rv { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 38% 32%, #f2efe8 0 12%, #a49d92 34%, #514a42 70%, #2a2520 100%); box-shadow: 0 1px 1px rgba(0,0,0,.75), 0 0 3px 1px rgba(110,45,12,.45); }
+.k-hammer .salv-plate .rv:nth-of-type(1) { left: 5px; top: 6px; } .k-hammer .salv-plate .rv:nth-of-type(2) { right: 6px; top: 7px; }
+.k-hammer .salv-plate .rv:nth-of-type(3) { left: 6px; bottom: 5px; } .k-hammer .salv-plate .rv:nth-of-type(4) { right: 7px; bottom: 6px; }
+.k-hammer .logo-box .sub { justify-self: start; padding: 3px 8px; font: 700 10px/1.2 'Barlow Semi Condensed', sans-serif; letter-spacing: .14em; color: #f4f2ec; opacity: 1; background: linear-gradient(180deg, #2a2a2d, #111113 55%, #1b1b1e); border-radius: 2px; text-shadow: 0 1px 0 rgba(0,0,0,.8), 0 -1px 0 rgba(255,255,255,.22); box-shadow: 0 1px 2px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12); }
+/* Rack: polished handles on mounting blocks, and vents lit from inside */
+.k-rack .ear { top: 8px; bottom: 8px; width: 20px; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.k-rack .ear.l { left: 22px; border-left-width: 0; } .k-rack .ear.r { right: 22px; }
+.k-rack .ear > i { position: absolute; display: block; pointer-events: none; }
+.k-rack .ear .hd-sh { left: 7px; right: -5px; top: 16px; bottom: 4px; border-radius: 7px; background: rgba(0,0,0,.5); filter: blur(4px); }
+.k-rack .ear .hd-ft { left: 0; right: 0; height: 19px; border-radius: 3px; background: linear-gradient(180deg, #f3f5f7, #b1b7bd 40%, #737980 58%, #c9ced3); box-shadow: 0 1px 2px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.75), inset 0 -1px 0 rgba(0,0,0,.35), inset 1px 0 0 rgba(255,255,255,.3), inset -1px 0 0 rgba(0,0,0,.2); }
+.k-rack .ear .hd-ft.t { top: 0; } .k-rack .ear .hd-ft.b { bottom: 0; }
+.k-rack .ear .hd-ft::before { content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffffff, #b9bfc5 40%, #5f656c 85%); box-shadow: 0 1px 1px rgba(0,0,0,.6), inset 0 -1px 1px rgba(0,0,0,.3); }
+.k-rack .ear .hd-ft::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 1.2px; margin: -.6px 0 0 -2.5px; background: rgba(20,22,25,.75); box-shadow: 0 .5px 0 rgba(255,255,255,.4); transform: rotate(35deg); }
+.k-rack .ear .hd-bar { left: 4px; width: 12px; top: 7px; bottom: 7px; border-radius: 6px / 10px; background: linear-gradient(180deg, rgba(0,0,0,.55), transparent 7%, transparent 93%, rgba(0,0,0,.6)), linear-gradient(90deg, #1d2024 0%, #5d636a 10%, #d4d8dc 21%, #ffffff 27%, #b3b9bf 35%, #6f757c 52%, #878d94 64%, #dfe2e5 75%, #7b8188 86%, #26292d 100%); box-shadow: 0 0 0 .5px rgba(0,0,0,.65), 0 2px 3px rgba(0,0,0,.35); }
+.k-rack .ear .hd-bar::before { content: ''; position: absolute; left: 2px; right: 2px; top: 9%; bottom: 9%; border-radius: 3px; background: linear-gradient(180deg, transparent, rgba(255,255,255,.18) 30%, transparent 46%, rgba(255,255,255,.12) 70%, transparent); mix-blend-mode: screen; }
+.k-rack .vents { position: relative; background: none; box-shadow: 0 1px 0 rgba(255,255,255,.25); -webkit-mask: none; mask: none; }
+.k-rack .vents::before, .k-rack .vents::after { content: ''; position: absolute; inset: 0; border-radius: 2px; -webkit-mask: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 9px); mask: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 9px); }
+.k-rack .vents::before { background: radial-gradient(55% 170% at 50% 115%, color-mix(in oklab, var(--lampc) 55%, white) 0%, var(--lampc) 24%, color-mix(in oklab, var(--lampc) 38%, #0a0806) 58%, #060504 88%), #060504; filter: brightness(.35); transition: filter .5s; }
+.hw.on.k-rack .vents::before { filter: brightness(calc(.55 + var(--heat, .5) * .7)); }
+.k-rack .vents::after { background: linear-gradient(180deg, rgba(0,0,0,.75), transparent 38%, transparent 80%, rgba(0,0,0,.4)); }
+.hw.on.k-rack .vents { box-shadow: 0 1px 0 rgba(255,255,255,.25), 0 0 16px -6px var(--lampc); }
 @media (max-width: 1080px) {
   .kit, .builder { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'show' 'info'; }
   .intro { grid-template-columns: minmax(0, 1fr); }
@@ -758,15 +803,13 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
         <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
     </div>
     <div class="changes">
-      <b>Version 3: your notes on version 2</b>
+      <b>Version 4: your notes on version 3</b>
       <ul>
-        <li><b>Salvage</b> is made from your four photos. Each amp and pedal takes its own crop of the sheet, turned and flipped, so no two match. Pick a sheet or Mixed under the kit, and Shuffle for new crops. The words turn dark or light to read on the metal.</li>
-        <li>On <b>Brit Gold, Black Panel and Tweed</b>, CRBN stands straight, at the height of the script Rig. The script is straight too.</li>
-        <li>On every amp, the words from <b>Input to Standby</b> share one line, and the words under the switches sit lower, clear of them.</li>
-        <li><b>Tweed</b>: the words sit clear of the numbers, and the numbers no longer run into each other. Its pedal has bigger knobs.</li>
-        <li><b>Pedal knobs</b> show only their end numbers: 0 to 10 where 0 is a real setting (Level, all the way down), 1 to 10 elsewhere (Drive, Tone).</li>
-        <li>The <b>stomp switch</b> is redrawn: a faceted chrome nut on a threaded bushing, and a spun-metal cap with a knurled edge and studio reflections.</li>
-        <li><b>Your own art</b>, in the Rig builder: save any knob or switch as a template, draw over it, and import it as a new version. It is kept with the kit and goes with its share code.</li>
+        <li>The <b>On and Play</b> words sit half as far below their switches and pilot lights, on every amp.</li>
+        <li><b>Salvage's name</b> is on a plate cut from another scrap and riveted on. CRBN RIG is sprayed through a stencil and wears with the metal, and SALVAGE is punched in a letter at a time. The capture's name is on label-maker tape.</li>
+        <li><b>Salvage's grille</b> is expanded metal cut from the same scrap, torn in a spot or two. Behind it a warm glow flickers like heat and swells as you play. The mesh casts its shadow on the glow, and its lower edges catch the light.</li>
+        <li><b>Rack's handles</b> are redrawn: polished bars on screwed mounting blocks, casting a shadow on the panel.</li>
+        <li><b>Rack's vents</b> glow from inside, in its lamp's colour, brighter as you play.</li>
       </ul>
     </div>
   </section>
@@ -905,7 +948,7 @@ const KITS = [
     knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'led', logo: 'CRBN RIG',
     capture: 'Garage fuzz', pedal: 'Scrap fuzz', pedal2: 'Boost',
     pitch: 'Real salvaged sheet metal, from photographs: coats of old paint worn through to bare steel, rust that blooms and runs, scratches and stains. Each amp and pedal takes its own crop of the sheet, turned and flipped, so no two pieces match.',
-    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; stencilled words that turn dark or light to read on it; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'The same sheet round a rusted perforated grille.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
+    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; stencilled words that turn dark or light to read on it; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'Expanded metal cut from the same scrap, over a warm glow; the name on a riveted plate cut from another sheet.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
     reach: 'A finish tints the sheet. In the kit’s own colours the metal is as photographed.' },
   { id: 'rack', fam: 'classic', name: 'Rack', after: 'studio and rack gear: brushed aluminium, ears and handles, a VU meter', own: '#c6cbd0', lamp: '#ffb340',
     knob: 'alu', scale: 'ticks', pwr: 'bat mini', tg: 'lit', lampT: 'vu', foot: '3pdt', led: 'led', logo: 'CRBN Rig',
@@ -1193,6 +1236,8 @@ function lampHTML (kit) {
 function layersHTML (kit) {
   return `<canvas class="en" aria-hidden="true"></canvas><svg class="mesh" aria-hidden="true">${kit.mesh !== 'none' ? `<rect width="100%" height="100%" fill="url(#mesh-${kit.mesh})"/>` : ''}</svg><div class="plw"><div class="pl mat-${kit.mat}"></div></div><svg class="dec" aria-hidden="true"></svg>`
 }
+// a switch's drawn height, for where its state word sits (D-RIG-011)
+function swH (type) { const [t, ...m] = type.split(' '); if (t === 'bat' || t === 'tip') return m.includes('mini') ? 32 : 40; return { rocker: 30, push: 30, lit: 22, pad: 32, guard: 40, glow: 19 }[t] || 40 }
 function ampHTML (kit) {
   const isNew = kit.fam === 'new'
   let knobs = ''
@@ -1205,8 +1250,9 @@ function ampHTML (kit) {
   const pwr = lampHTML(kit) + swHTML(kit.pwr, 'power', 'Power', true, kit) + swHTML(sb, 'standby', 'Standby', true, kit)
   const gz = kit.id === 'rack'
     ? `<div class="logo-box"><span class="logo">${kit.logo}</span><span class="sub">RG-2 · ${kit.capture}</span></div><span class="vents" aria-hidden="true"></span>`
+    : kit.id === 'hammer' ? salvGZ(kit)
     : `<div class="logo-box"><span class="logo">${isNew ? 'CRBN RIG' : kit.logo}</span><span class="sub">${kit.capture}</span></div>`
-  return `<div class="hw amp ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="amp" data-standby="false"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}${kit.id === 'rack' ? '<i class="ear l"></i><i class="ear r"></i>' : ''}<div class="ui"><div class="knobs">${knobs}</div><div class="tgs">${tgs}</div><div class="pwr">${pwr}</div></div><div class="gz">${gz}</div></div></div></div>`
+  return `<div class="hw amp ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="amp" data-standby="false" style="--ch:${kit.art && kit.art.sw ? 40 : Math.max(swH(kit.tg), swH(kit.pwr), swH(sb))}px"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}${kit.id === 'rack' ? '<i class="ear l"><i class="hd-sh"></i><i class="hd-ft t"></i><i class="hd-ft b"></i><i class="hd-bar"></i></i><i class="ear r"><i class="hd-sh"></i><i class="hd-ft t"></i><i class="hd-ft b"></i><i class="hd-bar"></i></i>' : ''}<div class="ui"><div class="knobs">${knobs}</div><div class="tgs">${tgs}</div><div class="pwr">${pwr}</div></div><div class="gz">${gz}</div></div></div></div>`
 }
 function pedalHTML (kit, name) {
   const isNew = kit.fam === 'new', size = kit.id === 'hammer' || kit.id === 'tweed' ? 'md' : 'sm'
@@ -1219,7 +1265,7 @@ function pedalHTML (kit, name) {
 }
 function cabHTML (kit) {
   const isNew = kit.fam === 'new'
-  const inner = isNew ? '' : kit.id === 'rack' ? '<span class="vents" aria-hidden="true"></span>' : '<i class="spk"></i><i class="spk"></i>'
+  const inner = isNew ? '' : kit.id === 'rack' ? '<span class="vents" aria-hidden="true"></span>' : kit.id === 'hammer' ? '<i class="spk"></i><i class="spk"></i><canvas class="salv-mesh" aria-hidden="true"></canvas>' : '<i class="spk"></i><i class="spk"></i>'
   return `<div class="hw cab ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="cab"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}<div class="gz">${inner}</div><div class="cplate"><span class="lb">Cabinet IR</span><b>2×12 open back</b><small>Dynamic mic, on axis</small>${swHTML(kit.tg, 'ir', 'IR', true)}</div></div></div></div>`
 }
 function meterHTML (label, id) {
@@ -1449,11 +1495,11 @@ function hydrate (root) {
       ro.observe(face); io.observe(face)
     }
   }
-  for (const el of $$('.k-hammer .cabinet, .k-hammer .pface', root)) SALV.observe(el)
+  for (const el of $$(SALV_SEL, root)) SALV.observe(el)
   applyFinish(root)
   collectLive()
 }
-function forget (root) { for (const el of $$('.k-hammer .cabinet, .k-hammer .pface', root)) SALV.unobserve(el); for (const hw of $$('.hw.new', root)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) } }
+function forget (root) { for (const el of $$(SALV_SEL, root)) SALV.unobserve(el); for (const hw of $$('.hw.new', root)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) } }
 
 // ---------------------------------------------------------------- finish and look
 let FINISH = 'own', LOOK = 'capsule'
@@ -1468,12 +1514,52 @@ function applyFinish (root = document) {
     hw.style.setProperty('--fin-ink', (1.05) / (lum(fin) + .05) > (lum(fin) + .05) / .05 ? '#ffffff' : '#141414')
     if (hw.__surf) hw.__surf.col = hex2rgb(fin)
   }
-  for (const el of $$('.k-hammer .cabinet, .k-hammer .pface', root)) scheduleSalvage(el)
+  for (const el of $$(SALV_SEL, root)) scheduleSalvage(el)
 }
 
 // ---------------------------------------------------------------- Salvage: a sheet of painted scrap steel, made new for each piece (D-RIG-009 (a))
 const SALV = new ResizeObserver(es => { for (const e of es) scheduleSalvage(e.target) })
 function scheduleSalvage (el) { clearTimeout(el.__st); el.__st = setTimeout(() => paintSalvage(el), 90) }
+const SALV_SEL = '.k-hammer .cabinet, .k-hammer .pface, .k-hammer .salv-plate, .k-hammer .salv-mesh'
+// Salvage's grille: a warm glow, expanded metal from the scrap, and the name on a plate riveted over it (D-RIG-011)
+function salvGZ (kit) {
+  const stamp = [...'SALVAGE'].map((c, i) => `<b style="--r:${[-2, 1.5, -1, 2, -1.5, 1, -2][i]}deg;--y:${[1, -.5, 0, 1, -1, .5, -.5][i]}px">${c}</b>`).join('')
+  return `<i class="salv-glow" aria-hidden="true"></i><canvas class="salv-mesh" aria-hidden="true"></canvas><div class="logo-box"><span class="salv-plate"><span class="logo">CRBN RIG</span><span class="salv-name"><span class="vh">Salvage</span><span aria-hidden="true" style="display:contents">${stamp}</span></span><i class="rv"></i><i class="rv"></i><i class="rv"></i><i class="rv"></i></span><span class="sub">${kit.capture}</span></div>`
+}
+// A sheet's crop, as on the faceplates: its own scale, offset, quarter turn and flips.
+function sheetCrop (g, w, h, img, R) {
+  const iw = img.naturalWidth, ih = img.naturalHeight, quarter = R() < .35, cw = quarter ? ih : iw, ch = quarter ? iw : ih
+  const sc = Math.max(w / cw, h / ch) * (1.05 + R() * .85), ox = (w - cw * sc) * R(), oy = (h - ch * sc) * R()
+  const fx = R() < .5 ? -1 : 1, fy = R() < .5 ? -1 : 1, turn = (quarter ? Math.PI / 2 : 0) + (R() < .5 ? Math.PI : 0)
+  g.save(); g.translate(ox + cw * sc / 2, oy + ch * sc / 2); g.rotate(turn); g.scale(fx * sc, fy * sc); g.drawImage(img, -iw / 2, -ih / 2); g.restore()
+}
+// Expanded metal, drawn straight into its canvas: the strands carry the scrap's paint and rust, cast a shadow on the
+// glow behind, and catch its light on their lower edges. A torn spot or two.
+function meshTex (cv, w, h, img, seed, tint, glow) {
+  const R = mulberry(seed ^ 0x3e11), k = Math.min(2, window.devicePixelRatio || 1)
+  cv.width = Math.round(w * k); cv.height = Math.round(h * k)
+  const g = cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height)
+  const DW = 26, DH = 13, ox = R() * DW, oy = R() * DH
+  const lattice = (c, dx = 0, dy = 0) => { c.beginPath(); for (let j = -2; j * DH / 2 < h + DH; j++) for (let i = -2; i * DW < w + DW; i++) { const cx = i * DW + (j & 1 ? DW / 2 : 0) + ox + dx, cy = j * DH / 2 + oy + dy; c.moveTo(cx - DW / 2, cy); c.lineTo(cx, cy - DH / 2); c.lineTo(cx + DW / 2, cy); c.lineTo(cx, cy + DH / 2); c.closePath() } }
+  const layer = () => { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const x = c.getContext('2d'); x.setTransform(k, 0, 0, k, 0, 0); return [c, x] }
+  const [mk, m] = layer()
+  m.lineJoin = 'round'; m.lineWidth = 3.6; m.strokeStyle = '#000'; lattice(m); m.stroke()
+  m.globalCompositeOperation = 'destination-out'
+  for (let i = 0, n = 1 + ((R() * 2.6) | 0); i < n; i++) { const x = R() * w, y = R() * h, r = 6 + R() * 10; m.beginPath(); for (let a = 0; a < TAU; a += TAU / 10) { const rr = r * (.55 + R() * .7); m.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .7) } m.fill() }
+  m.globalCompositeOperation = 'source-over'
+  const [sk, s] = layer()
+  if (img) sheetCrop(s, w, h, img, R); else { s.fillStyle = '#6d6a64'; s.fillRect(0, 0, w, h) }
+  if (tint) { s.globalCompositeOperation = 'color'; s.globalAlpha = .55; s.fillStyle = tint; s.fillRect(0, 0, w, h); s.globalAlpha = 1 }
+  s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'destination-in'; s.drawImage(mk, 0, 0)
+  s.setTransform(k, 0, 0, k, 0, 0); s.globalCompositeOperation = 'source-atop'
+  s.fillStyle = 'rgba(0,0,0,.22)'; s.fillRect(0, 0, w, h)
+  s.lineWidth = 1; s.strokeStyle = 'rgba(255,255,255,.3)'; lattice(s, 0, -1.1); s.stroke()
+  s.lineWidth = 1.3; s.strokeStyle = 'rgba(0,0,0,.55)'; lattice(s, 0, 1.3); s.stroke()
+  if (glow) { s.lineWidth = 1.2; s.strokeStyle = 'rgba(255,130,50,.26)'; lattice(s, 0, 1.7); s.stroke() }
+  const vg = s.createRadialGradient(w * .6, h * .7, Math.min(w, h) * .2, w / 2, h / 2, Math.hypot(w, h) * .6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); s.fillStyle = vg; s.fillRect(0, 0, w, h)
+  g.save(); g.filter = 'blur(' + (2 * k) + 'px)'; g.globalAlpha = .8; g.drawImage(mk, 2.5 * k, 3 * k); g.restore()
+  g.drawImage(sk, 0, 0)
+}
 const SALV_TEX = [['orange', 'Rust and orange', 'tex/salvage-orange.jpg'], ['red', 'Worn red', 'tex/salvage-red.jpg'], ['pale', 'Pale blue, rust runs', 'tex/salvage-pale.jpg'], ['blue', 'Blue over red', 'tex/salvage-blue.jpg']]
 let SALV_SHEET = 'orange'
 const SALV_IMG = {}
@@ -1482,17 +1568,20 @@ function sheetsHTML () {
   return `<div class="sheets" role="group" aria-label="Salvage's sheet"><span>Sheet</span>${SALV_TEX.map(([id, t]) => `<button type="button" data-sheet="${id}" aria-pressed="${id === SALV_SHEET}">${t}</button>`).join('')}<button type="button" data-sheet="mixed" aria-pressed="${SALV_SHEET === 'mixed'}">Mixed</button><button type="button" data-reshuffle>Shuffle</button></div><p class="sheet-note">Your four photos, for this mock. The build draws from our texture library instead.</p>`
 }
 function syncSheets () { for (const b of $$('[data-sheet]')) b.setAttribute('aria-pressed', String(b.dataset.sheet === SALV_SHEET)) }
-function resalvage (reseed) { for (const el of $$('.k-hammer .cabinet, .k-hammer .pface')) { if (reseed) el.__seed = (Math.random() * 1e9) | 0; el.__sk = ''; scheduleSalvage(el) } }
+function resalvage (reseed) { for (const el of $$(SALV_SEL)) { if (reseed) el.__seed = (Math.random() * 1e9) | 0; el.__sk = ''; scheduleSalvage(el) } }
 function paintSalvage (el) {
   if (!el.isConnected) return
   const w = Math.round(el.clientWidth), h = Math.round(el.clientHeight), hw = el.closest('.hw')
   if (w < 20 || h < 20 || !hw) return
   if (!el.__seed) el.__seed = (Math.random() * 1e9) | 0
-  const sheet = SALV_SHEET === 'mixed' ? SALV_TEX[el.__seed % SALV_TEX.length][0] : SALV_SHEET
+  const isMesh = el.tagName === 'CANVAS', base = SALV_SHEET === 'mixed' ? SALV_TEX[el.__seed % SALV_TEX.length][0] : SALV_SHEET
+  // the name plate is cut from another scrap than the amp
+  const sheet = el.classList.contains('salv-plate') && SALV_SHEET !== 'mixed' ? SALV_TEX[(SALV_TEX.findIndex(x => x[0] === base) + 1) % SALV_TEX.length][0] : base
   const img = SALV_IMG[sheet], tint = FINISH === 'own' ? '' : finFor(kitOf(hw))
   const key = `${w}x${h}:${tint}:${img ? sheet : 'drawn:' + finFor(kitOf(hw))}:${el.__seed}`
   if (el.__sk === key) return
   el.__sk = key
+  if (isMesh) { meshTex(el, w, h, img, el.__seed, tint, !hw.classList.contains('cab')); return }
   let r = null
   // the words' colour comes from the metal behind the controls, not the whole sheet
   const ui = el.querySelector('.ui, .cplate'), er = el.getBoundingClientRect(), ur = ui && ui.getBoundingClientRect()
@@ -1501,13 +1590,30 @@ function paintSalvage (el) {
   if (r) {
     el.style.backgroundImage = r.url; el.style.backgroundSize = r.size || '100% 100%'; el.style.backgroundPosition = r.pos || '0 0'
     el.style.setProperty('--ink', r.light ? '#17130e' : '#f5f0e6')
-    el.style.setProperty('--halo', r.light ? '0 0 2px rgba(255,255,255,.8), 0 1px 0 rgba(255,255,255,.5)' : '0 1px 1px rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.65)')
+    el.style.setProperty('--halo', r.light ? INK_HALO[1] : INK_HALO[0])
+    if (r.canvas) inkEach(el, r.canvas)
   } else {
     el.style.backgroundImage = `url(${salvageTex(w, h, finFor(kitOf(hw)), el.__seed)})`; el.style.backgroundSize = '100% 100%'; el.style.backgroundPosition = '0 0'
     el.style.removeProperty('--ink'); el.style.removeProperty('--halo')
   }
 }
 // One piece's crop of a photographed sheet: its own scale, offset, quarter turn and flips, then light and wear on top.
+const INK_HALO = ['0 1px 1px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8), 0 0 8px rgba(0,0,0,.35)', '0 0 3px rgba(255,255,255,.9), 0 1px 0 rgba(255,255,255,.6), 0 0 8px rgba(255,255,255,.35)']
+function inkEach (el, c) {
+  try {
+    const er = el.getBoundingClientRect(), sx = c.width / er.width, sy = c.height / er.height
+    const s = document.createElement('canvas'); s.width = 8; s.height = 4; const sg = s.getContext('2d')
+    for (const t of el.querySelectorAll('.lb, .st, .pname')) {
+      if (t.closest('.salv-plate')) continue
+      const r = t.getBoundingClientRect(); if (!r.width) continue
+      sg.clearRect(0, 0, 8, 4); sg.drawImage(c, (r.left - er.left - 2) * sx, (r.top - er.top - 1) * sy, (r.width + 4) * sx, (r.height + 2) * sy, 0, 0, 8, 4)
+      const d = sg.getImageData(0, 0, 8, 4).data; let L = 0
+      for (let i = 0; i < d.length; i += 4) L += (.2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]) / 255
+      const light = L / 32 > .5
+      t.style.setProperty('--ink', light ? '#17130e' : '#f5f0e6'); t.style.setProperty('--halo', INK_HALO[light ? 1 : 0])
+    }
+  } catch (err) {}
+}
 function photoTex (w, h, img, seed, tint, reg) {
   const R = mulberry(seed ^ 0x5a17), iw = img.naturalWidth, ih = img.naturalHeight
   const quarter = R() < .35, cw = quarter ? ih : iw, ch = quarter ? iw : ih
@@ -1526,7 +1632,7 @@ function photoTex (w, h, img, seed, tint, reg) {
     const sg = s.getContext('2d'), q = reg || [0, 0, 1, 1]; sg.drawImage(c, q[0] * c.width, q[1] * c.height, Math.max(1, q[2] * c.width), Math.max(1, q[3] * c.height), 0, 0, 24, 24)
     const d = sg.getImageData(0, 0, 24, 24).data; let L = 0
     for (let i = 0; i < d.length; i += 4) L += (.2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]) / 255
-    return { url: `url(${c.toDataURL('image/jpeg', .86)})`, light: L / (d.length / 4) > .5 }
+    return { url: `url(${c.toDataURL('image/jpeg', .86)})`, light: L / (d.length / 4) > .5, canvas: c }
   } catch (err) {
     // the photo can't be read back here (a file opened from disk): show it straight, cropped by CSS
     return { url: `linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,0) 45%, rgba(0,0,0,.24)), url(${img.src})`, size: `auto, ${Math.round(sc * iw / w * 100)}% auto`, pos: `0 0, ${Math.round(R() * 100)}% ${Math.round(R() * 100)}%`, light: false }
@@ -2071,14 +2177,15 @@ function meters (dt) {
   setMeter('#m-in', mIn, clipIn > 0); setMeter('#m-out', mOut, clipOut > 0)
 }
 let LIVE = []
-function collectLive () { LIVE = [...$$('.lp-eye'), ...$$('.lp-vu')].map(el => ({ el, hw: el.closest('.hw'), nd: el.querySelector('.nd'), v: 0 })) }
+function collectLive () { LIVE = [...$$('.lp-eye'), ...$$('.lp-vu'), ...$$('.salv-glow'), ...$$('.k-rack .vents')].map(el => ({ el, hw: el.closest('.hw'), nd: el.querySelector('.nd'), v: 0 })) }
 function liveStep (dt) {
   for (const L of LIVE) {
     if (!L.el.isConnected || !L.hw.__vals) continue
     const live = ampLevel(L.hw) > .5 && SIG.on, lv = live ? clamp01(SIG.level * (.35 + 1.3 * (L.hw.__vals.Input ?? .5))) : 0
     L.v += (lv - L.v) * Math.min(1, dt * (lv > L.v ? 18 : 4))
     if (L.nd) L.nd.setAttribute('transform', `rotate(${f1(-46 + 92 * L.v)} 37 52)`)
-    else L.el.style.setProperty('--eye', f1(84 - 76 * L.v) + 'deg')
+    else if (L.el.classList.contains('lp-eye')) L.el.style.setProperty('--eye', f1(84 - 76 * L.v) + 'deg')
+    else L.el.style.setProperty('--heat', (.5 + .5 * L.v).toFixed(2))
   }
 }
 function mini () { const n = SIG.on ? Math.round(clamp01(SIG.level / 1.1) * 4) : 0; $$('#mini i').forEach((el, i) => el.classList.toggle('on', i < n)) }
