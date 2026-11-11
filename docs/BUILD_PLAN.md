@@ -72,6 +72,10 @@ Players get the Rig builder with share codes. Players can also bring their own a
 out, art comes in, and it is kept and shared with the kit. For that, every knob and switch is built as layered SVG.
 Salvage is drawn from the texture library's photographs, with a crop for each piece. Pedal knobs show only their end
 numbers. "CRBN Rig" stands straight on every head.
+Salvage (D-RIG-011..015) is kept, with players' choices for the sheet, the grille (expanded metal, chicken wire,
+woven wire, perforated sheet), the grille's metal, the glow and the words, plus Shuffle. His own setup is the Rust
+and orange sheet, a perforated sheet in aged copper, valves behind it and the words on tags. He wants this Salvage
+setup in the app's screenshots on Pavillion (R9).
 
 - **Lab first, as before:** a small **Detail Lab** artifact (the Rig Lab's pattern: three options per area, live on a
   mock of the real page in all four looks and three finishes, Pick and a note saved to its db). Areas: the faceplate's
@@ -210,7 +214,8 @@ recommendation. Build only within those terms, crediting authors as the terms as
 - Make a signed desktop build in a SimplySign session, publish it to dev and confirm it.
 - Run `publish.mjs --promote` for the web version, then check it live with `check.mjs --url`.
 - **Store:** new screenshots of the new UI on the desktop and the web, new words where the features changed
-  (`packaging/hub/words.json`), all uploaded under new names after the owner sees them.
+  (`packaging/hub/words.json`), all uploaded under new names after the owner sees them. At least one screenshot shows
+  Salvage in his setup (D-RIG-015).
 - **Docs:** `docs/PLAN.md` (P3 done), `docs/P3-UX.md` (status), `packaging/hub/README.md`, a SYNC entry that names
   what is left (P4, production) for the owner.
 

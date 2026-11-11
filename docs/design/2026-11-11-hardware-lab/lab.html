@@ -885,6 +885,13 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
         <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
     </div>
     <div class="changes">
+      <b>Version 8: your final notes</b>
+      <ul>
+        <li>Salvage's words come in four styles for players, and <b>On tags</b> is the default. Polished metal is gone.</li>
+        <li>Salvage opens with your choices: the Rust and orange sheet, a perforated sheet in aged copper, valves behind it, and the words on tags.</li>
+      </ul>
+    </div>
+    <div class="changes">
       <b>Version 7: your notes on Salvage</b>
       <ul>
         <li>The <b>bat-handle toggles</b> are redrawn on every kit that has them: a washer, a faceted nut on a threaded bushing, and a turned handle with a bulb tip. Salvage's are <b>worn</b>: blackened, rusted and scratched.</li>
@@ -1646,8 +1653,9 @@ const SALV_BOLTS = [1, 2, 3, 4].map(n => '<i class="salv-bolt b' + n + '" aria-h
 const MESH_TYPES = [['expanded', 'Expanded metal'], ['chicken', 'Chicken wire'], ['woven', 'Woven wire'], ['perf', 'Perforated sheet']]
 const MESH_METALS = [['scrap', 'The same scrap'], ['steel', 'Old steel'], ['galv', 'Galvanised'], ['rust', 'Rusted iron'], ['copper', 'Aged copper']]
 const GLOWS = [['embers', 'Embers'], ['valves', 'Valves'], ['furnace', 'Furnace'], ['neon', 'Neon'], ['none', 'None']]
-let SALV_MESH = 'perf', SALV_METAL = 'copper', SALV_GLOW = 'valves', SALV_WORDS = 'stamped'
-const WORD_STYLES = [['stamped', 'Stamped'], ['paint', 'Paint-filled'], ['raised', 'Raised'], ['metal', 'Polished metal'], ['tags', 'On tags']]
+let SALV_MESH = 'perf', SALV_METAL = 'copper', SALV_GLOW = 'valves', SALV_WORDS = 'tags'
+// players' word styles (D-RIG-015): polished metal is gone; On tags is the default
+const WORD_STYLES = [['tags', 'On tags'], ['stamped', 'Stamped'], ['paint', 'Paint-filled'], ['raised', 'Raised']]
 document.documentElement.dataset.salvWords = SALV_WORDS
 const GLOW_EDGE = { embers: 'rgba(255,130,50,.26)', valves: 'rgba(255,150,60,.24)', furnace: 'rgba(255,170,80,.32)', neon: 'rgba(120,190,255,.28)', none: '' }
 // Each grille: a mask of its metal, and its shading (light above, shadow below, the glow on its lower edges).

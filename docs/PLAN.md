@@ -26,6 +26,10 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-014): the Hardware Lab is closed (crbn-launcher D-RIG-015). Salvage's words have four
+  styles for players, with On tags the default, and his Salvage setup is recorded. Salvage goes in the store's
+  screenshots (R9). R1's build is next, in a fresh session.
+
 - 2026-11-11 (SYNC:RIG-013): the owner's Salvage notes recorded as crbn-launcher D-RIG-014, and the lab's seventh
   version answers them. The bat toggles are drawn, with a worn version for Salvage. The plate's letters are metal.
   Salvage's words are sharper and pick dark or light by contrast, with five styles to try. The pedal names are 30%
