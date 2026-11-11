@@ -26,6 +26,11 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-013): the owner's Salvage notes recorded as crbn-launcher D-RIG-014, and the lab's seventh
+  version answers them. The bat toggles are drawn, with a worn version for Salvage. The plate's letters are metal.
+  Salvage's words are sharper and pick dark or light by contrast, with five styles to try. The pedal names are 30%
+  larger.
+
 - 2026-11-11 (SYNC:RIG-012): the owner's Salvage choices (perforated old steel, valves) and notes recorded as
   crbn-launcher D-RIG-013, and the lab's sixth version answers them. Four grilles remain, all sitting darker behind the
   faceplate. The grille opening is recessed, with a cut edge, a cast shadow and a bolted frame. The plate has no white,

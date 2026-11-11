@@ -755,6 +755,31 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .k-hammer .lb[data-ink="light"], .k-hammer .st[data-ink="light"], .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(92,86,80,.96) 8%, rgba(184,176,164,.96) 72%); }
 .k-hammer .salv-plate[data-ink="light"] .logo, .k-hammer .salv-plate[data-ink="light"] .salv-name b { background-image: linear-gradient(180deg, rgba(120,112,103,.96) 10%, rgba(172,164,152,.96) 62%); filter: drop-shadow(0 -1px 0 rgba(0,0,0,.45)) drop-shadow(0 -2px 1px rgba(0,0,0,.15)) drop-shadow(0 1px 0 rgba(255,236,214,.16)); }
 .k-hammer .salv-plate[data-ink="dark"] .logo, .k-hammer .salv-plate[data-ink="dark"] .salv-name b { background-image: linear-gradient(180deg, rgba(30,19,11,.86) 10%, rgba(52,33,20,.74) 70%); filter: drop-shadow(0 1.5px 0 rgba(255,236,214,.38)) drop-shadow(0 -1px 0 rgba(0,0,0,.22)); }
+
+/* v7: the owner's notes on Salvage in version 6 (D-RIG-014) */
+/* the bat-handle toggles, drawn; Salvage's are worn */
+.sw-bat { filter: drop-shadow(0 1.5px 1px rgba(0,0,0,.4)); }
+.sw-bat .nut { width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 0; background: none; box-shadow: none; }
+.sw-bat .nut::after { display: none; }
+.sw-bat .nut svg, .sw-bat .bat svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.sw-bat .bat, .sw-bat.black .bat, .sw-bat.tip .bat { width: 9px; height: 19px; margin-left: -4.5px; background: none; clip-path: none; box-shadow: none; border-radius: 0; transform: none; }
+.sw-bat[aria-pressed="true"] .bat { transform: scaleY(-1); }
+.sw-bat.mini .nut { width: 16px; height: 16px; margin: -8px 0 0 -8px; }
+.sw-bat.mini .bat { width: 7px; height: 15px; margin-left: -3.5px; }
+.sw-bat.tip .bat::after { left: 1px; right: 1px; bottom: .5px; height: 5px; border-radius: 50%; }
+/* the words on Salvage: bigger pedal names, and five styles to choose from, each with smaller, sharper walls */
+:root .k-hammer .pname { font-size: 22px; }
+:root[data-salv-words="stamped"] .k-hammer .lb[data-ink="dark"], :root[data-salv-words="stamped"] .k-hammer .st[data-ink="dark"], :root[data-salv-words="stamped"] .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(180deg, rgba(4,2,1,.95) 0 16%, rgba(26,16,9,.92) 26%); filter: drop-shadow(0 .6px 0 rgba(255,240,220,.6)) drop-shadow(0 -.4px 0 rgba(0,0,0,.4)); }
+:root[data-salv-words="stamped"] .k-hammer .lb[data-ink="light"], :root[data-salv-words="stamped"] .k-hammer .st[data-ink="light"], :root[data-salv-words="stamped"] .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(110,104,96,.98) 0 14%, rgba(214,207,195,.98) 24%); filter: drop-shadow(0 -.6px 0 rgba(0,0,0,.9)) drop-shadow(0 .5px 0 rgba(255,255,255,.18)) drop-shadow(0 0 1.5px rgba(0,0,0,.45)); }
+:root[data-salv-words="paint"] .k-hammer .lb[data-ink="dark"], :root[data-salv-words="paint"] .k-hammer .st[data-ink="dark"], :root[data-salv-words="paint"] .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(rgba(10,9,8,.96), rgba(10,9,8,.96)); filter: drop-shadow(0 .6px 0 rgba(255,240,220,.5)); }
+:root[data-salv-words="paint"] .k-hammer .lb[data-ink="light"], :root[data-salv-words="paint"] .k-hammer .st[data-ink="light"], :root[data-salv-words="paint"] .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, #d4a226, #e6bb3a); filter: drop-shadow(0 -.6px 0 rgba(0,0,0,.85)) drop-shadow(0 0 1.5px rgba(0,0,0,.5)); }
+:root[data-salv-words="raised"] .k-hammer .lb[data-ink="dark"], :root[data-salv-words="raised"] .k-hammer .st[data-ink="dark"], :root[data-salv-words="raised"] .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(180deg, rgba(74,52,34,.96) 0 14%, rgba(28,18,10,.96) 24%); filter: drop-shadow(0 1px .4px rgba(0,0,0,.65)) drop-shadow(0 -.4px 0 rgba(255,236,214,.35)); }
+:root[data-salv-words="raised"] .k-hammer .lb[data-ink="light"], :root[data-salv-words="raised"] .k-hammer .st[data-ink="light"], :root[data-salv-words="raised"] .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(242,236,226,.98) 0 14%, rgba(196,188,176,.98) 24%); filter: drop-shadow(0 1px .5px rgba(0,0,0,.85)) drop-shadow(0 0 1.5px rgba(0,0,0,.4)); }
+:root[data-salv-words="metal"] .k-hammer .lb[data-ink], :root[data-salv-words="metal"] .k-hammer .st[data-ink], :root[data-salv-words="metal"] .k-hammer .pname[data-ink] { background-image: linear-gradient(180deg, #e2dcd2 0%, #a59e93 38%, #4a453f 50%, #8a8378 62%, #c9c2b6 100%); filter: drop-shadow(0 .6px 0 rgba(0,0,0,.9)) drop-shadow(0 0 1px rgba(0,0,0,.9)) drop-shadow(0 0 2.5px rgba(0,0,0,.55)); }
+:root[data-salv-words="tags"] .k-hammer .lb[data-ink], :root[data-salv-words="tags"] .k-hammer .st[data-ink], :root[data-salv-words="tags"] .k-hammer .pname[data-ink] { background: linear-gradient(180deg, #2c2824, #171411); -webkit-background-clip: border-box; background-clip: border-box; color: #d9d1c3; filter: none; text-shadow: 0 -.5px 0 rgba(0,0,0,.9), 0 .5px 0 rgba(255,255,255,.08); padding: 0 3px; border-radius: 1.5px; box-shadow: 0 1px 1px rgba(0,0,0,.6), inset 0 .5px 0 rgba(255,255,255,.14); letter-spacing: .02em; }
+:root[data-salv-words="tags"] .k-hammer .pname[data-ink] { padding: 2px 8px; }
+/* the plate's letters: metal, not white; a brushed steel with a sheen, stamped in with sharp walls */
+:root .k-hammer .salv-plate[data-ink] .logo, :root .k-hammer .salv-plate[data-ink] .salv-name b { background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 3px), linear-gradient(180deg, #4d4842 0%, #8f877b 22%, #d2c9ba 42%, #6e675e 52%, #a0978a 74%, #4f4943 100%); filter: drop-shadow(0 -.6px 0 rgba(0,0,0,.6)) drop-shadow(0 .6px 0 rgba(255,236,214,.3)); }
 @media (max-width: 1080px) {
   .kit, .builder { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'show' 'info'; }
   .intro { grid-template-columns: minmax(0, 1fr); }
@@ -802,6 +827,14 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
   <radialGradient id="fs-top" cx=".4" cy=".34" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".28" stop-color="#e1e5e9"/><stop offset=".62" stop-color="#a5acb3"/><stop offset=".9" stop-color="#6b7279"/><stop offset="1" stop-color="#555b62"/></radialGradient>
   <linearGradient id="fs-nut" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6f8"/><stop offset=".32" stop-color="#b3b9c0"/><stop offset=".5" stop-color="#e2e5e9"/><stop offset=".72" stop-color="#868c93"/><stop offset="1" stop-color="#c3c8cd"/></linearGradient>
   <filter id="fs-blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.8"/></filter>
+  <radialGradient id="sbw-c" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#f3f5f7"/><stop offset=".45" stop-color="#b8bec4"/><stop offset=".85" stop-color="#6b7178"/><stop offset="1" stop-color="#4a4f55"/></radialGradient>
+  <radialGradient id="sbw-w" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#8e857a"/><stop offset=".45" stop-color="#5d564e"/><stop offset=".85" stop-color="#3a342e"/><stop offset="1" stop-color="#2a2521"/></radialGradient>
+  <linearGradient id="sbn-w" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a8178"/><stop offset=".32" stop-color="#5a534b"/><stop offset=".5" stop-color="#7d756b"/><stop offset=".72" stop-color="#3f3933"/><stop offset="1" stop-color="#6a6259"/></linearGradient>
+  <linearGradient id="sbh-c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f555c"/><stop offset=".14" stop-color="#9aa0a7"/><stop offset=".3" stop-color="#f8fafb"/><stop offset=".44" stop-color="#d3d7db"/><stop offset=".7" stop-color="#8a9097"/><stop offset="1" stop-color="#3d4248"/></linearGradient>
+  <linearGradient id="sbh-k" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#050506"/><stop offset=".2" stop-color="#2a2c31"/><stop offset=".32" stop-color="#6b6f78"/><stop offset=".55" stop-color="#1f2125"/><stop offset="1" stop-color="#0b0b0d"/></linearGradient>
+  <linearGradient id="sbh-w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#262320"/><stop offset=".16" stop-color="#4d4842"/><stop offset=".32" stop-color="#8f887d"/><stop offset=".5" stop-color="#5a544c"/><stop offset=".75" stop-color="#34302b"/><stop offset="1" stop-color="#1c1916"/></linearGradient>
+  <radialGradient id="sb-rust"><stop offset="0" stop-color="#8c3e14" stop-opacity=".8"/><stop offset="1" stop-color="#6e2d0c" stop-opacity="0"/></radialGradient>
+  <radialGradient id="sb-cap" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
 </defs></svg>
 
 <div class="labbar">
@@ -852,13 +885,13 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
         <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
     </div>
     <div class="changes">
-      <b>Version 6: your notes on Salvage</b>
+      <b>Version 7: your notes on Salvage</b>
       <ul>
-        <li>Salvage opens with <b>your choices</b>: the Rust and orange sheet, a perforated sheet in old steel, and valves behind it.</li>
-        <li>The <b>welded grid and bar grate are gone</b>. Every grille metal is darker, so the grille sits back behind the faceplate.</li>
-        <li><b>The grille opening has depth</b>. The faceplate's cut edge is dark above and catches the light below, and the faceplate casts a shadow down onto the grille. The grille sits on a dark frame inside the opening, bolted in at its corners.</li>
-        <li><b>The plate</b> has no white. Its letters show aged steel, and the shadow inside the top of each letter is half what it was. Its bolts are old: dull, slotted, rusted at the head and bleeding rust onto the plate.</li>
-        <li>The words on the panel use the same aged steel in place of white.</li>
+        <li>The <b>bat-handle toggles</b> are redrawn on every kit that has them: a washer, a faceted nut on a threaded bushing, and a turned handle with a bulb tip. Salvage's are <b>worn</b>: blackened, rusted and scratched.</li>
+        <li>The <b>plate's letters are metal</b>: brushed steel with a sheen, stamped in with sharp walls.</li>
+        <li>The words' shading is <b>smaller and sharper</b>, and there is a <b>Words</b> row under Salvage to try five styles: stamped, paint-filled, raised, polished metal and on tags.</li>
+        <li>The pedals' names are about <b>30% larger</b>.</li>
+        <li>Salvage opens with your <b>aged copper</b> grille.</li>
       </ul>
     </div>
   </section>
@@ -997,7 +1030,7 @@ const KITS = [
     knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'led', logo: 'CRBN RIG',
     capture: 'Garage fuzz', pedal: 'Scrap fuzz', pedal2: 'Boost',
     pitch: 'Real salvaged sheet metal, from photographs: coats of old paint worn through to bare steel, rust that blooms and runs, scratches and stains. Each amp and pedal takes its own crop of the sheet, turned and flipped, so no two pieces match.',
-    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; words stamped into it, dark on light metal and bright bare steel on dark; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'A grille of the player’s choice (expanded metal, chicken wire, woven wire or perforated sheet) in the same scrap or old bare metal, set back behind the faceplate and bolted in at its corners, over a glow of their choice; the name stamped into a plate cut from another sheet and bolted on.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
+    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; words stamped into it, dark on light metal and bright bare steel on dark; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Worn bat-handle toggles: blackened, rusted and scratched.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'A grille of the player’s choice (expanded metal, chicken wire, woven wire or perforated sheet) in the same scrap or old bare metal, set back behind the faceplate and bolted in at its corners, over a glow of their choice; the name stamped into a plate cut from another sheet and bolted on.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
     reach: 'A finish tints the sheet. In the kit’s own colours the metal is as photographed.' },
   { id: 'rack', fam: 'classic', name: 'Rack', after: 'studio and rack gear: brushed aluminium, ears and handles, a VU meter', own: '#c6cbd0', lamp: '#ffb340',
     knob: 'alu', scale: 'ticks', pwr: 'bat mini', tg: 'lit', lampT: 'vu', foot: '3pdt', led: 'led', logo: 'CRBN Rig',
@@ -1194,6 +1227,30 @@ const FS_NUT = (() => {
   for (let r = 31, i = 0; r > 26.6; r -= 1.1, i++) s += `<circle r="${f1(r)}" fill="none" stroke="${i % 2 ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.17)'}" stroke-width=".6"/>`
   return `<svg viewBox="-50 -50 100 100">${s}<circle r="26.4" fill="#08090b"/></svg>`
 })()
+// The bat-handle toggle, drawn (D-RIG-014): a washer, a faceted nut on a threaded bushing, and a turned handle with
+// a bulb tip. 'w' is Salvage's worn one: blackened, rusted and scratched.
+const SB = (() => {
+  const P = (r, k) => { const a = 60 * k * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)] }
+  const hex = r => 'M' + [0, 1, 2, 3, 4, 5].map(k => P(r, k).map(f1).join(',')).join('L') + 'Z'
+  const base = worn => {
+    let s = `<circle cy="1.2" r="11" fill="rgba(0,0,0,.45)" filter="url(#fs-blur)"/><circle r="10.6" fill="url(#${worn ? 'sbw-w' : 'sbw-c'})" stroke="rgba(0,0,0,.6)" stroke-width=".5"/><circle r="9.3" fill="none" stroke="rgba(255,255,255,${worn ? .12 : .3})" stroke-width=".4"/>`
+    for (let k = 0; k < 6; k++) {
+      const na = (60 * k + 30) * Math.PI / 180, b = Math.cos(na) * -.45 + Math.sin(na) * -.89, v = Math.round(worn ? 86 + 50 * b : 136 + 104 * b)
+      const q = [P(8.4, k), P(8.4, k + 1), P(6.9, k + 1), P(6.9, k)]
+      s += `<path d="M${q.map(p => p.map(f1).join(',')).join('L')}Z" fill="rgb(${worn ? (v + 8) + ',' + v + ',' + (v - 7) : (v - 5) + ',' + v + ',' + (v + 6)})"/>`
+    }
+    s += `<path d="${hex(8.4)}" fill="none" stroke="rgba(0,0,0,.55)" stroke-width=".4"/><path d="${hex(6.9)}" fill="url(#${worn ? 'sbn-w' : 'fs-nut'})"/><circle r="4.8" fill="${worn ? '#1b1612' : '#15171a'}"/>`
+    for (let r = 4.5, i = 0; r > 2.9; r -= .5, i++) s += `<circle r="${f1(r)}" fill="none" stroke="${i % 2 ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,' + (worn ? .1 : .2) + ')'}" stroke-width=".25"/>`
+    if (worn) s += '<circle cx="-6.5" cy="5.5" r="3.2" fill="url(#sb-rust)"/><circle cx="7" cy="-3" r="2.4" fill="url(#sb-rust)"/><circle cx="2" cy="8.4" r="2.6" fill="url(#sb-rust)"/><circle cx="-3.5" cy="-7.6" r="1.8" fill="url(#sb-rust)"/><path d="M-9,-2 L-5.5,-4.2 M5.2,6.4 L8.4,4.2" stroke="rgba(255,236,214,.18)" stroke-width=".3"/>'
+    return `<svg viewBox="-12 -12 24 24">${s}<circle r="2.5" fill="#040404"/></svg>`
+  }
+  const handle = v => {
+    let s = `<path d="M3.6,0 L6.4,0 L7.2,12.2 C8.9,13.4 9.2,18.7 5,19.6 C.8,18.7 1.1,13.4 2.8,12.2 Z" fill="url(#sbh-${v})"/><ellipse cx="5" cy="16.3" rx="3.3" ry="2.7" fill="url(#sb-cap)" opacity="${v === 'w' ? .25 : .5}"/><path d="M4.1,1 L4.3,11.8" stroke="rgba(255,255,255,${v === 'c' ? .55 : .2})" stroke-width=".5" stroke-linecap="round"/>`
+    if (v === 'w') s += '<rect x="2.8" y="0" width="4.4" height="2.2" fill="rgba(70,32,10,.55)"/><path d="M3.8,4 L4.6,8.5 M6,9.5 L5.5,13.8 M3,15 L4.5,17.8" stroke="rgba(255,236,214,.22)" stroke-width=".3"/>'
+    return `<svg viewBox="0 0 10 20" preserveAspectRatio="none">${s}</svg>`
+  }
+  return { base: { c: base(false), w: base(true) }, handle: { c: handle('c'), k: handle('k'), w: handle('w') } }
+})()
 const FS_CAP = (() => {
   let s = '<circle cy="2.6" r="26.4" fill="rgba(0,0,0,.6)" filter="url(#fs-blur)"/><circle r="25" fill="url(#fs-wall)"/>'
   const dd = ['', '']
@@ -1265,7 +1322,8 @@ function swHTML (type, role, label, on, kit) {
   if (art) return `<div class="cc"><span class="lb">${label}</span><button class="sw sw-art" type="button" data-role="${role}" aria-pressed="${on}" aria-label="${label}"><i style="background-image:url('${art}')"></i></button><span class="st">${STATE_WORD[role][on ? 1 : 0]}</span></div>`
   let [t, ...mods] = type.split(' ')
   if (t === 'tip') { t = 'bat'; mods.push('tip') }
-  const inner = { rocker: '<i class="a"></i><i class="b"></i>', bat: '<i class="nut"></i><i class="bat"></i>', push: '<i class="led"></i>', lit: '<i class="cap"></i>', pad: '<i class="led"></i>', guard: '<i class="base"></i><i class="tgl"></i><i class="lid"></i>', glow: '<i class="bar"></i>' }[t] || ''
+  let inner = { rocker: '<i class="a"></i><i class="b"></i>', bat: '<i class="nut"></i><i class="bat"></i>', push: '<i class="led"></i>', lit: '<i class="cap"></i>', pad: '<i class="led"></i>', guard: '<i class="base"></i><i class="tgl"></i><i class="lid"></i>', glow: '<i class="bar"></i>' }[t] || ''
+  if (t === 'bat') { const v = kit && kit.id === 'hammer' ? 'w' : mods.includes('black') || mods.includes('tip') ? 'k' : 'c'; inner = `<i class="nut">${SB.base[v === 'w' ? 'w' : 'c']}</i><i class="bat">${SB.handle[v]}</i>` }
   const w = STATE_WORD[role]
   return `<div class="cc"><span class="lb">${label}</span><button class="sw sw-${t} ${mods.join(' ')}" type="button" data-role="${role}" aria-pressed="${on}" aria-label="${label}">${inner}</button><span class="st">${w[on ? 1 : 0]}</span></div>`
 }
@@ -1315,7 +1373,7 @@ function pedalHTML (kit, name) {
 function cabHTML (kit) {
   const isNew = kit.fam === 'new'
   const inner = isNew ? '' : kit.id === 'rack' ? '<span class="vents" aria-hidden="true"></span>' : kit.id === 'hammer' ? '<i class="spk"></i><i class="spk"></i><canvas class="salv-mesh" aria-hidden="true"></canvas>' + SALV_BOLTS : '<i class="spk"></i><i class="spk"></i>'
-  return `<div class="hw cab ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="cab"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}<div class="gz">${inner}</div><div class="cplate"><span class="lb">Cabinet IR</span><b>2×12 open back</b><small>Dynamic mic, on axis</small>${swHTML(kit.tg, 'ir', 'IR', true)}</div></div></div></div>`
+  return `<div class="hw cab ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="cab"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}<div class="gz">${inner}</div><div class="cplate"><span class="lb">Cabinet IR</span><b>2×12 open back</b><small>Dynamic mic, on axis</small>${swHTML(kit.tg, 'ir', 'IR', true, kit)}</div></div></div></div>`
 }
 function meterHTML (label, id) {
   let leds = ''
@@ -1588,7 +1646,9 @@ const SALV_BOLTS = [1, 2, 3, 4].map(n => '<i class="salv-bolt b' + n + '" aria-h
 const MESH_TYPES = [['expanded', 'Expanded metal'], ['chicken', 'Chicken wire'], ['woven', 'Woven wire'], ['perf', 'Perforated sheet']]
 const MESH_METALS = [['scrap', 'The same scrap'], ['steel', 'Old steel'], ['galv', 'Galvanised'], ['rust', 'Rusted iron'], ['copper', 'Aged copper']]
 const GLOWS = [['embers', 'Embers'], ['valves', 'Valves'], ['furnace', 'Furnace'], ['neon', 'Neon'], ['none', 'None']]
-let SALV_MESH = 'perf', SALV_METAL = 'steel', SALV_GLOW = 'valves'
+let SALV_MESH = 'perf', SALV_METAL = 'copper', SALV_GLOW = 'valves', SALV_WORDS = 'stamped'
+const WORD_STYLES = [['stamped', 'Stamped'], ['paint', 'Paint-filled'], ['raised', 'Raised'], ['metal', 'Polished metal'], ['tags', 'On tags']]
+document.documentElement.dataset.salvWords = SALV_WORDS
 const GLOW_EDGE = { embers: 'rgba(255,130,50,.26)', valves: 'rgba(255,150,60,.24)', furnace: 'rgba(255,170,80,.32)', neon: 'rgba(120,190,255,.28)', none: '' }
 // Each grille: a mask of its metal, and its shading (light above, shadow below, the glow on its lower edges).
 const jit = (x, y) => { const s = Math.sin(Math.round(x * 10) * 1.29898 + Math.round(y * 10) * 7.8233) * 43758.5453; return s - Math.floor(s) - .5 }
@@ -1696,19 +1756,20 @@ const SALV_IMG = {}
 for (const [id, , src] of SALV_TEX) { const im = new Image(); im.onload = () => { SALV_IMG[id] = im; resalvage(false) }; im.src = src }
 function salvRow (key, label, list, cur) { return `<div class="sheets" role="group" aria-label="Salvage: ${label}"><span>${label}</span>${list.map(([id, t]) => `<button type="button" data-salv="${key}" data-val="${id}" aria-pressed="${id === cur}">${t}</button>`).join('')}</div>` }
 function sheetsHTML () {
-  return `<div class="salv-opts">${salvRow('sheet', 'Sheet', [...SALV_TEX.map(x => [x[0], x[1]]), ['mixed', 'Mixed']], SALV_SHEET)}${salvRow('mesh', 'Grille', MESH_TYPES, SALV_MESH)}${salvRow('metal', 'Grille metal', MESH_METALS, SALV_METAL)}${salvRow('glow', 'Glow', GLOWS, SALV_GLOW)}<div class="sheets"><span></span><button type="button" data-reshuffle>Shuffle</button></div></div><p class="sheet-note">Players get these same choices in Rig, with Shuffle for new crops. Your four photos are for this mock; the build draws from our texture library.</p>`
+  return `<div class="salv-opts">${salvRow('sheet', 'Sheet', [...SALV_TEX.map(x => [x[0], x[1]]), ['mixed', 'Mixed']], SALV_SHEET)}${salvRow('mesh', 'Grille', MESH_TYPES, SALV_MESH)}${salvRow('metal', 'Grille metal', MESH_METALS, SALV_METAL)}${salvRow('glow', 'Glow', GLOWS, SALV_GLOW)}${salvRow('words', 'Words', WORD_STYLES, SALV_WORDS)}<div class="sheets"><span></span><button type="button" data-reshuffle>Shuffle</button></div></div><p class="sheet-note">Players get these same choices in Rig, with Shuffle for new crops. Your four photos are for this mock; the build draws from our texture library.</p>`
 }
-function salvCur () { return { sheet: SALV_SHEET, mesh: SALV_MESH, metal: SALV_METAL, glow: SALV_GLOW } }
+function salvCur () { return { sheet: SALV_SHEET, mesh: SALV_MESH, metal: SALV_METAL, glow: SALV_GLOW, words: SALV_WORDS } }
 function syncSheets () {
   const cur = salvCur()
   for (const b of $$('[data-salv]')) b.setAttribute('aria-pressed', String(b.dataset.val === cur[b.dataset.salv]))
   for (const g of $$('.salv-glow')) g.dataset.glow = SALV_GLOW
+  document.documentElement.dataset.salvWords = SALV_WORDS
 }
 function setSalv (key, val) {
-  const list = { sheet: [...SALV_TEX, ['mixed']], mesh: MESH_TYPES, metal: MESH_METALS, glow: GLOWS }[key]
+  const list = { sheet: [...SALV_TEX, ['mixed']], mesh: MESH_TYPES, metal: MESH_METALS, glow: GLOWS, words: WORD_STYLES }[key]
   if (!list || typeof val !== 'string' || !list.some(x => x[0] === val)) return false
   if (salvCur()[key] === val) return false
-  if (key === 'sheet') SALV_SHEET = val; else if (key === 'mesh') SALV_MESH = val; else if (key === 'metal') SALV_METAL = val; else SALV_GLOW = val
+  if (key === 'sheet') SALV_SHEET = val; else if (key === 'mesh') SALV_MESH = val; else if (key === 'metal') SALV_METAL = val; else if (key === 'words') SALV_WORDS = val; else SALV_GLOW = val
   return true
 }
 function resalvage (reseed) { for (const el of $$(SALV_SEL)) { if (reseed) el.__seed = (Math.random() * 1e9) | 0; el.__sk = ''; scheduleSalvage(el) } }
@@ -1742,6 +1803,10 @@ function paintSalvage (el) {
   }
 }
 // One piece's crop of a photographed sheet: its own scale, offset, quarter turn and flips, then light and wear on top.
+// Dark or light words by contrast with the metal behind them: relative luminance (linear), split where a dark word
+// (#1a1009) and a light one (#d6cfc3) read equally well. (D-RIG-014: mid-tones such as the orange paint get dark words.)
+const LIN = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4) }
+const RL = (r, g, b) => .2126 * LIN(r) + .7152 * LIN(g) + .0722 * LIN(b), INK_SPLIT = .145
 const INK_HALO = ['0 1px 1px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8), 0 0 8px rgba(0,0,0,.35)', '0 0 3px rgba(255,255,255,.9), 0 1px 0 rgba(255,255,255,.6), 0 0 8px rgba(255,255,255,.35)']
 function inkEach (el, c) {
   try {
@@ -1752,8 +1817,8 @@ function inkEach (el, c) {
       const r = t.getBoundingClientRect(); if (!r.width) continue
       sg.clearRect(0, 0, 8, 4); sg.drawImage(c, (r.left - er.left - 2) * sx, (r.top - er.top - 1) * sy, (r.width + 4) * sx, (r.height + 2) * sy, 0, 0, 8, 4)
       const d = sg.getImageData(0, 0, 8, 4).data; let L = 0
-      for (let i = 0; i < d.length; i += 4) L += (.2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]) / 255
-      const light = L / 32 > .5
+      for (let i = 0; i < d.length; i += 4) L += RL(d[i], d[i + 1], d[i + 2])
+      const light = L / 32 > INK_SPLIT
       t.dataset.ink = light ? 'dark' : 'light'
     }
   } catch (err) {}
@@ -1775,8 +1840,8 @@ function photoTex (w, h, img, seed, tint, reg) {
     const s = document.createElement('canvas'); s.width = 24; s.height = 24
     const sg = s.getContext('2d'), q = reg || [0, 0, 1, 1]; sg.drawImage(c, q[0] * c.width, q[1] * c.height, Math.max(1, q[2] * c.width), Math.max(1, q[3] * c.height), 0, 0, 24, 24)
     const d = sg.getImageData(0, 0, 24, 24).data; let L = 0
-    for (let i = 0; i < d.length; i += 4) L += (.2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]) / 255
-    return { url: `url(${c.toDataURL('image/jpeg', .86)})`, light: L / (d.length / 4) > .5, canvas: c }
+    for (let i = 0; i < d.length; i += 4) L += RL(d[i], d[i + 1], d[i + 2])
+    return { url: `url(${c.toDataURL('image/jpeg', .86)})`, light: L / (d.length / 4) > INK_SPLIT, canvas: c }
   } catch (err) {
     // the photo can't be read back here (a file opened from disk): show it straight, cropped by CSS
     return { url: `linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,0) 45%, rgba(0,0,0,.24)), url(${img.src})`, size: `auto, ${Math.round(sc * iw / w * 100)}% auto`, pos: `0 0, ${Math.round(R() * 100)}% ${Math.round(R() * 100)}%`, light: false }
@@ -2458,7 +2523,7 @@ function save (id) {
 function applySnap (snap, first) {
   for (const d of snap.docs) {
     const id = d.id, v = d.data() || {}
-    if (id === 'hammer') { let ch = false; for (const key of ['sheet', 'mesh', 'metal', 'glow']) if (setSalv(key, v[key])) ch = true; if (ch) { syncSheets(); resalvage(false) } }
+    if (id === 'hammer') { let ch = false; for (const key of ['sheet', 'mesh', 'metal', 'glow', 'words']) if (setSalv(key, v[key])) ch = true; if (ch) { syncSheets(); resalvage(false) } }
     if (KIT[id]) saved[id] = { verdict: ['keep', 'maybe', 'cut'].includes(v.verdict) ? v.verdict : null, note: noteDirty[id] ? ((saved[id] && saved[id].note) || '') : (typeof v.note === 'string' ? v.note : '') }
     else if (id === 'default') defKit = KIT[v.kit] ? v.kit : null
     else if (id === 'general') { if (!noteDirty.general) generalNote = typeof v.note === 'string' ? v.note : '' }
@@ -2496,7 +2561,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button, a.ix')
   if (!t) return
   if (t.matches('.sw, .fs')) { flip(t); return }
-  if (t.dataset.salv) { if (setSalv(t.dataset.salv, t.dataset.val)) { syncSheets(); resalvage(false); save('hammer') } return }
+  if (t.dataset.salv) { if (setSalv(t.dataset.salv, t.dataset.val)) { syncSheets(); if (t.dataset.salv !== 'words') resalvage(false); save('hammer') } return }
   if (t.hasAttribute('data-reshuffle')) { resalvage(true); return }
   if (t.id === 'art-save') { saveTemplate(); return }
   if (t.id === 'art-copy') { copyText(templateFor($('#art-from').value).svg, 'Template copied as SVG text: paste it into a new .svg file.'); return }
