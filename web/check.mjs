@@ -41,7 +41,7 @@ if (urlArg) {
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm',
-  '.woff2': 'font/woff2', '.png': 'image/png', '.wav': 'audio/wav', '.nam': 'application/json', '.txt': 'text/plain; charset=utf-8',
+  '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.wav': 'audio/wav', '.nam': 'application/json', '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
 }
 let deliver

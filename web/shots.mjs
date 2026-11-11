@@ -12,7 +12,7 @@ const outDir = join(root, 'dist', 'shots')
 mkdirSync(outDir, { recursive: true })
 const [width, height] = (process.argv.find((a) => a.startsWith('--size='))?.slice(7) ?? '1920x1080').split('x').map(Number)
 const looks = (process.argv.find((a) => a.startsWith('--looks='))?.slice(8) ?? 'capsule,holo,redline,daylight').split(',')
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' }
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' }
 
 const server = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname)

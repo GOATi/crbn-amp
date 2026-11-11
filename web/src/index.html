@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="look/fonts/fonts.css">
 <link rel="stylesheet" href="look/themes.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="hw/hw.css">
 <!-- The saved look and drawings before the first paint, so the page never flashes another (look.js keeps them). -->
 <script>
 try {
@@ -23,13 +24,13 @@ try {
   if (p && p.density === 'compact') h.dataset.density = 'compact'
   var r = JSON.parse(localStorage.getItem('crbn-rig/rig') || '{}')
   ;['layout', 'amp', 'meters'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
+  if (/^[a-z]+$/.test(r.salvWords || '')) h.dataset.salvWords = r.salvWords
 } catch (e) {}
 </script>
 <script type="module" src="app.js"></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
-  <radialGradient id="knob-shine" cx=".36" cy=".3" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".45" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient>
   <linearGradient id="vu-shine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".6" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
 </defs></svg>
 
@@ -137,7 +138,6 @@ try {
             <ul class="chips" id="amp-chips"></ul>
           </div>
           <div class="amp-plate">
-            <span class="jewel" id="jewel" aria-hidden="true"><i></i><b>Pilot</b><small id="jewel-state">Off</small></span>
             <div class="knobs">
               <div class="knob" data-param="inputDB" data-min="-20" data-max="20" data-step="0.1" data-unit="dB" data-label="Input" data-aria="Input level"></div>
               <div class="knob" data-param="gateThresholdDB" data-min="-100" data-max="0" data-step="0.1" data-unit="dB" data-label="Gate" data-aria="Gate threshold"></div>
@@ -157,6 +157,8 @@ try {
             <span class="amp-sub" id="amp-sub">Drop a .nam capture here</span>
           </div>
         </div>
+        <!-- Rig's hardware (D-RIG-009..015): the kit picked in the look menu, drawn by hw/hw.js. -->
+        <div class="rig-hw" id="hw-amp"></div>
       </div>
 
       <div class="cab" id="cab" data-slot="ir" aria-labelledby="cab-name">
@@ -169,6 +171,7 @@ try {
             <label class="toggle"><input type="checkbox" data-param="irOn" aria-label="Cabinet IR on"><span class="tg" aria-hidden="true"></span><b>IR</b><small class="tg-state"></small></label>
           </div>
         </div>
+        <div class="rig-hw" id="hw-cab"></div>
       </div>
 
       <div class="meter" id="meter-out" data-label="Out" aria-label="Output level"></div>
@@ -206,6 +209,15 @@ try {
   <header class="lm-head"><h2 id="lm-title">Look</h2><button class="btn small ghost" id="look-close" type="button">Close</button></header>
   <div class="lm-looks" id="lm-looks" role="group" aria-label="Look"></div>
 
+  <section class="lm-sec" aria-labelledby="lm-hw-h">
+    <h3 id="lm-hw-h">Rig’s hardware</h3>
+    <span class="lm-sub" id="lm-kits-c-l">Classic</span>
+    <div class="lm-chips" id="lm-kits-classic" role="group" aria-labelledby="lm-hw-h lm-kits-c-l"></div>
+    <span class="lm-sub" id="lm-kits-n-l">Energy</span>
+    <div class="lm-chips" id="lm-kits-new" role="group" aria-labelledby="lm-hw-h lm-kits-n-l"></div>
+    <div class="lm-salv" id="lm-salv" hidden></div>
+  </section>
+
   <section class="lm-sec" aria-labelledby="lm-finish-h">
     <h3 id="lm-finish-h">Rig’s finish</h3>
     <div class="lm-chips" id="lm-finish" role="group" aria-label="Finish"></div>
@@ -227,7 +239,7 @@ try {
     <div class="lm-row"><span id="lm-layout-l">Layout</span><div class="segmented" data-rig="layout" role="radiogroup" aria-labelledby="lm-layout-l">
       <button type="button" role="radio" data-value="b">Amp front</button><button type="button" role="radio" data-value="a">Signal chain</button><button type="button" role="radio" data-value="c">Captures first</button></div></div>
     <div class="lm-row"><span id="lm-amp-l">Amp</span><div class="segmented" data-rig="amp" role="radiogroup" aria-labelledby="lm-amp-l">
-      <button type="button" role="radio" data-value="b">Faceplate</button><button type="button" role="radio" data-value="a">Islands</button><button type="button" role="radio" data-value="c">Stripe</button></div></div>
+      <button type="button" role="radio" data-value="b">Hardware</button><button type="button" role="radio" data-value="a">Islands</button><button type="button" role="radio" data-value="c">Stripe</button></div></div>
     <div class="lm-row"><span id="lm-meters-l">Meters</span><div class="segmented" data-rig="meters" role="radiogroup" aria-labelledby="lm-meters-l">
       <button type="button" role="radio" data-value="b">LED</button><button type="button" role="radio" data-value="a">Bars</button><button type="button" role="radio" data-value="c">VU</button></div></div>
   </section>
@@ -272,6 +284,7 @@ try {
       <li><a href="NOTICE.txt" target="_blank">Notice</a></li>
       <li><a href="MODIFIED-FILES.txt" target="_blank">Files changed from the original</a></li>
       <li><a href="look/fonts/LICENSES.md" target="_blank">Font licences</a></li>
+      <li><a href="hw/fonts/LICENSES.md" target="_blank">The hardware kits' font licences</a></li>
     </ul>
     <p><a href="https://pavillionhub.com/help" target="_blank" rel="noopener">Help</a></p>
     <div class="row end"><button class="btn primary" value="close">Close</button></div>

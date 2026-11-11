@@ -4,7 +4,10 @@
 // never reaches the mark, the name or the strip under the header, which stay cherry (D-RIG-008 (c)), and a clip or
 // error mark always carries a word, so no finish can be mistaken for one.
 
+// "Kit's own" (the default since R1, D-RIG-009 (e)): each hardware kit wears its own colours, and the page's controls
+// take the look's own. Any other finish recolours the kit too.
 export const FINISHES = [
+  { id: 'own', label: 'Kit’s own' },
   { id: 'look', label: 'The look’s own' },
   { id: 'cherry', label: 'Cherry', hex: '#d92b52' },
   { id: 'gold', label: 'Gold', hex: '#be9851' },

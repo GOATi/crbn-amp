@@ -7,9 +7,7 @@
 :root {
   --fin: #d92b52; --fin-ink: #ffffff; --plate-a: #ef5a7a; --plate-b: #d92b52; --plate-c: #9c1838; --plate-ink: #ffffff;
   --tolex: #171518; --piping: #e6dfd2; --grille-a: #2c2622; --grille-b: #1b1715;
-  /* The faceplate's brushing and the knobs' shine: the owner means to revisit both (D-RIG-008 (f)), so they live here. */
   --plate-texture: repeating-linear-gradient(90deg, rgba(255, 255, 255, .08) 0 1px, transparent 1px 3px);
-  --knob-shine: url(#knob-shine);
 }
 :root[data-look='daylight'] { --tolex: #ece5d6; --piping: #3b342c; --grille-a: #d8cdb9; --grille-b: #c6baa3; }
 
@@ -31,9 +29,9 @@ h2, h3, .sec { font-size: calc(10px * var(--d-scale)); color: var(--text-faint);
 .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 /* ---------------------------------------------------------------- the bar */
-.bar { display: flex; align-items: center; gap: 16px; padding: 9px 16px; background: var(--chrome); flex-wrap: wrap; }
-:root[data-look='holo'] .bar { background: linear-gradient(180deg, #120c18, #0c0a10); box-shadow: inset 0 -1px 0 rgba(79, 227, 255, .14); }
-:root[data-look='redline'] .bar {
+header.bar { display: flex; align-items: center; gap: 16px; padding: 9px 16px; background: var(--chrome); flex-wrap: wrap; }
+:root[data-look='holo'] header.bar { background: linear-gradient(180deg, #120c18, #0c0a10); box-shadow: inset 0 -1px 0 rgba(79, 227, 255, .14); }
+:root[data-look='redline'] header.bar {
   background-color: #121110;
   background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, .028) 0 2px, transparent 2px 4px), repeating-linear-gradient(-45deg, rgba(0, 0, 0, .3) 0 2px, transparent 2px 4px);
 }
@@ -116,14 +114,8 @@ select:disabled { color: var(--text-faint); }
 .knob .arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; }
 .knob .cap { fill: var(--panel); stroke: var(--line-2); }
 .knob .pointer { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; }
-.knob .k-plate { display: none; }
 .knob.off { opacity: .45; }
-.cab.off .cab-plate > :not(.toggle) { opacity: .5; }
-.knob .tick { fill: none; stroke: var(--plate-ink); stroke-width: 1.6; stroke-linecap: round; opacity: .7; }
-.knob .skirt { fill: #141215; stroke: #36323a; stroke-width: 2.6; stroke-dasharray: 1.4 1.6; }
-.knob .pcap { fill: var(--plate-b); stroke: rgba(0, 0, 0, .35); stroke-width: .8; }
-.knob .shine { fill: var(--knob-shine); }
-.knob .ppointer { stroke: #f6f1e8; stroke-width: 2.4; stroke-linecap: round; }
+#cab.off .cab-plate > :not(.toggle) { opacity: .5; }
 
 /* ---------------------------------------------------------------- the page and its layouts */
 .rig-page { flex: 1; display: grid; gap: max(var(--islands), 6px); padding: max(var(--islands), 8px) 16px 16px; max-width: 1480px; width: 100%; margin: 0 auto; align-items: start; }
@@ -151,7 +143,7 @@ select:disabled { color: var(--text-faint); }
   border: 1.5px dashed var(--line-2); border-radius: var(--r-sm); padding: 12px; min-height: 104px;
   display: flex; flex-direction: column; justify-content: center; gap: 8px; transition: border-color var(--d1), background var(--d1);
 }
-.drop.over, .amp.over, .cab.over { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop.over, #amp.over, #cab.over { outline: 2px solid var(--accent); outline-offset: 2px; }
 .drop.over { background: var(--sel); }
 .drop.has { border-style: solid; border-color: var(--line); background: var(--panel-2); }
 .drop .empty { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; color: var(--text-dim); font-size: var(--fs-s); }
@@ -173,57 +165,33 @@ select:disabled { color: var(--text-faint); }
 
 /* ---------------------------------------------------------------- the chain: meters, amp, cabinet */
 .chain { display: flex; gap: 12px; align-items: stretch; min-width: 0; }
-.chain > .amp { flex: 1 1 520px; min-width: 0; }
-.chain > .cab { flex: 0 0 180px; }
+.chain > #amp { flex: 1 1 520px; min-width: 0; }
+.chain > #cab { flex: 0 0 180px; }
 
 /* the amp: the islands (a), the faceplate (b, the default), the stripe (c) */
-.amp { display: flex; border-radius: var(--r-sm); background: var(--panel-2); transition: outline-color var(--d1); }
+#amp { display: flex; border-radius: var(--r-sm); background: var(--panel-2); transition: outline-color var(--d1); }
 .amp-front { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .amp-band { display: none; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .amp-band-name { font-weight: 600; overflow-wrap: anywhere; }
 .amp-plate { display: flex; align-items: center; gap: 10px 12px; padding: 12px 14px; flex-wrap: wrap; flex: 1; }
-.knobs { display: flex; flex-wrap: wrap; gap: 6px 6px; flex: 1 1 auto; justify-content: space-around; }
+.amp-plate .knobs { display: flex; flex-wrap: wrap; gap: 6px 6px; flex: 1 1 auto; justify-content: space-around; }
 .toggles { display: flex; gap: 16px; align-items: center; }
 .amp-grille { display: none; }
-.jewel { display: none; justify-items: center; gap: 3px; }
 :root[data-amp='a'] .amp-band { display: flex; padding: 12px 14px 0; }
-:root[data-amp='c'] .amp { overflow: hidden; }
+:root[data-amp='c'] #amp { overflow: hidden; }
 :root[data-amp='c'] .amp-band { display: flex; padding: 8px 14px; color: var(--plate-ink); background-image: var(--plate-texture), linear-gradient(180deg, var(--plate-a), var(--plate-b) 50%, var(--plate-c)); }
 :root[data-amp='c'] .amp-band .sec { color: var(--plate-ink); opacity: .8; }
 :root[data-amp='c'] .amp-band .chips li { background: color-mix(in oklab, var(--plate-ink) 14%, transparent); color: var(--plate-ink); }
 
-:root[data-amp='b'] .amp { padding: 8px; background-color: var(--tolex); background-image: radial-gradient(rgba(255, 255, 255, .05) .8px, transparent 1.2px); background-size: 3px 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5), 0 6px 18px rgba(0, 0, 0, .25); }
-:root[data-look='daylight'][data-amp='b'] .amp { background-image: radial-gradient(rgba(0, 0, 0, .06) .8px, transparent 1.2px); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 6px 18px rgba(60, 40, 20, .12); }
-:root[data-amp='b'] .amp-front { border: 2px solid var(--piping); border-radius: max(1px, calc(var(--r-sm) - 4px)); overflow: hidden; }
-:root[data-amp='b'] .amp-plate { color: var(--plate-ink); background-image: var(--plate-texture), linear-gradient(180deg, var(--plate-a), var(--plate-b) 48%, var(--plate-c)); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .35); }
-:root[data-amp='b'] .amp .knob svg { width: 52px; height: 52px; }
-:root[data-amp='b'] .amp .knob .k-arc { display: none; }
-:root[data-amp='b'] .amp .knob .k-plate { display: inline; }
-:root[data-amp='b'] .amp .knob .label, :root[data-amp='b'] .amp .knob output { color: var(--plate-ink); }
-:root[data-amp='b'] .amp .knob output { opacity: .8; }
-:root[data-amp='b'] .toggles { padding-left: 12px; border-left: 1px solid color-mix(in oklab, var(--plate-ink) 25%, transparent); }
-:root[data-amp='b'] .jewel { display: grid; padding-right: 12px; border-right: 1px solid color-mix(in oklab, var(--plate-ink) 25%, transparent); }
-.jewel i { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .35) 0 8%, color-mix(in oklab, var(--fin) 25%, #241f22) 50%, #141114 100%); box-shadow: 0 0 0 2px #5c5560, 0 0 0 3px #1a181c; }
-.jewel.on i { background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, .9) 0 8%, var(--fin) 40%, color-mix(in oklab, var(--fin) 45%, black) 100%); box-shadow: 0 0 0 2px #5c5560, 0 0 0 3px #1a181c, 0 0 14px 3px color-mix(in oklab, var(--fin) 70%, transparent); }
-.jewel b, :is(.amp-plate, .cab-plate) .toggle b { font: 600 calc(8.5px * var(--d-scale)) / 1.1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; white-space: nowrap; }
-.jewel small { font-size: 10px; line-height: 1; opacity: .85; }
-:root[data-amp='b'] .amp-grille { display: flex; align-items: center; gap: 14px; min-height: 58px; padding: 8px 16px; background: repeating-linear-gradient(45deg, var(--grille-a) 0 1.5px, var(--grille-b) 1.5px 3px), repeating-linear-gradient(-45deg, var(--grille-a) 0 1.5px, var(--grille-b) 1.5px 3px); background-blend-mode: multiply; min-width: 0; }
 .amp-logo { font: 700 calc(17px * var(--d-scale)) / 1.1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; color: var(--plate-b); text-shadow: 0 1px 0 rgba(0, 0, 0, .6), 0 -1px 0 rgba(255, 255, 255, .12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 :root[data-look='daylight'] .amp-logo { color: color-mix(in oklab, var(--plate-c) 60%, black); text-shadow: 0 1px 0 rgba(255, 255, 255, .5); }
 :root[data-look='daylight'] .amp-sub { color: color-mix(in oklab, var(--piping) 85%, transparent); }
 .amp-logo.none { color: color-mix(in oklab, var(--piping) 55%, transparent); }
 .amp-sub { font-size: var(--fs-xs); color: color-mix(in oklab, var(--piping) 75%, transparent); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* bat-handle toggles on the faceplate and the cabinet's plate */
-:root[data-amp='b'] :is(.amp-plate, .cab-plate) .toggle { flex-direction: column; gap: 3px; color: var(--plate-ink); }
-:root[data-amp='b'] :is(.amp-plate, .cab-plate) .toggle .tg { width: 16px; height: 16px; margin-top: 9px; border: 0; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fbfbfb, #a3a3a8 60%, #5d5d63); box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
-:root[data-amp='b'] :is(.amp-plate, .cab-plate) .toggle .tg::after { top: 6px; left: 5.5px; width: 5px; height: 14px; border-radius: 3px; transform: none; background: linear-gradient(90deg, #8f8f95, #f4f4f6 50%, #9a9aa0); box-shadow: 0 1px 1px rgba(0, 0, 0, .35); }
-:root[data-amp='b'] :is(.amp-plate, .cab-plate) .toggle input:checked + .tg::after { top: auto; bottom: 6px; }
-:root[data-amp='b'] :is(.amp-plate, .cab-plate) .toggle b { color: var(--plate-ink); }
-:root[data-amp='b'] :is(.amp-plate, .cab-plate) .toggle .tg-state { color: var(--plate-ink); opacity: .85; font-size: 10px; line-height: 1; }
 
 /* the cabinet: an island beside the islands and the stripe, a tolex cab with its grille beside the faceplate */
-.cab { display: flex; border-radius: var(--r-sm); background: var(--panel-2); }
+#cab { display: flex; border-radius: var(--r-sm); background: var(--panel-2); }
 .cab-front { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .cab-grille { display: none; }
 .cab-plate { display: grid; gap: 3px 8px; align-content: start; padding: 12px 14px; }
@@ -231,16 +199,30 @@ select:disabled { color: var(--text-faint); }
 .cab-plate b { overflow-wrap: anywhere; font-weight: 600; }
 .cab-plate small { color: var(--text-faint); font-size: var(--fs-xs); }
 .cab-plate .toggle { margin-top: 6px; justify-self: start; }
-:root[data-amp='b'] .cab-plate { grid-template-columns: minmax(0, 1fr) auto; }
-:root[data-amp='b'] .cab-plate > :not(.toggle) { grid-column: 1; }
-:root[data-amp='b'] .cab-plate .toggle { grid-column: 2; grid-row: 1 / 4; align-self: start; margin-top: 0; }
-:root[data-amp='b'] .cab { padding: 8px; background-color: var(--tolex); background-image: radial-gradient(rgba(255, 255, 255, .05) .8px, transparent 1.2px); background-size: 3px 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5); }
-:root[data-look='daylight'][data-amp='b'] .cab { background-image: radial-gradient(rgba(0, 0, 0, .06) .8px, transparent 1.2px); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
-:root[data-amp='b'] .cab-front { border: 2px solid var(--piping); border-radius: max(1px, calc(var(--r-sm) - 4px)); overflow: hidden; }
-:root[data-amp='b'] .cab-grille { display: flex; flex: 1; min-height: 64px; justify-content: space-around; align-items: center; padding: 8px; background: repeating-linear-gradient(45deg, var(--grille-a) 0 1.5px, var(--grille-b) 1.5px 3px), repeating-linear-gradient(-45deg, var(--grille-a) 0 1.5px, var(--grille-b) 1.5px 3px); background-blend-mode: multiply; }
 .cab-grille i { width: 54px; height: 54px; border-radius: 50%; box-shadow: inset 0 0 0 7px rgba(0, 0, 0, .18), inset 0 0 0 18px rgba(0, 0, 0, .08); }
-:root[data-amp='b'] .cab-plate { padding: 8px 10px; color: var(--plate-ink); background-image: var(--plate-texture), linear-gradient(180deg, var(--plate-a), var(--plate-b) 50%, var(--plate-c)); }
-:root[data-amp='b'] .cab-plate .sec, :root[data-amp='b'] .cab-plate small { color: var(--plate-ink); opacity: .8; }
+
+:is(.amp-plate, .cab-plate) .toggle b { font: 600 calc(8.5px * var(--d-scale)) / 1.1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; white-space: nowrap; }
+
+/* Hardware (b, the default since R1): the kit picked under Rig's hardware draws the amp and the cabinet (hw/hw.js,
+   hw/hw.css; D-RIG-009..015), in place of the islands' and the stripe's own drawing. */
+#amp > .rig-hw, #cab > .rig-hw { display: none; }
+:root[data-amp='b'] .chain > :is(#amp, #cab) { display: flex; flex-direction: column; padding: 0; background: none; border-radius: 0; }
+:root[data-amp='b'] :is(#amp > .amp-front, #cab > .cab-front) { display: none; }
+:root[data-amp='b'] :is(#amp, #cab) > .rig-hw { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+:root[data-amp='b'] .rig-hw > .hw { flex: 1; display: flex; flex-direction: column; }
+:root[data-amp='b'] .rig-hw > .hw > .cabinet { flex: 1; display: flex; flex-direction: column; }
+:root[data-amp='b'] .rig-hw > .hw > .cabinet > .face { flex: 1; }
+:root[data-amp='b'] .chain > #cab { flex: 0 0 180px; }
+:root[data-amp='b'] .chain { align-items: stretch; }
+/* a knob's value shows in its state words' row while it is touched; what a switch turns off dims */
+.rig-hw .hw .cc > .st.kv { opacity: 0; transition: opacity var(--d1); font-variant-numeric: tabular-nums; }
+.rig-hw .hw .cc:is(:hover, :focus-within, .drag) > .st.kv { opacity: .95; }
+/* the six knobs keep one row while the amp is wide enough for them, the switches moving down first (the lab's 300px
+   basis was for its wider stage) */
+.rig-hw .hw.amp .knobs { flex: 1 1 auto; }
+.rig-hw .cc.off > .kw, .rig-hw .cc.off > .fd { opacity: .5; }
+.rig-hw .hw.cab.ir-off .gz, .rig-hw .hw.cab.ir-off .cplate > :is(b, small) { opacity: .5; }
+.rig-hw .kn:focus-visible, .rig-hw .fd:focus-visible, .rig-hw .sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* the meters: LED ladders (b, the default), bars (a), VU needles (c); CLIP is a word as well as a colour */
 .meter { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: none; min-height: 150px; }
@@ -296,6 +278,12 @@ select:disabled { color: var(--text-faint); }
 .lm-chip[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); font-weight: 600; }
 .lm-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 10px; font-size: var(--fs-s); color: var(--text-dim); }
 .lm-row select { width: 100%; }
+.lm-sub { font-size: var(--fs-xs); color: var(--text-faint); margin-bottom: -4px; }
+.lm-chip.plain { padding: 4px 11px; }
+.lm-salv { display: grid; gap: 8px; padding: 10px; border-radius: var(--r-sm); background: var(--panel-2); }
+.lm-salv .lm-row { align-items: start; }
+.lm-salv .lm-row > span { padding-top: 4px; }
+.lm-salv .lm-chips { gap: 4px; }
 .lm-note { margin: 0; font-size: var(--fs-xs); color: var(--text-faint); }
 .look-menu .toggle.suite b { font-weight: 500; }
 .custom { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; border-radius: var(--r-sm); background: var(--panel-2); }
@@ -345,12 +333,12 @@ dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 }
 @media (max-width: 860px) {
   .chain { flex-wrap: wrap; }
-  .chain > .amp { order: -1; flex-basis: 100%; }
-  .chain > .cab { flex: 1 1 160px; }
+  .chain > #amp { order: -1; flex-basis: 100%; }
+  .chain > #cab { flex: 1 1 160px; }
   .meter { min-height: 120px; }
 }
 @media (max-width: 640px) {
-  .bar { gap: 10px; }
+  header.bar { gap: 10px; }
   .actions { width: 100%; justify-content: space-between; }
   .status { order: 3; width: 100%; margin-right: 0; }
   .rig-page { padding-inline: 10px; }

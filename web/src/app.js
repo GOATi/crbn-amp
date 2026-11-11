@@ -7,6 +7,7 @@
 //   desktop's ImpulseResponse does) -> AnalyserNode (the output meter) -> the speakers.
 import { DEFAULTS } from './engine.js'
 import { DEFAULT_CUSTOM, FINISHES, HEX_RE, finishHex, finishVars, hex2rgb, hsv2rgb, inkFor, readouts, rgb2hex, rgb2hsv } from './finish.js'
+import { DEFAULT_KIT, KIT_LIST, SALVAGE_CHOICES, SALVAGE_DEFAULTS, createHardware } from './hw/hw.js'
 import { scaledIR } from './ir.js'
 import { applyPrefs, fontOf, loadLooks, loadPrefs, lookList, looks, ownPrefs, sanitize, savePrefs, setEvery, sharesAcrossApps } from './look.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
@@ -36,8 +37,8 @@ function setSetting(name, value) {
 }
 
 // ------------------------------------------------------------------------------------------------- knobs
-// Each knob carries both drawings: an arc knob for the islands and the stripe, and a pointer knob on a 0-to-10 skirt
-// for the faceplate; the stylesheet shows the one the amp's drawing wants.
+// The page's own knobs: arc knobs for the islands and the stripe, and the setup's calibration. With the Hardware
+// drawing (the default) the amp's knobs are the kit's own, drawn by hw/hw.js and bound to the same settings.
 const knobs = new Map()
 const fmt = (v, unit, step) => {
   const d = step >= 1 ? 0 : step >= 0.1 ? 1 : 2
@@ -47,18 +48,16 @@ const fmt = (v, unit, step) => {
 const polar = (deg, r, c = 32) => [c + r * Math.sin((deg * Math.PI) / 180), c - r * Math.cos((deg * Math.PI) / 180)]
 function makeKnob(el) {
   const name = el.dataset.param, min = +el.dataset.min, max = +el.dataset.max, step = +el.dataset.step, unit = el.dataset.unit ?? ''
-  const A0 = -135, A1 = 135, R = 26, P0 = -150, P1 = 150
+  const A0 = -135, A1 = 135, R = 26
   const arc = (a, b) => { const [x0, y0] = polar(a, R), [x1, y1] = polar(b, R); return `M${x0} ${y0} A${R} ${R} 0 ${b - a > 180 ? 1 : 0} 1 ${x1} ${y1}` }
-  const ticks = Array.from({ length: 11 }, (_, i) => { const d = P0 + 30 * i, [x0, y0] = polar(d, i % 5 === 0 ? 24.5 : 26), [x1, y1] = polar(d, 30); return `M${x0.toFixed(2)} ${y0.toFixed(2)} L${x1.toFixed(2)} ${y1.toFixed(2)}` }).join(' ')
   el.innerHTML = '<svg viewBox="0 0 64 64" aria-hidden="true">' +
     `<g class="k-arc"><path class="track" d="${arc(A0, A1)}"/><path class="arc"/><circle class="cap" cx="32" cy="32" r="18"/><line class="pointer" x1="32" y1="32" x2="32" y2="18"/></g>` +
-    `<g class="k-plate"><path class="tick" d="${ticks}"/><circle class="skirt" cx="32" cy="32" r="20"/><circle class="pcap" cx="32" cy="32" r="12.5"/><circle class="shine" cx="32" cy="32" r="12.5"/><line class="ppointer" x1="32" y1="32" x2="32" y2="13"/></g>` +
     '</svg><span class="label"></span><output></output>'
   el.querySelector('.label').textContent = el.dataset.label
   el.setAttribute('role', 'slider'); el.tabIndex = 0
   el.setAttribute('aria-label', el.dataset.aria ?? el.dataset.label)
   el.setAttribute('aria-valuemin', min); el.setAttribute('aria-valuemax', max)
-  const out = el.querySelector('output'), arcEl = el.querySelector('.arc'), ptr = el.querySelector('.pointer'), pptr = el.querySelector('.ppointer')
+  const out = el.querySelector('output'), arcEl = el.querySelector('.arc'), ptr = el.querySelector('.pointer')
   const clamp = (v) => Math.min(max, Math.max(min, Math.round(v / step) * step))
   const draw = (v) => {
     const t = (v - min) / (max - min), a = A0 + t * (A1 - A0)
@@ -66,7 +65,6 @@ function makeKnob(el) {
     const from = min < 0 && max > 0 && unit !== 'dBu' ? A0 + ((0 - min) / (max - min)) * (A1 - A0) : A0
     arcEl.setAttribute('d', Math.abs(a - from) < 0.5 ? '' : arc(Math.min(from, a), Math.max(from, a)))
     const [x, y] = polar(a, 13); ptr.setAttribute('x2', x); ptr.setAttribute('y2', y)
-    const [px, py] = polar(P0 + t * (P1 - P0), 19); pptr.setAttribute('x2', px); pptr.setAttribute('y2', py)
     out.textContent = fmt(v, unit, step)
     el.setAttribute('aria-valuenow', v); el.setAttribute('aria-valuetext', fmt(v, unit, step))
   }
@@ -107,10 +105,55 @@ function reflect(name) {
   for (const b of document.querySelectorAll(`.segmented[data-param="${name}"] button`)) b.setAttribute('aria-checked', String(+b.dataset.value === v))
   for (const p of DIMS[name] ?? []) document.querySelector(`.knob[data-param="${p}"]`)?.classList.toggle('off', v < 0.5)
   if (name === 'irOn') $('cab').classList.toggle('off', v < 0.5)
+  hardware?.reflect(name, v)
 }
 
+// ------------------------------------------------------------------------------------------------- Rig's hardware
+// The kit drawn on the amp and the cabinet (hw/hw.js). Its knobs take each setting's range from the page's own knob,
+// and its Power and Standby switches are the page's (R1; R3 moves standby into the engine, with auto-off and the
+// squeal guard): Power off stops what is playing and Power on brings it back; Standby fades the output out over 20 ms
+// and leaves the input open.
+let hardware = null
+const specs = {}
+function specOf(name) {
+  if (specs[name]) return specs[name]
+  const el = document.querySelector(`.knob[data-param="${name}"]`)
+  if (!el) return null
+  const min = +el.dataset.min, max = +el.dataset.max, step = +el.dataset.step, unit = el.dataset.unit ?? ''
+  return (specs[name] = { min, max, step, unit, def: PAGE_DEFAULTS[name], text: (v) => fmt(v, unit, step) })
+}
+function changeSetting(name, value) {
+  const sp = specOf(name)
+  setSetting(name, sp ? Math.min(sp.max, Math.max(sp.min, Math.round(value / sp.step) * sp.step)) : value)
+}
+let power = true, standby = false, resumeWith = null
+function setPower(on) {
+  if (on === power) return
+  power = on
+  hardware?.setPower(on)
+  if (!on) {
+    resumeWith = demoSource ? 'demo' : micSource ? 'guitar' : null
+    stopAll()
+  } else if (resumeWith) {
+    const what = resumeWith
+    resumeWith = null
+    if (what === 'demo') toggleDemo(); else playGuitar()
+  }
+}
+function setStandby(on) {
+  standby = on
+  hardware?.setStandby(on)
+  if (outGain) {
+    const g = outGain.gain, t = ctx.currentTime
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(on ? 0 : 1, t + 0.02)
+  }
+  updateStatus()
+}
+// Playing turns the amp on.
+function powerUp() { if (!power) { power = true; resumeWith = null; hardware?.setPower(true) } }
+
 // ------------------------------------------------------------------------------------------------- the audio graph
-let ctx = null, node = null, convolver = null, analyser = null
+let ctx = null, node = null, convolver = null, analyser = null, outGain = null
 let micStream = null, micSource = null, demoSource = null, demoBuffer = null
 let wasmBytes = null
 let messageId = 0
@@ -130,6 +173,8 @@ async function ensureAudio() {
   convolver = new ConvolverNode(ctx, { disableNormalization: true })
   analyser = new AnalyserNode(ctx, { fftSize: 1024 })
   analyser.connect(ctx.destination)
+  outGain = new GainNode(ctx, { gain: standby ? 0 : 1 })
+  outGain.connect(analyser)
   route()
   if (capture.bytes) {
     const result = await sendCapture()
@@ -143,8 +188,8 @@ async function ensureAudio() {
 function route() {
   if (!node) return
   node.disconnect(); convolver.disconnect()
-  if (settings.irOn > 0.5 && convolver.buffer) { node.connect(convolver); convolver.connect(analyser) }
-  else node.connect(analyser)
+  if (settings.irOn > 0.5 && convolver.buffer) { node.connect(convolver); convolver.connect(outGain) }
+  else node.connect(outGain)
 }
 
 function onWorklet(m) {
@@ -158,6 +203,7 @@ const ask = (msg, transfer) => new Promise((ok) => { const id = ++messageId; wai
 
 // ------------------------------------------------------------------------------------------------- playing
 async function playGuitar() {
+  powerUp()
   try {
     await ensureAudio()
     stopDemo()
@@ -207,6 +253,7 @@ async function listDevices(current) {
 
 async function toggleDemo() {
   if (demoSource) { stopDemo(); updateStatus(); return }
+  powerUp()
   try {
     await ensureAudio()
     closeMic()
@@ -236,15 +283,13 @@ function stopAll() { stopDemo(); closeMic(); ctx?.suspend(); updateStatus() }
 function updateStatus() {
   const playing = Boolean(ctx && ctx.state === 'running' && (micSource || demoSource))
   $('status').classList.toggle('live', playing)
-  $('jewel').classList.toggle('on', playing)
-  $('jewel-state').textContent = playing ? 'On' : 'Off'
   $('stop').hidden = !playing
   $('start').classList.toggle('compact', Boolean(ctx))
   if (ctx && ctx.state === 'suspended' && (micSource || demoSource)) ctx.resume().then(updateStatus)
-  if (!playing) { $('status-text').textContent = 'Not playing'; return }
+  if (!playing) { hardware?.level(0, false); $('status-text').textContent = power ? 'Not playing' : 'Off'; return }
   const ms = Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000)
   const what = demoSource ? 'Demo riff' : 'Live'
-  $('status-text').textContent = `${what} · ${(ctx.sampleRate / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ms ? `about ${ms} ms out` : 'low latency'}`
+  $('status-text').textContent = `${what} · ${standby ? 'Standby · ' : ''}${(ctx.sampleRate / 1000).toFixed(1).replace(/\.0$/, '')} kHz · ${ms ? `about ${ms} ms out` : 'low latency'}`
 }
 
 // ------------------------------------------------------------------------------------------------- the capture
@@ -281,6 +326,7 @@ async function sendCapture() {
   if (result.ok) {
     capture.info = result.info
     $('slim').hidden = !result.info?.slimmable
+    hardware?.setSlim(Boolean(result.info?.slimmable))
   }
   return result
 }
@@ -308,6 +354,7 @@ function showCapture(note) {
     $('amp-logo').textContent = 'No capture'; $('amp-band-name').textContent = 'No capture'
     $('amp-sub').textContent = 'Drop a .nam capture here'
     fillChips($('amp-chips'), [])
+    hardware?.setSlim(false); hardware?.setCapture('', 'Drop a .nam capture here')
     return
   }
   const m = capture.meta ?? {}
@@ -326,6 +373,7 @@ function showCapture(note) {
   if (capture.info?.sampleRate && ctx && Math.abs(capture.info.sampleRate - ctx.sampleRate) > 1) lines.push(`Recorded at ${capture.info.sampleRate / 1000} kHz, resampled`)
   $('capture-meta').textContent = lines.join(' · ')
   $('amp-sub').textContent = [note, gear, ...chips, m.modeled_by && `captured by ${m.modeled_by}`].filter(Boolean).join(' · ')
+  hardware?.setCapture(note ? `${name} · ${note}` : name, $('amp-sub').textContent)
 }
 
 async function clearCapture() {
@@ -363,10 +411,11 @@ function showIR() {
   drop.classList.toggle('has', has)
   drop.querySelector('.empty').hidden = has
   drop.querySelector('.loaded').hidden = !has
-  if (!has) { $('cab-name').textContent = 'No IR'; $('cab-meta').textContent = 'Drop a .wav here'; return }
+  if (!has) { $('cab-name').textContent = 'No IR'; $('cab-meta').textContent = 'Drop a .wav here'; hardware?.setIR('', ''); return }
   const name = ir.name.replace(/\.wav$/i, ''), meta = ir.seconds ? `${Math.round(ir.seconds * 1000)} ms impulse response` : 'Impulse response'
   $('ir-name').textContent = name; $('ir-meta').textContent = meta
   $('cab-name').textContent = name; $('cab-meta').textContent = meta
+  hardware?.setIR(name, meta)
 }
 
 async function clearIR() {
@@ -453,6 +502,8 @@ let scratch = null
 function meterLoop() {
   // The input clips when the source itself does (the interface or file at full scale).
   meterIn(meters.inPeak, meters.inRaw >= 0.999)
+  // The energy and the kits' lamps follow the input's level (D-RIG-009 (e)).
+  hardware?.level(meters.inPeak, Boolean(ctx.state === 'running' && (micSource || demoSource)))
   meters.inPeak = 0; meters.inRaw = 0
   scratch ??= new Float32Array(analyser.fftSize)
   analyser.getFloatTimeDomainData(scratch)
@@ -466,25 +517,38 @@ function meterLoop() {
 // Rig's own choices (its finish and its drawings) stay in this browser; the suite's (look, fonts, accent, density)
 // follow look.js: Rig's own, or the suite look while "Use this look in every CRBN app" is on.
 const RIG_KEY = 'crbn-rig/rig'
-const RIG_DEFAULTS = { finish: 'look', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b' }
+// v2 (R1): the hardware kit, Salvage's choices and the seed of its crops. Before v2 the default finish was the look's
+// own; a v1 finish of 'look' was never a choice a person made, so it becomes the kit's own.
+const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
 const abc = (v) => (/^[abc]$/.test(v) ? v : 'b')
+const kitId = (v) => (KIT_LIST.some((k) => k.id === v) ? v : DEFAULT_KIT)
+const salvOf = (s) => Object.fromEntries(Object.entries(SALVAGE_DEFAULTS).map(([k, d]) => [k, SALVAGE_CHOICES[k].some((c) => c[0] === s?.[k]) ? s[k] : d]))
 function loadRig() {
   let r = {}
   try { r = JSON.parse(localStorage.getItem(RIG_KEY) ?? '{}') ?? {} } catch { /* the defaults */ }
+  const finish = r.v !== 2 && r.finish === 'look' ? 'own' : r.finish
   return {
-    finish: FINISHES.some((f) => f.id === r.finish) ? r.finish : 'look',
+    v: 2,
+    finish: FINISHES.some((f) => f.id === finish) ? finish : 'own',
     custom: HEX_RE.test(r.custom ?? '') ? r.custom.toLowerCase() : DEFAULT_CUSTOM,
     layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters),
+    kit: kitId(r.kit), salv: salvOf(r.salv), seed: Number.isInteger(r.seed) && r.seed > 0 ? r.seed : 1,
   }
 }
 let rig = { ...RIG_DEFAULTS }, prefs = null, every = false, keepRig = true, keepPrefs = true
-const saveRig = () => { if (keepRig) try { localStorage.setItem(RIG_KEY, JSON.stringify(rig)) } catch { /* not remembered */ } }
+// salvWords goes beside the rig so the first paint (index.html's script) draws Salvage's words in their style.
+const saveRig = () => { if (keepRig) try { localStorage.setItem(RIG_KEY, JSON.stringify({ ...rig, salvWords: rig.salv.words })) } catch { /* not remembered */ } }
 
 function applyAll() {
   const { look, accent } = applyPrefs(prefs)
   root.dataset.layout = rig.layout; root.dataset.amp = rig.amp; root.dataset.meters = rig.meters
   const hex = finishHex(rig, look.id)
   for (const [k, v] of Object.entries(finishVars(hex))) root.style.setProperty(k, v)
+  if (hardware) {
+    hardware.setSalvage(rig.salv, rig.seed)
+    hardware.setFinish(rig.finish === 'own', hex)
+    if (rig.amp === 'b') hardware.show(rig.kit)
+  }
   // A suite accent the person chose wins over the finish on the controls; the faceplate keeps the finish.
   root.style.setProperty('--accent', accent ?? hex)
   root.style.setProperty('--accent-ink', inkFor(accent ?? hex))
@@ -510,6 +574,24 @@ function buildMenu() {
     if (rig.finish === 'custom') drawWheel()
   })
   $('lm-accent').addEventListener('click', (e) => { const b = e.target.closest('[data-accent]'); if (b) { prefs.accent = b.dataset.accent; commitPrefs() } })
+  // Rig's hardware: the kits, the classic ones then the energy ones; picking one draws the amp in Hardware.
+  const kitChip = (k) => `<button type="button" class="lm-chip" data-kit="${k.id}" aria-pressed="false"><i style="background:${k.swatch}"></i>${k.name}</button>`
+  $('lm-kits-classic').innerHTML = KIT_LIST.filter((k) => k.fam === 'classic').map(kitChip).join('')
+  $('lm-kits-new').innerHTML = KIT_LIST.filter((k) => k.fam === 'new').map(kitChip).join('')
+  for (const id of ['lm-kits-classic', 'lm-kits-new']) {
+    $(id).addEventListener('click', (e) => { const b = e.target.closest('[data-kit]'); if (b) { rig.kit = b.dataset.kit; rig.amp = 'b'; saveRig(); applyAll() } })
+  }
+  // Salvage's choices for players (D-RIG-012 (b), D-RIG-015), with Shuffle for new crops.
+  const SALV_LABELS = { sheet: 'Sheet', mesh: 'Grille', metal: 'Grille metal', glow: 'Glow', words: 'Words' }
+  $('lm-salv').innerHTML = Object.entries(SALV_LABELS).map(([key, label]) =>
+    `<div class="lm-row"><span id="lm-salv-${key}">${label}</span><div class="lm-chips" role="group" aria-labelledby="lm-salv-${key}">` +
+    SALVAGE_CHOICES[key].map(([v, t]) => `<button type="button" class="lm-chip plain" data-salv="${key}" data-val="${v}" aria-pressed="false">${t}</button>`).join('') +
+    '</div></div>').join('') + '<div class="lm-row"><span></span><div><button type="button" class="btn small" id="lm-shuffle">Shuffle</button></div></div>'
+  $('lm-salv').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-salv]')
+    if (b) { rig.salv = { ...rig.salv, [b.dataset.salv]: b.dataset.val }; saveRig(); applyAll(); return }
+    if (e.target.closest('#lm-shuffle')) { rig.seed = hardware.shuffle(); saveRig() }
+  })
   for (const seg of document.querySelectorAll('.segmented[data-rig]')) {
     seg.addEventListener('click', (e) => { const b = e.target.closest('button[data-value]'); if (b) { rig[seg.dataset.rig] = b.dataset.value; saveRig(); applyAll() } })
   }
@@ -556,6 +638,11 @@ function syncMenu(look, hex, accent) {
   press('#lm-accent [data-accent]', (b) => b.dataset.accent === prefs.accent)
   const own = document.querySelector('#lm-finish [data-finish="look"] i')
   if (own) own.style.background = finishHex({ finish: 'look' }, look.id)
+  const kitOwn = document.querySelector('#lm-finish [data-finish="own"] i')
+  if (kitOwn) kitOwn.style.background = KIT_LIST.find((k) => k.id === rig.kit)?.swatch ?? hex
+  press('#lm-kits-classic [data-kit], #lm-kits-new [data-kit]',(b) => rig.amp === 'b' && b.dataset.kit === rig.kit)
+  $('lm-salv').hidden = rig.kit !== 'hammer' || rig.amp !== 'b'
+  press('#lm-salv [data-salv]', (b) => rig.salv[b.dataset.salv] === b.dataset.val)
   const dot = document.querySelector('#lm-accent [data-finish-dot]')
   if (dot) dot.style.background = hex
   for (const seg of document.querySelectorAll('.segmented[data-rig] button')) seg.setAttribute('aria-checked', String(rig[seg.parentElement.dataset.rig] === seg.dataset.value))
@@ -659,16 +746,22 @@ async function start() {
   rig = loadRig()
   if (query.has('look')) { prefs = { ...prefs, look: query.get('look') }; prefs = sanitize(prefs); keepPrefs = false }
   for (const k of ['layout', 'amp', 'meters']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
+  // ?kit= shows a hardware kit (Salvage's id is hammer, after the kit it replaced) for a scripted screenshot
+  if (query.has('kit')) { rig.kit = kitId(query.get('kit')); rig.amp = 'b'; keepRig = false }
   if (query.has('finish')) {
     const f = query.get('finish')
     if (HEX_RE.test('#' + f)) { rig.finish = 'custom'; rig.custom = '#' + f.toLowerCase() } else if (FINISHES.some((x) => x.id === f)) rig.finish = f
     keepRig = false
   }
   buildMenu()
+  for (const el of document.querySelectorAll('.knob[data-param]')) makeKnob(el)
+  hardware = createHardware({
+    ampHolder: $('hw-amp'), cabHolder: $('hw-cab'), spec: specOf, change: changeSetting,
+    toggle: (role, on) => (role === 'power' ? setPower(on) : setStandby(!on)),
+  })
   applyAll()
   if (query.has('menu')) openMenu(true)
 
-  for (const el of document.querySelectorAll('.knob[data-param]')) makeKnob(el)
   for (const box of document.querySelectorAll('input[type=checkbox][data-param]')) box.addEventListener('change', () => setSetting(box.dataset.param, box.checked ? 1 : 0))
   for (const seg of document.querySelectorAll('.segmented[data-param]')) {
     for (const b of seg.querySelectorAll('button')) b.addEventListener('click', () => setSetting(seg.dataset.param, +b.dataset.value))

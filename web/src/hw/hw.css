@@ -1,0 +1,579 @@
+/* CRBN Rig's hardware (crbn-launcher D-RIG-009..015): the kits' knobs, switches, lights, faceplates and cabinets,
+   ported from the Hardware Lab (docs/design/2026-11-11-hardware-lab/lab.html), which stays the reference. Every rule
+   is scoped under .rig-hw, the two holders hw.js draws into, so the lab's names (.knobs, .face, .ui, .logo) never
+   reach the rest of the page. */
+@font-face { font-family: 'Oswald'; font-style: normal; font-weight: 400 700; font-display: swap; src: url(fonts/oswald-400-700.woff2) format('woff2'); }
+@font-face { font-family: 'Stardos Stencil'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/stardos-stencil-400.woff2) format('woff2'); }
+@font-face { font-family: 'Stardos Stencil'; font-style: normal; font-weight: 700; font-display: swap; src: url(fonts/stardos-stencil-700.woff2) format('woff2'); }
+@font-face { font-family: 'Yellowtail'; font-style: normal; font-weight: 400; font-display: swap; src: url(fonts/yellowtail-400.woff2) format('woff2'); }
+.rig-hw button { font: inherit; color: inherit; }
+/* ---------- hardware: shared ---------- */
+.rig-hw .hw { --ink:#f2efe8; --kit-font:'Barlow Semi Condensed', sans-serif; --fin:#d92b52; --lampc:var(--fin); --fin-ink:#fff;
+  --m-hi:color-mix(in oklab, var(--fin) 42%, white); --m-mid:var(--fin); --m-lo:color-mix(in oklab, var(--fin) 62%, black); --m-dk:color-mix(in oklab, var(--fin) 32%, black);
+  --chr:conic-gradient(from 200deg, #6f757b, #f1f3f5 15%, #9aa0a6 30%, #4f555b 48%, #e4e7ea 64%, #8a9096 80%, #6f757b);
+  position: relative; min-width: 0; color: var(--ink); -webkit-user-select: none; user-select: none; }
+.rig-hw .cabinet { position: relative; padding: 9px; border-radius: 10px; background: #151417; box-shadow: 0 16px 30px rgba(0,0,0,.5), 0 2px 0 rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.09); }
+:root[data-look="daylight"] .rig-hw .cabinet { box-shadow: 0 16px 26px rgba(50,35,20,.28), 0 2px 0 rgba(0,0,0,.3), inset 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.09); }
+.rig-hw .face { position: relative; display: flex; flex-direction: column; border-radius: 4px; overflow: hidden; isolation: isolate; }
+.rig-hw .ui { position: relative; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; padding: 12px 12px 10px; }
+.rig-hw .knobs { display: flex; flex-wrap: wrap; flex: 1 1 300px; justify-content: space-around; gap: 2px 2px; }
+.rig-hw .tgs, .rig-hw .pwr { display: flex; align-items: center; gap: 4px; }
+.rig-hw .pwr { gap: 6px; padding-left: 8px; border-left: 1px solid color-mix(in oklab, var(--ink) 22%, transparent); }
+.rig-hw .gz { position: relative; z-index: 4; display: flex; align-items: center; gap: 12px; min-height: 92px; padding: 10px 16px; min-width: 0; }
+.rig-hw .logo-box { display: grid; gap: 2px; min-width: 0; }
+.rig-hw .logo { white-space: nowrap; }
+.rig-hw .sub { font: 500 10px/1.25 var(--kit-font); letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .8; }
+.rig-hw .cc { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 44px; }
+.rig-hw .lb { font: 600 8.5px/1.1 var(--kit-font); letter-spacing: .14em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+.rig-hw .st { font: 500 8px/1 var(--kit-font); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); opacity: .72; white-space: nowrap; min-height: 8px; }
+
+/* knobs: static lighting above or below a rotating body; --a is the angle (-135deg..135deg) */
+.rig-hw .kw { position: relative; display: grid; place-items: center; width: calc(var(--s) + 12px); height: calc(var(--s) + 12px); --s: 40px; }
+.rig-hw .kw.sm { --s: 26px; } .rig-hw .kw.md { --s: 32px; }
+.rig-hw .kw > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.rig-hw .kw .sc { color: var(--ink); }
+.rig-hw .kw .arc .trk { fill: none; stroke: rgba(255,255,255,.05); stroke-width: 2.6; stroke-linecap: round; }
+.rig-hw .kw .arc .val { fill: none; stroke: color-mix(in oklab, var(--fin) 65%, white); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--fin)) drop-shadow(0 0 6px var(--fin)); transition: opacity .2s; }
+.rig-hw .hw:not(.on) .kw .arc .val { opacity: .18; filter: none; }
+.rig-hw .kn { --a: 0deg; position: relative; width: var(--s); height: var(--s); border-radius: 50%; cursor: ns-resize; touch-action: none; outline: none; z-index: 1; }
+.rig-hw .kn > i { position: absolute; inset: 0; border-radius: 50%; display: block; pointer-events: none; }
+.rig-hw .kn .r { transform: rotate(var(--a)); }
+.rig-hw .kn:focus-visible { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--accent); }
+.rig-hw .kn .sh { inset: 8% -5% -14% -5%; background: radial-gradient(closest-side, rgba(0,0,0,.72), rgba(0,0,0,.3) 62%, transparent); }
+.rig-hw .kn .ln::after { content: ''; position: absolute; left: 50%; top: var(--lt, 6%); width: var(--lw, 2px); height: var(--lh, 22%); margin-left: calc(var(--lw, 2px) / -2); border-radius: 2px; background: var(--lc, #f3efe4); box-shadow: var(--lg, none); }
+.rig-hw .kn svg { width: 100%; height: 100%; overflow: visible; display: block; }
+
+.rig-hw .kn-cap .body { background: repeating-conic-gradient(#26262a 0 3.6deg, #09090a 3.6deg 7.2deg); box-shadow: 0 0 0 1px #000; }
+.rig-hw .kn-cap .top { inset: 9%; background: radial-gradient(circle at 50% 28%, #3c3c41, #141416 55%, #060607); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 3px rgba(0,0,0,.7); }
+.rig-hw .kn-cap .cap { inset: 27%; background: repeating-radial-gradient(circle, rgba(255,255,255,.08) 0 .6px, transparent .6px 1.6px), conic-gradient(from 210deg, var(--m-lo), var(--m-hi) 14%, var(--m-mid) 26%, var(--m-lo) 40%, var(--m-hi) 64%, var(--m-mid) 76%, var(--m-lo)); box-shadow: 0 0 0 1px rgba(0,0,0,.75), inset 0 0 2px rgba(0,0,0,.5); }
+.rig-hw .kn-cap .ln { --lt: 3%; --lh: 19%; }
+
+.rig-hw .kn-skirt .skirt { background: radial-gradient(circle, #1c1c1f 0 60%, #0f0f11 61% 100%); box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(255,255,255,.07); }
+.rig-hw .kn-skirt .skirt b { position: absolute; left: 50%; top: 50%; width: 12px; height: 8px; margin: -4px 0 0 -6px; text-align: center; font: 600 6px/8px 'Barlow Semi Condensed', sans-serif; color: #f2f1ec; transform: rotate(var(--t)) translateY(calc(var(--s) / -2 + 4.5px)); }
+.rig-hw .kn-skirt .top { inset: 24%; background: radial-gradient(circle at 46% 34%, #4a4a50, #151517 55%, #020203); box-shadow: 0 2px 3px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.24); }
+.rig-hw .kn-skirt .ln { display: none; }
+.rig-hw .kw.sm .kn-skirt .ln { display: block; --lt: 2%; --lh: 22%; }
+.rig-hw .kw.sm .kn-skirt .skirt b { display: none; }
+.rig-hw .kn-skirt .gl { inset: 24%; background: radial-gradient(circle at 38% 28%, rgba(255,255,255,.35) 0 8%, transparent 30%); }
+
+.rig-hw .kn-chicken .gl { inset: 34% 30% 16% 30%; background: radial-gradient(circle at 42% 30%, rgba(255,255,255,.42), transparent 62%); }
+.rig-hw .kn-chicken svg { filter: drop-shadow(0 2px 1.5px rgba(0,0,0,.65)); }
+
+.rig-hw .kn-insert .body { background: repeating-conic-gradient(#2c2c30 0 4deg, #0c0c0d 4deg 8deg); box-shadow: 0 0 0 1px #000; }
+.rig-hw .kn-insert .top { inset: 10%; background: radial-gradient(circle at 50% 30%, #3d3d43, #121214 60%, #050506); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+.rig-hw .kn-insert .ins { inset: 32%; background: repeating-radial-gradient(circle, rgba(255,255,255,.1) 0 .5px, transparent .5px 1.4px), conic-gradient(from 210deg, var(--m-lo), var(--m-hi) 15%, var(--m-mid) 30%, var(--m-dk) 45%, var(--m-hi) 62%, var(--m-mid) 80%, var(--m-lo)); box-shadow: 0 0 0 1px rgba(0,0,0,.85); }
+.rig-hw .kn-insert .ln { --lt: 11%; --lh: 16%; }
+
+.rig-hw .kn-knurl .body { background: repeating-conic-gradient(#323237 0 3deg, #0a0a0b 3deg 6deg); box-shadow: 0 0 0 1px #000; }
+.rig-hw .kn-knurl .top { inset: 14%; background: radial-gradient(circle at 50% 30%, #303035, #0d0d0f 65%); box-shadow: 0 0 0 1.5px #8d9299, inset 0 1px 0 rgba(255,255,255,.15); }
+.rig-hw .kn-knurl .ln { --lt: 16%; --lh: 26%; --lw: 2.6px; --lc: color-mix(in oklab, var(--fin) 80%, white); --lg: 0 0 3px var(--fin); }
+
+.rig-hw .kn-dome .base { inset: -7%; background: var(--chr); box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 3px 4px rgba(0,0,0,.5); }
+.rig-hw .kn-dome .dome { inset: 3%; background: radial-gradient(circle at 40% 32%, #4c4c52 0, #1b1b1e 38%, #050506 80%); box-shadow: 0 3px 4px rgba(0,0,0,.7); }
+.rig-hw .kn-dome .ln { --lt: 7%; --lh: 30%; --lw: 2.6px; }
+.rig-hw .kn-dome .gl { inset: 3%; background: radial-gradient(circle at 34% 26%, rgba(255,255,255,.55) 0 5%, rgba(255,255,255,.12) 16%, transparent 32%); }
+
+.rig-hw .kn-compact .body { background: repeating-conic-gradient(#2e2e32 0 5deg, #111113 5deg 10deg); box-shadow: 0 0 0 1px #000; }
+.rig-hw .kn-compact .top { inset: 15%; background: radial-gradient(circle at 50% 35%, #2c2c30, #101012); box-shadow: inset 0 0 0 2px #a3a9b0, inset 0 0 0 3px rgba(0,0,0,.6); }
+.rig-hw .kn-compact .ln { --lt: 17%; --lh: 30%; }
+
+.rig-hw .kn-alu .body { background: repeating-conic-gradient(#c3c8ce 0 2.5deg, #7a8087 2.5deg 5deg); box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.rig-hw .kn-alu .top { inset: 9%; background: repeating-radial-gradient(circle, rgba(255,255,255,.2) 0 .5px, transparent .5px 1.4px), conic-gradient(from 200deg, #8c9298, #f5f7f9 14%, #aab0b6 28%, #6e747a 44%, #eef1f3 62%, #a3a9af 80%, #8c9298); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+.rig-hw .kn-alu .ln { --lt: 14%; --lh: 5px; --lw: 5px; --lc: #1d1f22; }
+
+.rig-hw .kn-halo .body { background: radial-gradient(circle at 50% 30%, #2e2f36, #101116 62%, #07070a); box-shadow: 0 0 0 1px rgba(255,255,255,.09), 0 3px 6px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14); }
+.rig-hw .kn-halo .kf { inset: 22%; background: repeating-radial-gradient(circle, rgba(255,255,255,.05) 0 .5px, transparent .5px 1.5px), radial-gradient(circle at 50% 35%, #24252b, #0c0c10); box-shadow: inset 0 1px 2px rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.08); }
+.rig-hw .kn-halo .ln { --lt: 6%; --lh: 16%; --lc: color-mix(in oklab, var(--fin) 55%, white); --lg: 0 0 5px var(--fin), 0 0 2px var(--fin); }
+
+.rig-hw .kn-machined .body { background: repeating-conic-gradient(#3b3d43 0 2deg, #191a1e 2deg 4deg); box-shadow: 0 0 0 1px #000, 0 3px 6px rgba(0,0,0,.6); }
+.rig-hw .kn-machined .top { inset: 12%; background: repeating-radial-gradient(circle, rgba(255,255,255,.07) 0 .6px, transparent .6px 1.5px), conic-gradient(from 200deg, #2e3036, #6d717a 15%, #3a3d44 30%, #1e2025 46%, #60646c 64%, #34373d 80%, #2e3036); }
+.rig-hw .kn-machined .ln { --lt: 10%; --lh: 30%; --lw: 3px; --lc: color-mix(in oklab, var(--fin) 50%, white); --lg: 0 0 5px var(--fin), 0 0 11px var(--fin); }
+
+.rig-hw .kn-obsidian .ln { --lt: 12%; --lh: 29%; --lw: 2px; --lc: #ffffff; --lg: 0 0 3px var(--fin), 0 0 8px var(--fin), 0 0 16px var(--fin); }
+.rig-hw .kn-obsidian .env, .rig-hw .kn-spinner .env, .rig-hw .kn-chicken .env, .rig-hw .kn-gem .env { display: none; }
+.rig-hw .kn-gem svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.7)) drop-shadow(0 0 5px color-mix(in oklab, var(--fin) 55%, transparent)); }
+.rig-hw .kn-gem .f0 { fill: color-mix(in oklab, var(--fin) 55%, white); } .rig-hw .kn-gem .f1 { fill: color-mix(in oklab, var(--fin) 85%, white); }
+.rig-hw .kn-gem .f2 { fill: var(--fin); } .rig-hw .kn-gem .f3 { fill: color-mix(in oklab, var(--fin) 60%, black); }
+.rig-hw .kn-gem .f4 { fill: color-mix(in oklab, var(--fin) 38%, black); } .rig-hw .kn-gem .f5 { fill: color-mix(in oklab, var(--fin) 75%, black); }
+.rig-hw .kn-gem .tb { fill: color-mix(in oklab, var(--fin) 30%, #0c0c10); stroke: rgba(255,255,255,.35); stroke-width: 1; }
+.rig-hw .kn-gem .pt { fill: #fff; filter: drop-shadow(0 0 3px var(--fin)); }
+
+.rig-hw .kn-spinner .sp-f svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+
+/* every knob: a hint of studio light from above and a warm bounce from below; on the energy kits, the energy's own
+   light from the cutouts below, as bright as the energy is (--glow, set each frame) */
+.rig-hw .kn .env { inset: 0; background: radial-gradient(ellipse 66% 38% at 50% 4%, rgba(255,255,255,.16), transparent 70%), radial-gradient(ellipse 70% 36% at 50% 100%, rgba(255,222,186,.08), transparent 72%); mix-blend-mode: screen; }
+.rig-hw .kn .rim { inset: -2px; opacity: var(--glow, 0); background: radial-gradient(ellipse 80% 52% at 50% 106%, color-mix(in oklab, var(--fin) 60%, white) 0, color-mix(in oklab, var(--fin) 55%, transparent) 34%, transparent 64%); mix-blend-mode: screen; }
+.rig-hw .hw.classic .kn .rim { display: none; }
+.rig-hw .hw.new .sw::after, .rig-hw .hw.new .fs-ring::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; pointer-events: none; opacity: calc(var(--glow, 0) * .75); background: radial-gradient(ellipse 80% 55% at 50% 112%, color-mix(in oklab, var(--fin) 60%, white), color-mix(in oklab, var(--fin) 40%, transparent) 36%, transparent 66%); mix-blend-mode: screen; }
+
+/* faders (the Hardwood kit's graphic EQ) */
+.rig-hw .fd { position: relative; width: 26px; height: 62px; display: flex; justify-content: center; cursor: ns-resize; touch-action: none; outline: none; }
+.rig-hw .fd::before { content: ''; position: absolute; top: 4px; bottom: 4px; left: 50%; width: 4px; margin-left: -2px; border-radius: 2px; background: #000; box-shadow: 0 1px 0 rgba(255,255,255,.12), inset 0 1px 2px rgba(0,0,0,.9); }
+.rig-hw .fd .tk { position: absolute; left: 1px; right: 1px; top: 6px; bottom: 6px; background: repeating-linear-gradient(180deg, color-mix(in oklab, var(--ink) 45%, transparent) 0 1px, transparent 1px 10px); -webkit-mask: linear-gradient(90deg, #000 0 5px, transparent 5px 21px, #000 21px); mask: linear-gradient(90deg, #000 0 5px, transparent 5px 21px, #000 21px); }
+.rig-hw .fd .cap { position: absolute; left: 3px; right: 3px; height: 13px; top: calc(4px + (1 - var(--v, .5)) * (100% - 21px)); border-radius: 2px; background: linear-gradient(180deg, var(--m-hi), var(--m-mid) 45%, var(--m-lo)); box-shadow: 0 2px 3px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.45); }
+.rig-hw .fd .cap::after { content: ''; position: absolute; left: 2px; right: 2px; top: 6px; height: 1.5px; background: rgba(0,0,0,.6); }
+.rig-hw .fd:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* switches */
+.rig-hw .sw { position: relative; border: 0; padding: 0; background: none; cursor: pointer; flex: none; display: block; }
+.rig-hw .sw > i { position: absolute; display: block; pointer-events: none; }
+.rig-hw .sw-rocker { width: 18px; height: 30px; border-radius: 3px; background: #050505; box-shadow: 0 0 0 2px #2b2b2d, 0 0 0 3px #000, 0 2px 3px 2px rgba(0,0,0,.45); }
+.rig-hw .sw-rocker .a, .rig-hw .sw-rocker .b { left: 2px; right: 2px; height: 12px; border-radius: 2px; }
+.rig-hw .sw-rocker .a { top: 2px; background: linear-gradient(180deg, #0c0c0e, #1c1c1f); }
+.rig-hw .sw-rocker .b { bottom: 2px; background: linear-gradient(180deg, #45454a, #18181b); box-shadow: inset 0 1px 0 rgba(255,255,255,.2); }
+.rig-hw .sw-rocker[aria-pressed="true"] .a { background: linear-gradient(180deg, #4a4a4f, #1b1b1e); box-shadow: inset 0 1px 0 rgba(255,255,255,.22); }
+.rig-hw .sw-rocker[aria-pressed="true"] .b { background: linear-gradient(180deg, #0c0c0e, #1a1a1d); box-shadow: none; }
+.rig-hw .sw-rocker .a::after { content: ''; position: absolute; left: 50%; top: 3px; width: 2px; height: 6px; margin-left: -1px; background: #e9e5da; border-radius: 1px; }
+.rig-hw .sw-rocker .b::after { content: ''; position: absolute; left: 50%; top: 2.5px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px #e9e5da; opacity: .8; }
+.rig-hw .sw-bat { width: 24px; height: 40px; }
+.rig-hw .sw-bat .nut { left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--chr); box-shadow: 0 1px 2px rgba(0,0,0,.7), inset 0 0 0 1px rgba(0,0,0,.25); }
+.rig-hw .sw-bat .nut::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle, #20222a, #050506); }
+.rig-hw .sw-bat .bat { left: 50%; top: 50%; width: 8px; height: 18px; margin-left: -4px; transform-origin: 50% 0; transform: rotate(0deg); border-radius: 2px 2px 5px 5px; background: linear-gradient(90deg, #747b82, #fbfcfd 45%, #a3a9af 72%, #666c72); box-shadow: 0 2px 2px rgba(0,0,0,.45); clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%); transition: transform .14s; }
+.rig-hw .sw-bat[aria-pressed="true"] .bat { transform: rotate(180deg); }
+.rig-hw .sw-bat.black .bat { background: linear-gradient(90deg, #000, #4a4a4f 45%, #141416); }
+.rig-hw .sw-bat.tip .bat { background: linear-gradient(90deg, #24262b, #6b6f78 45%, #2c2e33); }
+.rig-hw .sw-bat.tip .bat::after { content: ''; position: absolute; left: 1px; right: 1px; bottom: 1px; height: 4px; border-radius: 2px; background: #33353b; }
+.rig-hw .sw-bat.tip[aria-pressed="true"] .bat::after { background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 6px var(--fin); }
+.rig-hw .sw-bat.mini { width: 18px; height: 32px; } .rig-hw .sw-bat.mini .nut { width: 12px; height: 12px; margin: -6px 0 0 -6px; } .rig-hw .sw-bat.mini .nut::after { inset: 3px; } .rig-hw .sw-bat.mini .bat { width: 6px; height: 14px; margin-left: -3px; }
+.rig-hw .sw-push { width: 26px; height: 20px; margin-top: 10px; border-radius: 3px; background: linear-gradient(180deg, #3e3f44, #1b1c1f); box-shadow: 0 0 0 1px #000, 0 2px 0 #000, inset 0 1px 0 rgba(255,255,255,.15); }
+.rig-hw .sw-push .led { left: 50%; top: -10px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: color-mix(in oklab, var(--lampc) 25%, #120808); box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.rig-hw .sw-push[aria-pressed="true"] { transform: translateY(1px); box-shadow: 0 0 0 1px #000, 0 1px 0 #000, inset 0 1px 0 rgba(255,255,255,.08); }
+.rig-hw .hw.on .sw-push[aria-pressed="true"] .led { background: color-mix(in oklab, var(--lampc) 70%, white); box-shadow: 0 0 5px 1px var(--lampc); }
+.rig-hw .sw-lit { width: 28px; height: 22px; border-radius: 3px; background: linear-gradient(180deg, #2a2c30, #121316); box-shadow: 0 0 0 1px #000, 0 2px 0 #000, inset 0 1px 0 rgba(255,255,255,.12); }
+.rig-hw .sw-lit .cap { inset: 4px; border-radius: 2px; background: color-mix(in oklab, var(--lampc) 18%, #15161a); box-shadow: inset 0 0 0 1px rgba(0,0,0,.6); }
+.rig-hw .hw.on .sw-lit[aria-pressed="true"] .cap { background: radial-gradient(circle at 50% 40%, #fff 0 10%, color-mix(in oklab, var(--lampc) 60%, white) 35%, var(--lampc)); box-shadow: 0 0 8px var(--lampc); }
+.rig-hw .sw-lit[aria-pressed="true"] { transform: translateY(1px); }
+.rig-hw .sw-pad { width: 32px; height: 22px; margin-top: 10px; border-radius: 4px; background: repeating-linear-gradient(180deg, #222225 0 2px, #0e0e10 2px 4px); box-shadow: 0 0 0 1px #000, 0 2px 2px rgba(0,0,0,.5); }
+.rig-hw .sw-pad .led { left: 50%; top: -10px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #2a0c0c; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.rig-hw .hw.on .sw-pad[aria-pressed="true"] .led { background: #ff5b4d; box-shadow: 0 0 6px 1px #ff3b2f; }
+.rig-hw .sw-guard { width: 26px; height: 40px; }
+.rig-hw .sw-guard .base { inset: 7px 3px 2px; border-radius: 3px; background: repeating-linear-gradient(45deg, #18181b 0 3px, #26262b 3px 6px); box-shadow: 0 0 0 1px #000; }
+.rig-hw .sw-guard .tgl { left: 50%; top: 13px; width: 6px; height: 14px; margin-left: -3px; border-radius: 3px; background: linear-gradient(90deg, #2c2e33, #7a7e86 50%, #2c2e33); transform: translateY(8px); transition: transform .14s; }
+.rig-hw .sw-guard[aria-pressed="true"] .tgl { transform: none; }
+.rig-hw .sw-guard[aria-pressed="true"] .tgl::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 3px; background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 6px var(--fin); }
+.rig-hw .sw-guard .lid { left: 1px; right: 1px; top: 6px; height: 33px; border-radius: 3px; transform-origin: 50% 0; transition: transform .25s ease; background: linear-gradient(180deg, color-mix(in oklab, var(--fin) 60%, white), var(--fin) 45%, var(--m-lo)); opacity: .9; box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 1px rgba(0,0,0,.25); }
+.rig-hw .sw-guard[aria-pressed="true"] .lid { transform: perspective(70px) rotateX(-78deg); }
+.rig-hw .sw-glow { width: 30px; height: 15px; margin-top: 4px; border-radius: 8px; background: linear-gradient(180deg, #17181c, #0b0b0e); box-shadow: 0 0 0 1px rgba(255,255,255,.1), inset 0 1px 2px rgba(0,0,0,.85); }
+.rig-hw .sw-glow .bar { inset: 6px 8px; border-radius: 2px; background: rgba(255,255,255,.1); }
+.rig-hw .hw.on .sw-glow[aria-pressed="true"] .bar { background: color-mix(in oklab, var(--fin) 45%, white); box-shadow: 0 0 5px var(--fin), 0 0 12px var(--fin); }
+
+/* lights: a bezel, a lens, a hot core, a specular and a bloom that spills onto the panel; .on on the amp or pedal lights them */
+.rig-hw .lp { position: relative; flex: none; display: block; margin: 4px 0 5px; }
+.rig-hw .lp > i { position: absolute; display: block; border-radius: 50%; pointer-events: none; }
+.rig-hw .lp .lp-bz { inset: 0; background: var(--chr); box-shadow: 0 1px 2px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.25); }
+.rig-hw .lp .lp-ln { inset: 18%; background: radial-gradient(circle at 50% 58%, color-mix(in oklab, var(--lampc) 30%, #000) 0, color-mix(in oklab, var(--lampc) 12%, #000) 68%, #000 100%); box-shadow: inset 0 1px 2px rgba(0,0,0,.9), inset 0 -1px 1px rgba(255,255,255,.07); }
+.rig-hw .lp .lp-hc { inset: 30%; opacity: 0; background: radial-gradient(circle, #ffffff 0, color-mix(in oklab, var(--lampc) 22%, #fff4dc) 38%, transparent 72%); filter: blur(1px); }
+.rig-hw .lp .lp-sp { left: 27%; top: 22%; width: 24%; height: 15%; background: radial-gradient(ellipse, rgba(255,255,255,.9), rgba(255,255,255,0) 72%); transform: rotate(-28deg); }
+.rig-hw .lp .lp-bl { inset: -170%; opacity: 0; background: radial-gradient(circle, color-mix(in oklab, var(--lampc) 55%, white) 0 3%, color-mix(in oklab, var(--lampc) 72%, transparent) 9%, color-mix(in oklab, var(--lampc) 26%, transparent) 23%, color-mix(in oklab, var(--lampc) 8%, transparent) 40%, transparent 62%); mix-blend-mode: screen; transition: opacity .3s; }
+.rig-hw .on .lp .lp-ln { background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.13) 0 .6px, transparent .6px 2.1px), radial-gradient(circle at 50% 50%, #ffffff 0, color-mix(in oklab, var(--lampc) 30%, white) 14%, var(--lampc) 40%, color-mix(in oklab, var(--lampc) 70%, black) 82%, color-mix(in oklab, var(--lampc) 40%, black) 100%); box-shadow: inset 0 0 3px color-mix(in oklab, var(--lampc) 40%, black), 0 0 3px 1px color-mix(in oklab, var(--lampc) 80%, transparent); }
+.rig-hw .on .lp .lp-hc { opacity: 1; }
+.rig-hw .on .lp .lp-bl { opacity: 1; animation: lamp 4.6s ease-in-out infinite; }
+@keyframes lamp { 50% { opacity: .84; } }
+/* a faceted jewel: the classic pilot */
+.rig-hw .lp-jewel { width: 28px; height: 28px; }
+.rig-hw .lp-jewel.sm { width: 17px; height: 17px; }
+.rig-hw .lp-jewel .lp-ln { inset: 13%; background: radial-gradient(circle, transparent 0 33%, rgba(0,0,0,.35) 34% 36%, transparent 37%), repeating-conic-gradient(from 8deg, rgba(255,255,255,.13) 0 15deg, rgba(0,0,0,.32) 15deg 30deg), radial-gradient(circle at 46% 42%, color-mix(in oklab, var(--lampc) 38%, #000), color-mix(in oklab, var(--lampc) 12%, #000) 75%); box-shadow: inset 0 -2px 3px rgba(0,0,0,.8), inset 0 1px 1px rgba(255,255,255,.15); }
+.rig-hw .on .lp-jewel .lp-ln { background: radial-gradient(circle, transparent 0 33%, rgba(0,0,0,.22) 34% 36%, transparent 37%), repeating-conic-gradient(from 8deg, rgba(255,255,255,.3) 0 15deg, rgba(0,0,0,.2) 15deg 30deg), radial-gradient(circle at 50% 50%, #ffffff 0, color-mix(in oklab, var(--lampc) 35%, white) 16%, var(--lampc) 44%, color-mix(in oklab, var(--lampc) 62%, black) 100%); }
+.rig-hw .lp-jewel .lp-hc { inset: 34%; }
+.rig-hw .lp-jewel .lp-sp { left: 30%; top: 22%; }
+/* an LED in a chrome bezel: the pedals and the small classic lights */
+.rig-hw .lp-led { width: 14px; height: 14px; }
+.rig-hw .lp-led .lp-ln { inset: 20%; }
+.rig-hw .lp-led .lp-sp { left: 30%; top: 26%; width: 22%; height: 14%; }
+/* a frosted lens in black anodising: the energy kits' pilot */
+.rig-hw .lp-bead { width: 20px; height: 20px; }
+.rig-hw .lp-bead .lp-bz { background: radial-gradient(circle at 50% 30%, #3a3b42, #121316 72%); box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255,255,255,.2), 0 2px 3px rgba(0,0,0,.6); }
+.rig-hw .lp-bead .lp-ln { inset: 20%; }
+.rig-hw .on .lp-bead .lp-ln { background: var(--tx-grain), radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--lampc) 30%, white) 0, color-mix(in oklab, var(--lampc) 70%, white) 30%, var(--lampc) 70%, color-mix(in oklab, var(--lampc) 60%, black) 100%); }
+.rig-hw .lp-bead .lp-hc { inset: 34%; filter: blur(1.5px); }
+/* a ring of light */
+.rig-hw .lp-ring { width: 20px; height: 20px; }
+.rig-hw .lp-ring .lp-bz { background: radial-gradient(circle at 50% 30%, #34353b, #111216 72%); box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255,255,255,.18); }
+.rig-hw .lp-ring .lp-ln { inset: 16%; background: radial-gradient(circle, #050506 0 46%, color-mix(in oklab, var(--lampc) 18%, #0d0d10) 50% 82%, #050506 88%); }
+.rig-hw .on .lp-ring .lp-ln { background: radial-gradient(circle, #060607 0 44%, color-mix(in oklab, var(--lampc) 40%, white) 52%, var(--lampc) 66%, color-mix(in oklab, var(--lampc) 50%, black) 84%, #050506 90%); box-shadow: 0 0 4px var(--lampc); }
+.rig-hw .lp-ring .lp-hc { display: none; }
+/* a hex lamp (Carbon) */
+.rig-hw .lp-hex { width: 20px; height: 22px; }
+.rig-hw .lp-hex > i:not(.lp-bl) { border-radius: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.rig-hw .lp-hex .lp-bz { background: linear-gradient(180deg, #4a4b52, #17181c); }
+.rig-hw .lp-hex .lp-ln { inset: 12%; }
+/* a slit of light (Warp, Ferro) */
+.rig-hw .lp-slit { width: 32px; height: 7px; margin: 8px 0 9px; }
+.rig-hw .lp-slit > i { border-radius: 4px; }
+.rig-hw .lp-slit .lp-bz { background: linear-gradient(180deg, #050506, #1c1d22); box-shadow: 0 1px 0 rgba(255,255,255,.12), inset 0 1px 2px #000; }
+.rig-hw .lp-slit .lp-ln { inset: 2px 3px; background: color-mix(in oklab, var(--lampc) 14%, #08080a); box-shadow: none; }
+.rig-hw .on .lp-slit .lp-ln { background: linear-gradient(90deg, color-mix(in oklab, var(--lampc) 60%, black), var(--lampc) 18%, #ffffff 50%, var(--lampc) 82%, color-mix(in oklab, var(--lampc) 60%, black)); box-shadow: 0 0 4px var(--lampc); }
+.rig-hw .lp-slit .lp-hc { inset: 1px 30%; border-radius: 4px; }
+.rig-hw .lp-slit .lp-sp { display: none; }
+.rig-hw .lp-slit .lp-bl { inset: -500% -70%; border-radius: 50%; }
+/* the magic eye (Valve): its shadow closes as you play */
+.rig-hw .lp-eye { --eye: 80deg; width: 30px; height: 30px; border-radius: 50%; background: var(--chr); box-shadow: 0 2px 3px rgba(0,0,0,.6); }
+.rig-hw .lp-eye::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: radial-gradient(circle, #050505 0 24%, transparent 25%), #0b120e; box-shadow: inset 0 0 4px #000; }
+.rig-hw .on .lp-eye::before { background: radial-gradient(circle, #0a0a0a 0 23%, rgba(0,0,0,.4) 24% 30%, transparent 31% 78%, rgba(0,0,0,.55) 100%), conic-gradient(from calc(var(--eye) / -2), #04100a 0 var(--eye), color-mix(in oklab, var(--lampc) 70%, white) 0 calc(var(--eye) + 8deg), var(--lampc) 0 calc(360deg - 8deg), color-mix(in oklab, var(--lampc) 70%, white) 0); box-shadow: inset 0 0 4px #000, 0 0 10px color-mix(in oklab, var(--lampc) 55%, transparent); }
+.rig-hw .on .lp-eye::after { content: ''; position: absolute; inset: -90%; border-radius: 50%; background: radial-gradient(circle, color-mix(in oklab, var(--lampc) 28%, transparent), transparent 60%); mix-blend-mode: screen; pointer-events: none; }
+.rig-hw .lp-vu { width: 74px; height: 44px; border-radius: 3px; background: #15130f; box-shadow: 0 0 0 2px #0b0b0c, 0 0 0 3px rgba(255,255,255,.18), inset 0 2px 6px rgba(0,0,0,.8); overflow: hidden; }
+.rig-hw .lp-vu svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rig-hw .lp-vu .vf { fill: #2a2418; } .rig-hw .on .lp-vu .vf { fill: url(#vu-lit); }
+.rig-hw .lp-vu .sc { fill: none; stroke: #1b140a; stroke-width: 1; } .rig-hw .lp-vu .scr { fill: none; stroke: #b3261e; stroke-width: 1.6; }
+.rig-hw .lp-vu text { font: 700 6px var(--font-mono); fill: #1b140a; }
+.rig-hw .lp-vu .nd { stroke: #111; stroke-width: 1.1; stroke-linecap: round; }
+
+/* pedal footswitches */
+.rig-hw .fs { position: relative; border: 0; padding: 0; background: none; cursor: pointer; flex: none; display: block; }
+.rig-hw .fs > i { position: absolute; display: block; pointer-events: none; }
+.rig-hw .fs-3pdt { width: 40px; height: 40px; }
+.rig-hw .fs-3pdt .nut { inset: 0; background: var(--chr); clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%); }
+.rig-hw .fs-3pdt .cap { inset: 7px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffffff, #c9ced3 40%, #7c838a 90%); box-shadow: 0 2px 3px rgba(0,0,0,.6), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 0 1px rgba(0,0,0,.4); transition: transform .08s; }
+.rig-hw .fs-3pdt:active .cap { transform: scale(.92); }
+.rig-hw .fs-ring { width: 38px; height: 38px; border-radius: 50%; background: radial-gradient(circle at 45% 40%, #2c2d32, #0d0d10); box-shadow: 0 0 0 3px #1a1b1f, 0 0 0 4px rgba(255,255,255,.1), 0 3px 6px rgba(0,0,0,.6); }
+.rig-hw .on .fs-ring { box-shadow: 0 0 0 3px color-mix(in oklab, var(--fin) 60%, white), 0 0 12px 2px var(--fin), 0 0 0 4px rgba(255,255,255,.12), 0 3px 6px rgba(0,0,0,.6); }
+.rig-hw .fs-ring:active { transform: scale(.95); }
+.rig-hw .fs-pad { position: absolute !important; left: 6px; right: 6px; bottom: 6px; top: 46%; border-radius: 6px 6px 12px 12px; background: repeating-linear-gradient(180deg, #252528 0 3px, #101012 3px 6px); box-shadow: inset 0 2px 0 rgba(255,255,255,.08), 0 -2px 0 rgba(0,0,0,.45), 0 2px 3px rgba(0,0,0,.5); display: flex !important; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 12px; }
+.rig-hw .fs-pad:active { transform: translateY(1px); }
+.rig-hw .fs-pad .strip { position: static; padding: 3px 10px; border-radius: 2px; background: #0b0b0c; color: #f4f4f2; font: 700 11px/1 'Barlow Semi Condensed', sans-serif; letter-spacing: .1em; text-transform: uppercase; box-shadow: 0 1px 0 rgba(255,255,255,.08); }
+.rig-hw .fs-pad .strip small { display: block; margin-top: 2px; font-size: 7.5px; font-weight: 500; letter-spacing: .14em; opacity: .7; text-align: center; }
+
+/* the pedal */
+.rig-hw .pedal { flex: none; width: 154px; }
+.rig-hw .pedal.new .pface { height: 254px; }
+.rig-hw .k-hammer.pedal { width: 180px; }
+.rig-hw .pknobs .cc { min-width: 0; gap: 0; }
+.rig-hw .pknobs .cc .lb { order: 2; margin-top: 1px; }
+.rig-hw .pface { position: relative; height: 226px; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 10px 14px; border-radius: 10px; overflow: hidden; isolation: isolate; background: #222; box-shadow: 0 16px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.55); }
+:root[data-look="daylight"] .rig-hw .pface { box-shadow: 0 14px 22px rgba(50,35,20,.26), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 0 rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.55); }
+.rig-hw .pface > * { position: relative; z-index: 4; }
+.rig-hw .pplate { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; padding: 6px 2px 5px; border-radius: 4px; }
+.rig-hw .pknobs { display: flex; justify-content: center; gap: 0; }
+.rig-hw .pknobs .cc { min-width: 40px; }
+.rig-hw .pknobs .cc.wide { min-width: 46px; }
+.rig-hw .pname { font: 700 12px/1.1 var(--kit-font); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); text-align: center; white-space: nowrap; }
+.rig-hw .pface .fs { margin-top: auto; }
+.rig-hw .pface .gz { flex: 1 1 auto; width: 100%; min-height: 40px; padding: 0; }
+.rig-hw .pedal .pled { display: flex; align-items: center; gap: 5px; }
+
+/* the cabinet (on the stage) */
+.rig-hw .cab { flex: 0 0 196px; display: flex; }
+.rig-hw .cab .cabinet { flex: 1; display: flex; }
+.rig-hw .cab .face { flex: 1; }
+.rig-hw .cab .gz { flex: 1 1 auto; min-height: 140px; justify-content: space-around; }
+.rig-hw .cab .cplate { position: relative; z-index: 4; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 8px; padding: 8px 10px; font-size: 11px; color: var(--ink); align-items: center; }
+.rig-hw .cab .cplate .lb { grid-column: 1; } .rig-hw .cab .cplate b { grid-column: 1; font: 600 11px/1.25 var(--kit-font); letter-spacing: .04em; overflow-wrap: anywhere; } .rig-hw .cab .cplate small { grid-column: 1; font-size: 9.5px; opacity: .78; }
+.rig-hw .cab .cplate .cc { grid-column: 2; grid-row: 1 / 4; min-width: 0; }
+.rig-hw .spk { width: 64px; height: 64px; border-radius: 50%; box-shadow: inset 0 0 0 8px rgba(0,0,0,.2), inset 0 0 0 20px rgba(0,0,0,.09), inset 0 0 12px rgba(0,0,0,.3); }
+
+/* ---------- the classic kits ---------- */
+.rig-hw .k-brit { --ink:#1b1306; --kit-font:'Oswald', sans-serif; }
+.rig-hw .k-brit .cabinet { background: var(--tx-grain), #141316; }
+.rig-hw .k-brit .face { border: 2px solid #ece6d6; }
+.rig-hw .k-brit .gz { order: -1; background: var(--tx-basket); background-size: 12px 12px; box-shadow: inset 0 -3px 4px rgba(0,0,0,.45); }
+.rig-hw .k-brit .ui, .rig-hw .k-brit .pplate, .rig-hw .k-brit.cab .cplate { background: var(--tx-brushed), linear-gradient(180deg, var(--m-hi) 0%, var(--m-mid) 40%, var(--m-lo) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 0 0 3px color-mix(in oklab, var(--m-lo) 70%, transparent), inset 0 0 0 4px rgba(0,0,0,.6); }
+.rig-hw .k-brit .logo { font: 400 46px/1 'Yellowtail', cursive; color: #f6f2e7; text-shadow: 0 2px 0 rgba(0,0,0,.65), 0 0 1px #fff; padding: 0 6px 4px; }
+.rig-hw .k-brit .sub { color: var(--m-hi); }
+.rig-hw .k-brit .pface { background: var(--tx-grain), linear-gradient(180deg, #232226, #121114); }
+.rig-hw .k-brit .pname { color: var(--m-hi); font-weight: 600; }
+
+.rig-hw .k-black { --ink:#f2f1ec; }
+.rig-hw .k-black .cabinet { background: var(--tx-grain), #18171a; }
+.rig-hw .k-black .ui, .rig-hw .k-black .pplate, .rig-hw .k-black.cab .cplate { background: linear-gradient(180deg, #2b2b30 0, #0f0f11 5px, #060607 100%); box-shadow: inset 0 3px 0 var(--m-hi), inset 0 4px 0 var(--m-lo); }
+.rig-hw .k-black .ui { padding-top: 15px; }
+.rig-hw .k-black .gz { background: linear-gradient(180deg, rgba(0,0,0,.22), transparent 30%, transparent 72%, rgba(0,0,0,.3)), var(--tx-sparkle), var(--tx-silver); background-size: auto, 140px 140px, 6px 6px; box-shadow: inset 0 3px 5px rgba(0,0,0,.45); }
+.rig-hw .k-black .logo { font: 400 48px/1.1 'Yellowtail', cursive; padding: 0 10px 6px 4px; background: linear-gradient(180deg, #ffffff 0%, #d3d7dc 42%, #6f767e 52%, #eef0f2 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 1px #000) drop-shadow(0 1px 0 #111) drop-shadow(0 2px 3px rgba(0,0,0,.7)); }
+.rig-hw .k-black .sub { color: #1d1f22; opacity: .85; }
+.rig-hw .k-black .pface { background: linear-gradient(180deg, #1d1d20, #09090a); }
+
+.rig-hw .k-tweed { --ink:#1d1509; }
+.rig-hw .k-tweed .cabinet { background: linear-gradient(180deg, rgba(150,95,25,.18), rgba(80,45,10,.38)), var(--tx-tweed); background-size: auto, 14px 14px; }
+.rig-hw .k-tweed .ui, .rig-hw .k-tweed .pplate, .rig-hw .k-tweed.cab .cplate { background: var(--tx-brushed), linear-gradient(180deg, #f6f8fa, #bfc4ca 38%, #e6e9ec 60%, #8f959c); box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(0,0,0,.35); }
+.rig-hw .k-tweed .gz { background: var(--tx-oxblood); background-size: 6px 10px; box-shadow: inset 0 3px 5px rgba(0,0,0,.5); }
+.rig-hw .k-tweed .logo { font: 400 42px/1.1 'Yellowtail', cursive; color: color-mix(in oklab, var(--fin) 45%, #f6ead0); text-shadow: 0 1px 0 #2a0c08, 0 2px 3px rgba(0,0,0,.6); padding: 0 6px 4px; }
+.rig-hw .k-tweed .sub { color: #e7d6b0; }
+.rig-hw .k-tweed .pface { background: linear-gradient(180deg, rgba(150,95,25,.2), rgba(80,45,10,.4)), var(--tx-tweed); background-size: auto, 14px 14px; }
+
+.rig-hw .k-boost { --ink:#1b1007; --kit-font:'Oswald', sans-serif; }
+.rig-hw .k-boost .cabinet { background: var(--tx-grain), #121113; }
+.rig-hw .k-boost .face { border: 2px solid #d8ccb2; }
+.rig-hw .k-boost .ui, .rig-hw .k-boost .pplate, .rig-hw .k-boost.cab .cplate { background: var(--tx-brushed), linear-gradient(180deg, var(--m-hi) 0%, var(--m-mid) 46%, var(--m-lo) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 0 rgba(0,0,0,.4); }
+.rig-hw .k-boost .gz { background: var(--tx-diamond); background-size: 18px 18px; box-shadow: inset 0 3px 5px rgba(0,0,0,.5); }
+.rig-hw .k-boost .logo { font: 800 26px/1 'Big Shoulders Display', sans-serif; letter-spacing: .2em; color: #efe6d2; padding: 6px 16px 6px 20px; background: linear-gradient(180deg, #1b191c, #0b0a0c); box-shadow: 0 0 0 1px #c9b58a, 0 3px 4px rgba(0,0,0,.6); clip-path: polygon(7% 0, 93% 0, 100% 100%, 0 100%); }
+.rig-hw .k-boost .sub { color: #e8dcc0; }
+.rig-hw .k-boost .pface { background: var(--tx-brushed), linear-gradient(180deg, var(--m-hi), var(--m-mid) 50%, var(--m-lo)); }
+.rig-hw .k-boost .pplate { background: none; box-shadow: none; }
+
+.rig-hw .k-plate { --ink:#eef0f3; }
+.rig-hw .k-plate .cabinet { background: var(--tx-grain), #0f0f11; }
+.rig-hw .k-plate .gz { order: -1; background: var(--tx-perf); background-size: 8px 8px; box-shadow: inset 0 -3px 5px rgba(0,0,0,.5); }
+.rig-hw .k-plate .ui { padding: 16px 20px; background: var(--tx-tread), var(--tx-brushed), linear-gradient(180deg, #e4e8eb, #9aa1a8); background-size: 22px 22px, auto, auto; }
+.rig-hw .k-plate .ui::before { content: ''; position: absolute; inset: 11px 12px; border-radius: 7px; background: linear-gradient(180deg, #1a1a1d, #0b0b0d); box-shadow: 0 1px 0 rgba(255,255,255,.55), 0 -1px 0 rgba(0,0,0,.35), inset 0 1px 3px rgba(0,0,0,.9); z-index: -1; }
+.rig-hw .k-plate .logo { font: 900 italic 40px/1 'Big Shoulders Display', sans-serif; letter-spacing: .04em; background: linear-gradient(180deg, #ffffff, #c7ccd1 45%, #5f666d 55%, #e9ecef); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 1px #000); padding-right: 6px; }
+.rig-hw .k-plate .sub { color: #c7ccd1; }
+.rig-hw .k-plate .pface { background: var(--tx-tread), linear-gradient(180deg, #e4e8eb, #8d949b); background-size: 22px 22px, auto; }
+.rig-hw .k-plate .pplate, .rig-hw .k-plate.cab .cplate { background: linear-gradient(180deg, #1a1a1d, #0b0b0d); box-shadow: 0 1px 0 rgba(255,255,255,.55), inset 0 1px 3px rgba(0,0,0,.9); }
+.rig-hw .k-plate .pname { color: #16181b; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
+
+.rig-hw .k-wood { --ink:#efe3c8; }
+.rig-hw .k-wood .cabinet { padding: 12px; border-radius: 6px; background: var(--tx-wood); background-size: 480px 220px; box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,225,180,.28), inset 0 -3px 6px rgba(0,0,0,.4); }
+.rig-hw .k-wood .face { border-radius: 3px; box-shadow: 0 0 0 2px rgba(0,0,0,.45); }
+.rig-hw .k-wood .gz { order: -1; background: var(--tx-wicker); background-size: 14px 14px; box-shadow: inset 0 -3px 6px rgba(0,0,0,.5), inset 0 3px 6px rgba(0,0,0,.4); }
+.rig-hw .k-wood .ui, .rig-hw .k-wood .pplate, .rig-hw .k-wood.cab .cplate { background: linear-gradient(180deg, #1e1d20, #0b0b0c); box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+.rig-hw .k-wood .logo { font: 800 20px/1 'Big Shoulders Display', sans-serif; letter-spacing: .26em; color: #2a1c08; padding: 9px 18px 9px 22px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, color-mix(in oklab, var(--fin) 40%, white), var(--fin) 45%, var(--m-lo)); box-shadow: 0 2px 4px rgba(0,0,0,.6), inset 0 0 0 1.5px rgba(0,0,0,.35); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+.rig-hw .k-wood .sub { color: #f1e2c2; text-shadow: 0 1px 2px #000; }
+.rig-hw .k-wood .pface { background: linear-gradient(90deg, transparent 0 12px, #121113 12px calc(100% - 12px), transparent 0), var(--tx-wood); background-size: auto, 480px 220px; }
+.rig-hw .k-wood .eq { display: flex; gap: 2px; padding: 0 6px; border-left: 1px solid rgba(239,227,200,.18); border-right: 1px solid rgba(239,227,200,.18); }
+
+.rig-hw .k-gain { --ink:#ebebee; --kit-font:'Oswald', sans-serif; }
+.rig-hw .k-gain .cabinet { background: var(--tx-grain), #0e0e10; }
+.rig-hw .k-gain .gz { order: -1; background: var(--tx-cloth); background-size: 3px 3px; box-shadow: inset 0 -3px 5px rgba(0,0,0,.6); }
+.rig-hw .k-gain .ui, .rig-hw .k-gain .pplate, .rig-hw .k-gain.cab .cplate { background: var(--tx-brushed-d), linear-gradient(180deg, #2c2d31, #141417 60%, #0b0b0d); box-shadow: inset 0 3px 0 var(--fin), inset 0 4px 0 rgba(0,0,0,.6), inset 0 5px 0 rgba(255,255,255,.08); }
+.rig-hw .k-gain .ui { padding-top: 16px; }
+.rig-hw .k-gain .logo { font: 900 italic 44px/1 'Big Shoulders Display', sans-serif; letter-spacing: .02em; color: #f4f4f6; text-shadow: 3px 3px 0 var(--fin), 0 4px 6px rgba(0,0,0,.6); transform: skewX(-8deg); padding: 0 8px 0 2px; }
+.rig-hw .k-gain .sub { color: #c9c9ce; }
+.rig-hw .k-gain .pface { background: var(--tx-brushed-d), linear-gradient(180deg, #2a2b2f, #0c0c0e); }
+.rig-hw .k-gain .pface::before { content: ''; position: absolute; left: 0; right: 0; top: 112px; height: 4px; background: var(--fin); z-index: 1; box-shadow: 0 0 8px color-mix(in oklab, var(--fin) 50%, transparent); }
+
+.rig-hw .k-compact { --ink:var(--fin-ink); }
+.rig-hw .k-compact .cabinet { padding: 7px; border-radius: 13px; background: var(--tx-grain-d), linear-gradient(180deg, var(--m-hi), var(--fin) 28%, var(--m-lo)); }
+.rig-hw .k-compact .face { border-radius: 8px; }
+.rig-hw .k-compact .ui, .rig-hw .k-compact.cab .cplate { background: var(--tx-grain-d), linear-gradient(180deg, color-mix(in oklab, var(--fin) 82%, white), var(--fin)); }
+.rig-hw .k-compact .gz { background: var(--tx-square); background-size: 6px 6px; box-shadow: inset 0 3px 5px rgba(0,0,0,.6); }
+.rig-hw .k-compact .logo { font: 700 13px/1 'Barlow Semi Condensed', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #f2f2f0; padding: 5px 10px; background: #0b0b0c; border-radius: 2px; box-shadow: 0 1px 0 rgba(255,255,255,.1); }
+.rig-hw .k-compact .sub { color: #d9d9d9; }
+.rig-hw .k-compact .pedal, .rig-hw .k-compact.pedal { width: 128px; }
+.rig-hw .k-compact .pface { padding: 10px 8px; background: var(--tx-grain-d), linear-gradient(180deg, color-mix(in oklab, var(--fin) 80%, white), var(--fin) 40%, var(--m-lo)); }
+.rig-hw .k-compact .pled .lb { font-size: 7px; }
+
+.rig-hw .k-hammer { --ink:var(--fin-ink); --kit-font:'Stardos Stencil', 'Big Shoulders Display', sans-serif; }
+.rig-hw .k-hammer .cabinet { padding: 10px; border-radius: 6px; background: #6d7278; box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12); }
+.rig-hw .k-hammer .face { border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.12); }
+.rig-hw .k-hammer .ui, .rig-hw .k-hammer.cab .cplate { background: radial-gradient(circle at 9px 9px, #d5d9dd 0 1.4px, #4a4e53 2px, rgba(0,0,0,.4) 2.8px, transparent 3.4px), radial-gradient(circle at calc(100% - 9px) 9px, #d5d9dd 0 1.4px, #4a4e53 2px, rgba(0,0,0,.4) 2.8px, transparent 3.4px); }
+.rig-hw .k-hammer .gz { background: radial-gradient(ellipse 40% 60% at 22% 35%, rgba(140,70,25,.55), transparent 70%), radial-gradient(ellipse 30% 70% at 78% 70%, rgba(120,58,20,.5), transparent 70%), var(--tx-perf); background-size: auto, auto, 8px 8px; box-shadow: inset 0 3px 6px rgba(0,0,0,.6); }
+.rig-hw .k-hammer .logo { font: 700 34px/1 'Stardos Stencil', sans-serif; letter-spacing: .08em; color: #ece6d6; text-shadow: 0 1px 0 rgba(0,0,0,.6); opacity: .92; }
+.rig-hw .k-hammer .sub { color: #e2dccd; font-family: 'Stardos Stencil', sans-serif; }
+.rig-hw .k-hammer .pface { background: #6d7278; }
+.rig-hw .k-hammer .pplate { background: none; }
+.rig-hw .k-hammer .pname { font-size: 19px; font-weight: 700; letter-spacing: .1em; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+.rig-hw .k-hammer .lb { font-size: 9.5px; letter-spacing: .1em; font-weight: 700; text-shadow: 0 1px 1px rgba(0,0,0,.35); }
+.rig-hw .k-rack { --ink:var(--fin-ink); }
+.rig-hw .k-rack .cabinet { padding: 0; background: none; box-shadow: none !important; }
+.rig-hw .k-rack .face { padding: 0 40px; border-radius: 3px; background: var(--tx-brushed), var(--tx-brushed-d), linear-gradient(180deg, var(--m-hi), var(--m-mid) 40%, var(--m-lo)); box-shadow: 0 16px 30px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.4), 0 0 0 1px rgba(0,0,0,.6); overflow: visible; }
+.rig-hw .k-rack .face::before, .rig-hw .k-rack .face::after { content: ''; position: absolute; top: 12px; bottom: 12px; width: 9px; border-radius: 5px; background: #0d0d0f; box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255,255,255,.3); }
+.rig-hw .k-rack .face::before { left: 12px; } .rig-hw .k-rack .face::after { right: 12px; }
+.rig-hw .k-rack .ear { position: absolute; top: 10px; bottom: 10px; width: 14px; border-radius: 8px; border: 5px solid; border-color: #d7dbdf #8b9197 #6e747a #c3c8cd; background: transparent; z-index: 5; box-shadow: 0 3px 4px rgba(0,0,0,.5); }
+.rig-hw .k-rack .ear.l { left: 24px; border-left-width: 6px; } .rig-hw .k-rack .ear.r { right: 24px; }
+.rig-hw .k-rack .ui { padding: 12px 18px 8px; }
+.rig-hw .k-rack .gz { min-height: 38px; padding: 4px 18px 12px; justify-content: space-between; }
+.rig-hw .k-rack .vents { flex: 1; height: 20px; max-width: 280px; background: repeating-linear-gradient(90deg, rgba(0,0,0,.7) 0 3px, transparent 3px 9px); border-radius: 2px; box-shadow: 0 1px 0 rgba(255,255,255,.25); -webkit-mask: linear-gradient(180deg, #000, #000); mask: linear-gradient(180deg, #000, #000); }
+.rig-hw .k-rack .logo { font: 700 13px/1 var(--font-display, 'Lexend Giga'), sans-serif; font-family: 'Lexend Giga', sans-serif; letter-spacing: .3em; text-transform: uppercase; color: var(--fin-ink); }
+.rig-hw .k-rack .sub { font-family: 'Geist Mono', monospace; letter-spacing: .06em; text-transform: none; color: var(--fin-ink); }
+.rig-hw .k-rack .pface { background: var(--tx-brushed), var(--tx-brushed-d), linear-gradient(180deg, var(--m-hi), var(--m-mid) 40%, var(--m-lo)); }
+.rig-hw .k-rack .pname { font-family: 'Lexend Giga', sans-serif; font-size: 9px; letter-spacing: .26em; }
+
+/* the classic cabinets' grilles on the stage */
+.rig-hw .cab.k-brit .gz, .rig-hw .cab.k-plate .gz, .rig-hw .cab.k-wood .gz, .rig-hw .cab.k-gain .gz { order: 0; }
+
+/* ---------- the new kits: the energy behind a cut plate, a mesh between ---------- */
+.rig-hw .hw.new .face { background: #040306; }
+.rig-hw .hw.new .pface { background: #040306; }
+.rig-hw .en { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+.rig-hw .mesh { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.rig-hw .plw { position: absolute; inset: 0; z-index: 2; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,.92)) drop-shadow(0 0 1px rgba(0,0,0,.8)); }
+.rig-hw .pl { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.rig-hw .dec { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
+.rig-hw .hw.new .ui, .rig-hw .hw.new .gz, .rig-hw .hw.new .cplate, .rig-hw .hw.new .pplate { background: none; }
+.rig-hw .hw.new .logo { font: 600 15px/1 'Lexend Giga', sans-serif; letter-spacing: .34em; color: #ece9f1; text-shadow: 0 1px 0 rgba(255,255,255,.08), 0 -1px 0 rgba(0,0,0,.9); }
+.rig-hw .hw.new .sub { font-family: 'Geist Mono', monospace; letter-spacing: .04em; text-transform: none; font-size: 10px; color: #b9b4c2; }
+.rig-hw .hw.new .lb { font-family: 'Lexend', sans-serif; font-weight: 600; font-size: 8px; letter-spacing: .16em; color: #d9d5e0; }
+.rig-hw .k-jet .lb, .rig-hw .k-jet .st, .rig-hw .k-jet .sub { text-shadow: 0 1px 1px rgba(0,0,0,.75); } .rig-hw .k-jet .st { color: #eef0f3; }
+.rig-hw .hw.new .st { font-family: 'Geist Mono', monospace; font-size: 7.5px; letter-spacing: .02em; text-transform: none; color: #a9a4b2; }
+.rig-hw .hw.new .pname { font: 600 9px/1 'Lexend Giga', sans-serif; letter-spacing: .3em; color: #ece9f1; }
+.rig-hw .hw.new .pwr { border-left-color: rgba(255,255,255,.1); }
+.rig-hw .hw.new .cabinet { background: linear-gradient(180deg, #2a2b31, #131418); box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(255,255,255,.04); }
+.rig-hw .hw.new .face { border-radius: 6px; box-shadow: 0 0 0 1px rgba(0,0,0,.8); }
+
+.rig-hw .mat-gunmetal { background: var(--tx-brushed), linear-gradient(180deg, #3d3f46 0%, #25272c 42%, #1b1c20 100%); }
+.rig-hw .mat-satin { background: var(--tx-grain), linear-gradient(180deg, #1f1f23, #131316); }
+.rig-hw .mat-graphite { background: repeating-linear-gradient(45deg, rgba(255,255,255,.035) 0 1px, transparent 1px 4px), repeating-linear-gradient(-45deg, rgba(0,0,0,.25) 0 1px, transparent 1px 4px), linear-gradient(180deg, #33343a, #1d1e22); }
+.rig-hw .mat-piano { background: linear-gradient(115deg, transparent 0 38%, rgba(255,255,255,.07) 44%, transparent 52%), linear-gradient(180deg, #121216, #050507); }
+.rig-hw .mat-glass { background: linear-gradient(115deg, transparent 0 30%, rgba(255,255,255,.05) 38%, transparent 48%), linear-gradient(180deg, #121519, #090a0d); }
+.rig-hw .mat-titanium { background: var(--tx-brushed), linear-gradient(90deg, rgba(90,110,170,.0) 0%, rgba(90,110,170,.22) 55%, rgba(200,150,90,.18) 80%, rgba(90,110,170,.1)), linear-gradient(180deg, #6c7079, #4a4e56 45%, #3a3d44); }
+.rig-hw .mat-carbon { background: linear-gradient(180deg, rgba(255,255,255,.07), transparent 40%, rgba(0,0,0,.25)), var(--tx-carbon); background-size: auto, 12px 12px; }
+.rig-hw .mat-crinkle { background: var(--tx-crinkle), #1b1b1d; background-size: 140px 140px, auto; background-blend-mode: multiply, normal; }
+.rig-hw .mat-blackchrome { background: linear-gradient(180deg, #55585f 0%, #17181b 30%, #2c2e33 52%, #0b0b0d 70%, #202226 100%); }
+.rig-hw .hw.new .cabinet.mat-carbon, .rig-hw .hw.new .cabinet.mat-titanium, .rig-hw .hw.new .cabinet.mat-blackchrome, .rig-hw .hw.new .cabinet.mat-crinkle { }
+
+.rig-hw .k-reactor .cabinet { background: linear-gradient(180deg, #34363d, #17181c); }
+.rig-hw .k-tesla .cabinet { background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 1px, transparent 1px 4px), linear-gradient(180deg, #2c2d32, #141518); }
+.rig-hw .k-warp .cabinet { background: linear-gradient(180deg, #1a1a1f, #050506); box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px #9aa0a6, inset 0 0 0 2px #000, inset 0 2px 0 rgba(255,255,255,.3); }
+.rig-hw .k-circuit .cabinet { background: linear-gradient(180deg, #141619, #08090b); box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px color-mix(in oklab, var(--fin) 45%, transparent), inset 0 1px 0 rgba(255,255,255,.12); }
+.rig-hw .k-jet .cabinet { background: var(--tx-brushed), linear-gradient(180deg, #5d626b, #33363c); }
+.rig-hw .k-carbon .cabinet { background: linear-gradient(180deg, rgba(255,255,255,.08), transparent 40%, rgba(0,0,0,.3)), var(--tx-carbon); background-size: auto, 12px 12px; }
+.rig-hw .k-valve .cabinet { background: var(--tx-crinkle), #19191b; background-size: 140px 140px, auto; background-blend-mode: multiply, normal; box-shadow: 0 16px 30px rgba(0,0,0,.55), inset 0 0 0 1px #000, inset 0 0 0 3px rgba(200,205,210,.25); }
+.rig-hw .k-ferro .cabinet { background: linear-gradient(180deg, #5b5e65 0%, #18191c 32%, #2c2e33 55%, #0b0b0d 100%); }
+
+/* "CRBN Rig" on every head: CRBN in small capitals beside a script "Rig" */
+.rig-hw .logo .cr { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .68em; letter-spacing: .05em; vertical-align: baseline; margin-right: .22em; }
+.rig-hw .k-black .logo .cr { font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 700; }
+/* v3: the owner's notes on version 2 (D-RIG-010) */
+.rig-hw .hw.amp .ui { align-items: flex-start; }
+.rig-hw .hw.amp .knobs, .rig-hw .hw.amp .tgs, .rig-hw .hw.amp .pwr, .rig-hw .hw.amp .eq { align-items: flex-start; }
+.rig-hw .hw.amp .ui .cc { display: grid; grid-template-rows: 13px minmax(52px, auto) 11px; justify-items: center; align-items: center; row-gap: 3px; }
+.rig-hw .hw.amp .ui .cc > .lb { align-self: end; }
+.rig-hw .hw.amp .ui .cc > .st { align-self: start; }
+.rig-hw .kw.tw { --s: 36px; }
+.rig-hw .hw.amp .knobs { gap: 2px 0; }
+.rig-hw .k-plate.amp .ui { padding-left: 16px; padding-right: 16px; }
+.rig-hw .hw.amp .ui .cc.num { min-width: 57px; }
+.rig-hw .k-tweed.amp .ui { gap: 6px 4px; padding-left: 8px; padding-right: 8px; }
+.rig-hw .k-tweed.amp .ui .cc { row-gap: 7px; }
+.rig-hw .k-tweed.amp .knobs { gap: 0; }
+.rig-hw .k-hammer.amp .ui { gap: 6px 4px; padding-left: 8px; padding-right: 8px; }
+.rig-hw .k-hammer.amp .knobs { gap: 0; }
+.rig-hw .fs-3pdt { width: 44px; height: 44px; }
+.rig-hw .fs-3pdt .nut, .rig-hw .fs-3pdt .cap { inset: 0; background: none; clip-path: none; border-radius: 0; box-shadow: none; }
+.rig-hw .fs-3pdt .nut { filter: drop-shadow(0 2px 1.5px rgba(0,0,0,.65)) drop-shadow(0 6px 7px rgba(0,0,0,.35)); }
+.rig-hw .fs-3pdt svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.rig-hw .fs-3pdt .cap { transition: transform .08s; transform-origin: 50% 50%; }
+.rig-hw .fs-3pdt .cap svg { transform: scale(1.1); }
+.rig-hw .fs-3pdt:active .cap { transform: scale(.94) translateY(.5px); }
+.rig-hw .k-hammer .lb, .rig-hw .k-hammer .st, .rig-hw .k-hammer .pname, .rig-hw .k-hammer .sub, .rig-hw .k-hammer .logo { color: var(--ink); text-shadow: var(--halo, 0 1px 1px rgba(0,0,0,.35)); }
+.rig-hw .k-hammer .logo { opacity: 1; }
+.rig-hw .k-hammer .gz { background: radial-gradient(ellipse 40% 60% at 22% 35%, rgba(140,70,25,.4), transparent 70%), var(--tx-perf); background-size: auto, 8px 8px; box-shadow: inset 0 3px 6px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.4); border-radius: 2px; }
+
+.rig-hw .kn .art { background: center / contain no-repeat; border-radius: 0; }
+.rig-hw .sw-art { width: 28px; height: 40px; }
+.rig-hw .sw-art > i { inset: 0; background-repeat: no-repeat; background-size: 200% 100%; background-position: 0 0; }
+.rig-hw .sw-art[aria-pressed="true"] > i { background-position: 100% 0; }
+.rig-hw .artbox { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-sm); box-shadow: inset 0 0 0 1px var(--line-2); }
+.rig-hw .artbox .sec { font-size: 12.5px; color: var(--text); font-weight: 600; }
+.rig-hw .art-tpl { display: grid; grid-template-columns: auto auto 1fr; gap: 6px; align-items: center; }
+.rig-hw .art-tpl select { grid-column: 1 / -1; min-width: 0; }
+
+.rig-hw #art-clear[disabled] { opacity: .45; cursor: default; }
+
+/* v4: the owner's notes on version 3 (D-RIG-011) */
+/* the state words move up together by half the gap under the amp's tallest switch, so they stay on one line;
+   --ch (that switch's drawn height) is set on each amp from its kit */
+.rig-hw .hw.amp .ui .cc { --rg: 3px; }
+.rig-hw .k-tweed.amp .ui .cc { --rg: 7px; }
+.rig-hw .hw.amp .ui .cc > .st { margin-top: calc((var(--ch, 40px) - 52px) / 4 - var(--rg) / 2); }
+/* Salvage: the name on a riveted plate cut from another scrap, over expanded metal and a warm glow */
+.rig-hw .k-hammer { --tx-wear: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'140'%20height%3D'70'%3E%3Cfilter%20id%3D'n'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeTurbulence%20type%3D'fractalNoise'%20baseFrequency%3D'.09%20.14'%20numOctaves%3D'4'%20seed%3D'11'%20stitchTiles%3D'stitch'%2F%3E%3CfeColorMatrix%20values%3D'0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%20-9%200%200%200%206.5'%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20filter%3D'url(%23n)'%2F%3E%3C%2Fsvg%3E"); }
+.rig-hw .k-hammer .gz { position: relative; overflow: hidden; background: radial-gradient(120% 140% at 60% 120%, #2a1206, #0b0605 60%, #050303); background-size: auto; box-shadow: inset 0 4px 10px rgba(0,0,0,.85), inset 0 0 0 1px rgba(0,0,0,.6); border-radius: 2px; }
+.rig-hw .k-hammer .gz > .salv-glow, .rig-hw .k-hammer .gz > .salv-mesh { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.rig-hw .k-hammer .salv-glow { z-index: 0; opacity: .1; transition: opacity .5s; background: radial-gradient(22% 75% at 58% 72%, rgba(255,200,130,.95), rgba(255,120,40,.55) 40%, transparent 72%), radial-gradient(16% 60% at 79% 62%, rgba(255,170,90,.85), rgba(255,100,30,.35) 45%, transparent 75%), radial-gradient(13% 55% at 39% 68%, rgba(255,150,70,.6), transparent 70%), radial-gradient(70% 120% at 60% 112%, rgba(220,80,20,.5), transparent 70%); }
+.rig-hw .hw.on .salv-glow { opacity: calc(.45 + var(--heat, .6) * .55); filter: brightness(1.2) saturate(1.15); }
+.rig-hw .hw.on .salv-glow::after { content: ''; position: absolute; inset: 0; background: inherit; mix-blend-mode: screen; animation: salv-flick 2.9s ease-in-out infinite; }
+@keyframes salv-flick { 0%, 100% { opacity: .3; } 18% { opacity: .55; } 35% { opacity: .25; } 52% { opacity: .6; } 70% { opacity: .38; } 86% { opacity: .5; } }
+.rig-hw .k-hammer .salv-mesh { z-index: 1; }
+.rig-hw .k-hammer .gz > .logo-box, .rig-hw .k-hammer .gz > .spk { position: relative; z-index: 2; }
+.rig-hw .k-hammer.cab .gz > .spk { z-index: 0; }
+.rig-hw .k-hammer .logo-box { gap: 7px; justify-items: start; filter: drop-shadow(0 3px 2px rgba(0,0,0,.75)) drop-shadow(0 7px 9px rgba(0,0,0,.45)); }
+.rig-hw .k-hammer .salv-plate { position: relative; display: grid; justify-items: start; gap: 5px; padding: 10px 20px 9px 17px; background-color: #6b5a4a; clip-path: polygon(0 7%, 2.5% 0, 97% 3%, 100% 13%, 99.2% 91%, 96% 100%, 3% 97%, .4% 89%); }
+.rig-hw .k-hammer .salv-plate .logo { font: 700 30px/1 'Stardos Stencil', sans-serif; letter-spacing: .06em; color: var(--ink); text-shadow: 0 0 1px var(--ink), 0 0 6px color-mix(in srgb, var(--ink) 32%, transparent); -webkit-mask-image: var(--tx-wear); mask-image: var(--tx-wear); -webkit-mask-size: 140px 70px; mask-size: 140px 70px; }
+.rig-hw .k-hammer .salv-name { position: relative; display: flex; gap: .26em; font: 600 12px/1 'IBM Plex Mono', monospace; text-transform: uppercase; padding-left: 2px; }
+.rig-hw .k-hammer .salv-name b { display: inline-block; font-weight: 600; transform: translateY(var(--y)) rotate(var(--r)); color: rgba(22,15,10,.66); text-shadow: 0 1px 0 rgba(255,255,255,.42), 0 -1px 0 rgba(0,0,0,.45); }
+.rig-hw .k-hammer .salv-name .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rig-hw .k-hammer .salv-plate .rv { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle at 38% 32%, #f2efe8 0 12%, #a49d92 34%, #514a42 70%, #2a2520 100%); box-shadow: 0 1px 1px rgba(0,0,0,.75), 0 0 3px 1px rgba(110,45,12,.45); }
+.rig-hw .k-hammer .salv-plate .rv:nth-of-type(1) { left: 5px; top: 6px; } .rig-hw .k-hammer .salv-plate .rv:nth-of-type(2) { right: 6px; top: 7px; }
+.rig-hw .k-hammer .salv-plate .rv:nth-of-type(3) { left: 6px; bottom: 5px; } .rig-hw .k-hammer .salv-plate .rv:nth-of-type(4) { right: 7px; bottom: 6px; }
+.rig-hw .k-hammer .logo-box .sub { justify-self: start; padding: 3px 8px; font: 700 10px/1.2 'Barlow Semi Condensed', sans-serif; letter-spacing: .14em; color: #f4f2ec; opacity: 1; background: linear-gradient(180deg, #2a2a2d, #111113 55%, #1b1b1e); border-radius: 2px; text-shadow: 0 1px 0 rgba(0,0,0,.8), 0 -1px 0 rgba(255,255,255,.22); box-shadow: 0 1px 2px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12); }
+/* Rack: polished handles on mounting blocks, and vents lit from inside */
+.rig-hw .k-rack .ear { top: 8px; bottom: 8px; width: 20px; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.rig-hw .k-rack .ear.l { left: 22px; border-left-width: 0; } .rig-hw .k-rack .ear.r { right: 22px; }
+.rig-hw .k-rack .ear > i { position: absolute; display: block; pointer-events: none; }
+.rig-hw .k-rack .ear .hd-sh { left: 7px; right: -5px; top: 16px; bottom: 4px; border-radius: 7px; background: rgba(0,0,0,.5); filter: blur(4px); }
+.rig-hw .k-rack .ear .hd-ft { left: 0; right: 0; height: 19px; border-radius: 3px; background: linear-gradient(180deg, #f3f5f7, #b1b7bd 40%, #737980 58%, #c9ced3); box-shadow: 0 1px 2px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.75), inset 0 -1px 0 rgba(0,0,0,.35), inset 1px 0 0 rgba(255,255,255,.3), inset -1px 0 0 rgba(0,0,0,.2); }
+.rig-hw .k-rack .ear .hd-ft.t { top: 0; } .rig-hw .k-rack .ear .hd-ft.b { bottom: 0; }
+.rig-hw .k-rack .ear .hd-ft::before { content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffffff, #b9bfc5 40%, #5f656c 85%); box-shadow: 0 1px 1px rgba(0,0,0,.6), inset 0 -1px 1px rgba(0,0,0,.3); }
+.rig-hw .k-rack .ear .hd-ft::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 1.2px; margin: -.6px 0 0 -2.5px; background: rgba(20,22,25,.75); box-shadow: 0 .5px 0 rgba(255,255,255,.4); transform: rotate(35deg); }
+.rig-hw .k-rack .ear .hd-bar { left: 4px; width: 12px; top: 7px; bottom: 7px; border-radius: 6px / 10px; background: linear-gradient(180deg, rgba(0,0,0,.55), transparent 7%, transparent 93%, rgba(0,0,0,.6)), linear-gradient(90deg, #1d2024 0%, #5d636a 10%, #d4d8dc 21%, #ffffff 27%, #b3b9bf 35%, #6f757c 52%, #878d94 64%, #dfe2e5 75%, #7b8188 86%, #26292d 100%); box-shadow: 0 0 0 .5px rgba(0,0,0,.65), 0 2px 3px rgba(0,0,0,.35); }
+.rig-hw .k-rack .ear .hd-bar::before { content: ''; position: absolute; left: 2px; right: 2px; top: 9%; bottom: 9%; border-radius: 3px; background: linear-gradient(180deg, transparent, rgba(255,255,255,.18) 30%, transparent 46%, rgba(255,255,255,.12) 70%, transparent); mix-blend-mode: screen; }
+.rig-hw .k-rack .vents { position: relative; background: none; box-shadow: 0 1px 0 rgba(255,255,255,.25); -webkit-mask: none; mask: none; }
+.rig-hw .k-rack .vents::before, .rig-hw .k-rack .vents::after { content: ''; position: absolute; inset: 0; border-radius: 2px; -webkit-mask: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 9px); mask: repeating-linear-gradient(90deg, #000 0 3px, transparent 3px 9px); }
+.rig-hw .k-rack .vents::before { background: radial-gradient(55% 170% at 50% 115%, color-mix(in oklab, var(--lampc) 55%, white) 0%, var(--lampc) 24%, color-mix(in oklab, var(--lampc) 38%, #0a0806) 58%, #060504 88%), #060504; filter: brightness(.35); transition: filter .5s; }
+.rig-hw .hw.on.k-rack .vents::before { filter: brightness(calc(.55 + var(--heat, .5) * .7)); }
+.rig-hw .k-rack .vents::after { background: linear-gradient(180deg, rgba(0,0,0,.75), transparent 38%, transparent 80%, rgba(0,0,0,.4)); }
+.rig-hw .hw.on.k-rack .vents { box-shadow: 0 1px 0 rgba(255,255,255,.25), 0 0 16px -6px var(--lampc); }
+
+/* v5: the owner's notes on Salvage (D-RIG-012) */
+.rig-hw .salv-glow[data-glow="valves"] { background: radial-gradient(5.5% 46% at 30% 64%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(5.5% 46% at 44% 62%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(5.5% 46% at 58% 64%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(5.5% 46% at 72% 62%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(55% 110% at 52% 100%, rgba(230,90,20,.42), transparent 72%); }
+.rig-hw .salv-glow[data-glow="furnace"] { background: radial-gradient(34% 95% at 56% 80%, rgba(255,250,225,1), rgba(255,196,90,.92) 20%, rgba(255,112,22,.72) 46%, rgba(170,40,10,.42) 70%, transparent 88%), radial-gradient(80% 140% at 50% 120%, rgba(200,60,10,.5), transparent 70%); }
+.rig-hw .salv-glow[data-glow="neon"] { background: radial-gradient(26% 70% at 44% 64%, rgba(150,225,255,.92), rgba(60,140,255,.45) 45%, transparent 75%), radial-gradient(20% 60% at 72% 58%, rgba(185,130,255,.82), rgba(110,60,255,.36) 45%, transparent 75%), radial-gradient(70% 120% at 55% 112%, rgba(40,90,220,.45), transparent 70%); }
+.rig-hw .salv-glow[data-glow="none"] { display: none; }
+.rig-hw .hw.on .salv-glow[data-glow="furnace"]::after { animation-duration: 4.8s; }
+.rig-hw .hw.on .salv-glow[data-glow="neon"]::after { animation: salv-buzz 2.3s linear infinite; }
+@keyframes salv-buzz { 0%, 100% { opacity: .42; } 47% { opacity: .44; } 48% { opacity: .1; } 49% { opacity: .46; } 50% { opacity: .14; } 51% { opacity: .44; } 88% { opacity: .38; } }
+/* every word on Salvage is stamped into the metal: pressed in, a shadow on its upper wall and light on its lower lip.
+   On light metal the stamp reads dark; on dark metal it shows bright bare steel where the punch broke the paint. */
+.rig-hw .k-hammer .lb, .rig-hw .k-hammer .st, .rig-hw .k-hammer .pname { font-family: 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: .05em; }
+.rig-hw .k-hammer .lb { font-size: 9px; } .rig-hw .k-hammer .st { opacity: 1; font-size: 8.5px; } .rig-hw .k-hammer .pname { font-size: 17px; letter-spacing: .08em; }
+/* the stamp's floor: in shadow under its upper wall, lit toward its lower lip (filled by background-clip, with
+   drop-shadows for the walls, so the shadow sits outside the letter, not over it) */
+.rig-hw .k-hammer .lb[data-ink], .rig-hw .k-hammer .st[data-ink], .rig-hw .k-hammer .pname[data-ink] { -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+.rig-hw .k-hammer .lb[data-ink="dark"], .rig-hw .k-hammer .st[data-ink="dark"], .rig-hw .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(180deg, rgba(8,5,2,.92) 10%, rgba(52,33,20,.74) 85%); filter: drop-shadow(0 1px 0 rgba(255,244,228,.5)) drop-shadow(0 -.5px 0 rgba(0,0,0,.4)); }
+.rig-hw .k-hammer .lb[data-ink="light"], .rig-hw .k-hammer .st[data-ink="light"], .rig-hw .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(104,100,95,.96) 8%, rgba(238,234,226,.96) 72%); filter: drop-shadow(0 -1px 0 rgba(0,0,0,.9)) drop-shadow(0 1px 0 rgba(255,255,255,.2)); }
+.rig-hw .k-hammer .pname[data-ink="dark"] { filter: drop-shadow(0 1.5px 0 rgba(255,244,228,.5)) drop-shadow(0 -1px 0 rgba(0,0,0,.45)); }
+.rig-hw .k-hammer .pname[data-ink="light"] { filter: drop-shadow(0 -1.5px 0 rgba(0,0,0,.9)) drop-shadow(0 -2.5px 1px rgba(0,0,0,.3)) drop-shadow(0 1px 0 rgba(255,255,255,.22)); }
+.rig-hw .k-hammer .salv-plate .logo { font: 700 28px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; -webkit-mask-image: none; mask-image: none; }
+.rig-hw .k-hammer .salv-plate[data-ink] .logo, .rig-hw .k-hammer .salv-plate[data-ink] .salv-name b { -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+.rig-hw .k-hammer .salv-plate[data-ink="dark"] .logo, .rig-hw .k-hammer .salv-plate[data-ink="dark"] .salv-name b { background-image: linear-gradient(180deg, rgba(8,5,2,.92) 10%, rgba(52,33,20,.74) 85%); filter: drop-shadow(0 1.5px 0 rgba(255,244,228,.5)) drop-shadow(0 -1px 0 rgba(0,0,0,.45)); }
+.rig-hw .k-hammer .salv-plate[data-ink="light"] .logo, .rig-hw .k-hammer .salv-plate[data-ink="light"] .salv-name b { background-image: linear-gradient(180deg, rgba(104,100,95,.96) 8%, rgba(238,234,226,.96) 72%); filter: drop-shadow(0 -1.5px 0 rgba(0,0,0,.9)) drop-shadow(0 -2.5px 1px rgba(0,0,0,.3)) drop-shadow(0 1px 0 rgba(255,255,255,.22)); }
+
+/* v6: the owner's notes on Salvage in version 5 (D-RIG-013) */
+/* the opening in the faceplate: the sheet's cut edge (dark above, catching light below), the faceplate's shadow cast
+   down onto the grille set behind it, and a dark frame inside the opening that the grille is bolted to */
+.rig-hw .k-hammer .gz { border: 2px solid; border-color: rgba(0,0,0,.78) rgba(0,0,0,.55) rgba(255,232,206,.3) rgba(0,0,0,.55); box-shadow: 0 -1px 0 rgba(0,0,0,.45), 0 1px 0 rgba(255,240,220,.16), inset 0 0 0 1px rgba(0,0,0,.6); }
+.rig-hw .k-hammer .gz::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border: 5px solid #1f1c19; border-radius: 1px; box-shadow: inset 0 0 0 1px rgba(255,235,210,.07), inset 0 3px 4px rgba(0,0,0,.7), 0 0 0 1px rgba(0,0,0,.5); }
+.rig-hw .k-hammer .gz::before { content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; box-shadow: inset 0 12px 14px -6px rgba(0,0,0,.9), inset 10px 0 12px -8px rgba(0,0,0,.65), inset -10px 0 12px -8px rgba(0,0,0,.6), inset 0 -8px 10px -8px rgba(0,0,0,.55); }
+.rig-hw .k-hammer .gz > .logo-box { z-index: 3; }
+/* old bolts: dull, slotted, rusted at the head and bleeding rust onto the metal */
+.rig-hw .k-hammer .salv-plate .rv, .rig-hw .k-hammer .salv-bolt { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, rgba(176,164,146,.5) 0 9%, transparent 32%), radial-gradient(circle, #564c43 0 42%, #42382e 68%, #281f17 100%); box-shadow: 0 1px 1px rgba(0,0,0,.85), 0 0 0 .5px rgba(0,0,0,.6), 0 0 4px 1.5px rgba(100,40,10,.55); }
+.rig-hw .k-hammer .salv-plate .rv::before, .rig-hw .k-hammer .salv-bolt::before { content: ''; position: absolute; left: 1px; right: 1px; top: 50%; height: 1.4px; margin-top: -.7px; background: rgba(14,9,5,.88); box-shadow: 0 .5px 0 rgba(255,232,206,.14); transform: rotate(var(--sr, 24deg)); }
+.rig-hw .k-hammer .salv-plate .rv::after, .rig-hw .k-hammer .salv-bolt::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 70% 76%, rgba(134,58,18,.8), transparent 56%); }
+.rig-hw .k-hammer .salv-plate .rv:nth-of-type(2), .rig-hw .k-hammer .salv-bolt.b2 { --sr: -38deg; } .rig-hw .k-hammer .salv-plate .rv:nth-of-type(3), .rig-hw .k-hammer .salv-bolt.b3 { --sr: 72deg; } .rig-hw .k-hammer .salv-plate .rv:nth-of-type(4), .rig-hw .k-hammer .salv-bolt.b4 { --sr: -8deg; }
+.rig-hw .k-hammer .salv-bolt { z-index: 3; width: 9px; height: 9px; }
+.rig-hw .k-hammer .salv-bolt.b1 { left: 2px; top: 2px; } .rig-hw .k-hammer .salv-bolt.b2 { right: 2px; top: 2px; }
+.rig-hw .k-hammer .salv-bolt.b3 { left: 2px; bottom: 2px; } .rig-hw .k-hammer .salv-bolt.b4 { right: 2px; bottom: 2px; }
+/* the stamps: no white. Light stamps show aged steel, not bright metal; on the plate the shadow inside the top of each
+   letter is half what it was */
+.rig-hw .k-hammer .lb[data-ink="light"], .rig-hw .k-hammer .st[data-ink="light"], .rig-hw .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(92,86,80,.96) 8%, rgba(184,176,164,.96) 72%); }
+.rig-hw .k-hammer .salv-plate[data-ink="light"] .logo, .rig-hw .k-hammer .salv-plate[data-ink="light"] .salv-name b { background-image: linear-gradient(180deg, rgba(120,112,103,.96) 10%, rgba(172,164,152,.96) 62%); filter: drop-shadow(0 -1px 0 rgba(0,0,0,.45)) drop-shadow(0 -2px 1px rgba(0,0,0,.15)) drop-shadow(0 1px 0 rgba(255,236,214,.16)); }
+.rig-hw .k-hammer .salv-plate[data-ink="dark"] .logo, .rig-hw .k-hammer .salv-plate[data-ink="dark"] .salv-name b { background-image: linear-gradient(180deg, rgba(30,19,11,.86) 10%, rgba(52,33,20,.74) 70%); filter: drop-shadow(0 1.5px 0 rgba(255,236,214,.38)) drop-shadow(0 -1px 0 rgba(0,0,0,.22)); }
+
+/* v7: the owner's notes on Salvage in version 6 (D-RIG-014) */
+/* the bat-handle toggles, drawn; Salvage's are worn */
+.rig-hw .sw-bat { filter: drop-shadow(0 1.5px 1px rgba(0,0,0,.4)); }
+.rig-hw .sw-bat .nut { width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 0; background: none; box-shadow: none; }
+.rig-hw .sw-bat .nut::after { display: none; }
+.rig-hw .sw-bat .nut svg, .rig-hw .sw-bat .bat svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.rig-hw .sw-bat .bat, .rig-hw .sw-bat.black .bat, .rig-hw .sw-bat.tip .bat { width: 9px; height: 19px; margin-left: -4.5px; background: none; clip-path: none; box-shadow: none; border-radius: 0; transform: none; }
+.rig-hw .sw-bat[aria-pressed="true"] .bat { transform: scaleY(-1); }
+.rig-hw .sw-bat.mini .nut { width: 16px; height: 16px; margin: -8px 0 0 -8px; }
+.rig-hw .sw-bat.mini .bat { width: 7px; height: 15px; margin-left: -3.5px; }
+.rig-hw .sw-bat.tip .bat::after { left: 1px; right: 1px; bottom: .5px; height: 5px; border-radius: 50%; }
+/* the words on Salvage: bigger pedal names, and five styles to choose from, each with smaller, sharper walls */
+:root .rig-hw .k-hammer .pname { font-size: 22px; }
+:root[data-salv-words="stamped"] .rig-hw .k-hammer .lb[data-ink="dark"], :root[data-salv-words="stamped"] .rig-hw .k-hammer .st[data-ink="dark"], :root[data-salv-words="stamped"] .rig-hw .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(180deg, rgba(4,2,1,.95) 0 16%, rgba(26,16,9,.92) 26%); filter: drop-shadow(0 .6px 0 rgba(255,240,220,.6)) drop-shadow(0 -.4px 0 rgba(0,0,0,.4)); }
+:root[data-salv-words="stamped"] .rig-hw .k-hammer .lb[data-ink="light"], :root[data-salv-words="stamped"] .rig-hw .k-hammer .st[data-ink="light"], :root[data-salv-words="stamped"] .rig-hw .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(110,104,96,.98) 0 14%, rgba(214,207,195,.98) 24%); filter: drop-shadow(0 -.6px 0 rgba(0,0,0,.9)) drop-shadow(0 .5px 0 rgba(255,255,255,.18)) drop-shadow(0 0 1.5px rgba(0,0,0,.45)); }
+:root[data-salv-words="paint"] .rig-hw .k-hammer .lb[data-ink="dark"], :root[data-salv-words="paint"] .rig-hw .k-hammer .st[data-ink="dark"], :root[data-salv-words="paint"] .rig-hw .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(rgba(10,9,8,.96), rgba(10,9,8,.96)); filter: drop-shadow(0 .6px 0 rgba(255,240,220,.5)); }
+:root[data-salv-words="paint"] .rig-hw .k-hammer .lb[data-ink="light"], :root[data-salv-words="paint"] .rig-hw .k-hammer .st[data-ink="light"], :root[data-salv-words="paint"] .rig-hw .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, #d4a226, #e6bb3a); filter: drop-shadow(0 -.6px 0 rgba(0,0,0,.85)) drop-shadow(0 0 1.5px rgba(0,0,0,.5)); }
+:root[data-salv-words="raised"] .rig-hw .k-hammer .lb[data-ink="dark"], :root[data-salv-words="raised"] .rig-hw .k-hammer .st[data-ink="dark"], :root[data-salv-words="raised"] .rig-hw .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(180deg, rgba(74,52,34,.96) 0 14%, rgba(28,18,10,.96) 24%); filter: drop-shadow(0 1px .4px rgba(0,0,0,.65)) drop-shadow(0 -.4px 0 rgba(255,236,214,.35)); }
+:root[data-salv-words="raised"] .rig-hw .k-hammer .lb[data-ink="light"], :root[data-salv-words="raised"] .rig-hw .k-hammer .st[data-ink="light"], :root[data-salv-words="raised"] .rig-hw .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(242,236,226,.98) 0 14%, rgba(196,188,176,.98) 24%); filter: drop-shadow(0 1px .5px rgba(0,0,0,.85)) drop-shadow(0 0 1.5px rgba(0,0,0,.4)); }
+:root[data-salv-words="metal"] .rig-hw .k-hammer .lb[data-ink], :root[data-salv-words="metal"] .rig-hw .k-hammer .st[data-ink], :root[data-salv-words="metal"] .rig-hw .k-hammer .pname[data-ink] { background-image: linear-gradient(180deg, #e2dcd2 0%, #a59e93 38%, #4a453f 50%, #8a8378 62%, #c9c2b6 100%); filter: drop-shadow(0 .6px 0 rgba(0,0,0,.9)) drop-shadow(0 0 1px rgba(0,0,0,.9)) drop-shadow(0 0 2.5px rgba(0,0,0,.55)); }
+:root[data-salv-words="tags"] .rig-hw .k-hammer .lb[data-ink], :root[data-salv-words="tags"] .rig-hw .k-hammer .st[data-ink], :root[data-salv-words="tags"] .rig-hw .k-hammer .pname[data-ink] { background: linear-gradient(180deg, #2c2824, #171411); -webkit-background-clip: border-box; background-clip: border-box; color: #d9d1c3; filter: none; text-shadow: 0 -.5px 0 rgba(0,0,0,.9), 0 .5px 0 rgba(255,255,255,.08); padding: 0 3px; border-radius: 1.5px; box-shadow: 0 1px 1px rgba(0,0,0,.6), inset 0 .5px 0 rgba(255,255,255,.14); letter-spacing: .02em; }
+:root[data-salv-words="tags"] .rig-hw .k-hammer .pname[data-ink] { padding: 2px 8px; }
+/* the plate's letters: metal, not white; a brushed steel with a sheen, stamped in with sharp walls */
+:root .rig-hw .k-hammer .salv-plate[data-ink] .logo, :root .rig-hw .k-hammer .salv-plate[data-ink] .salv-name b { background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 1px, transparent 1px 3px), linear-gradient(180deg, #4d4842 0%, #8f877b 22%, #d2c9ba 42%, #6e675e 52%, #a0978a 74%, #4f4943 100%); filter: drop-shadow(0 -.6px 0 rgba(0,0,0,.6)) drop-shadow(0 .6px 0 rgba(255,236,214,.3)); }
+@media (max-width: 640px) {
+  
+  .rig-hw .ui { padding: 10px 8px 8px; }
+  .rig-hw .pwr { padding-left: 0; border-left: 0; }
+  .rig-hw .gz { padding: 8px 10px; min-height: 84px; }
+  .rig-hw .k-brit .logo, .rig-hw .k-black .logo, .rig-hw .k-tweed .logo { font-size: 36px; }
+  .rig-hw .k-gain .logo, .rig-hw .k-plate .logo, .rig-hw .k-hammer .logo { font-size: 32px; }
+  .rig-hw .k-rack .face { padding: 0 26px; } .rig-hw .k-rack .ear.l { left: 14px; } .rig-hw .k-rack .ear.r { right: 14px; } .rig-hw .k-rack .face::before { left: 6px; } .rig-hw .k-rack .face::after { right: 6px; }
+  
+  
+  
+  
+}

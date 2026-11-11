@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- CRBN Rig's in-browser self-test, served by web/check.mjs beside the built site (never published). It POSTs its
-     results to /__result. Checks: the page paints in Capsule with Rig's brand; the engine plays the example capture in
+     results to /__result. Checks: the page paints in Capsule with Rig's brand; Rig's hardware (every kit, CRBN by
+     default, bound to the settings, Salvage from the library's sheets); the engine plays the example capture in
      this browser, directly and through the real AudioWorklet (rig-processor.js), and the two agree; the cabinet stage
      scales as the desktop's does. -->
 <meta charset="utf-8">
@@ -33,15 +34,78 @@ try {
   // The owner's picks (D-RIG-008): the Amp front layout, the faceplate and LED meters by default, the stompbox mark.
   check('the rig: two meters, the amp and the cabinet', doc.querySelectorAll('.chain > .meter').length === 2 && doc.querySelector('.chain > .amp') && doc.querySelector('.chain > .cab'), doc.querySelectorAll('.chain > *').length)
   check('the picked drawings by default', html.dataset.layout === 'b' && html.dataset.amp === 'b' && html.dataset.meters === 'b', `${html.dataset.layout}/${html.dataset.amp}/${html.dataset.meters}`)
-  const plate = win.getComputedStyle(doc.querySelector('.knob .k-plate')).display, ladder = win.getComputedStyle(doc.querySelector('#meter-out .m-led')).display
-  check('pointer knobs on the faceplate and an LED ladder', plate !== 'none' && ladder === 'flex', `${plate}/${ladder}`)
+  const hwShown = win.getComputedStyle(doc.getElementById('hw-amp')).display, ladder = win.getComputedStyle(doc.querySelector('#meter-out .m-led')).display
+  check('the amp is drawn as hardware, with an LED ladder', hwShown !== 'none' && ladder === 'flex', `${hwShown}/${ladder}`)
   check('the mark is the stompbox in cherry', win.getComputedStyle(doc.querySelector('.rig-mark .m-body')).fill === 'rgb(217, 43, 82)', win.getComputedStyle(doc.querySelector('.rig-mark .m-body')).fill)
-  check('the look menu offers the four finishes and Custom', doc.querySelectorAll('#lm-finish [data-finish]').length === 5, doc.querySelectorAll('#lm-finish [data-finish]').length)
-  check('the amp shows the capture', doc.getElementById('amp-logo').textContent.trim() === 'Example capture', doc.getElementById('amp-logo').textContent)
-  check('the eight knobs are sliders', doc.querySelectorAll('.knob[role="slider"]').length === 8, doc.querySelectorAll('.knob[role="slider"]').length)
+  check('the look menu offers Kit’s own, the four finishes and Custom', doc.querySelectorAll('#lm-finish [data-finish]').length === 6, doc.querySelectorAll('#lm-finish [data-finish]').length)
+  check('the amp shows the capture', doc.getElementById('amp-logo').textContent.trim() === 'Example capture' && doc.querySelector('#hw-amp .gz .sub')?.textContent.trim() === 'Example capture', doc.querySelector('#hw-amp .gz .sub')?.textContent)
+  check('the page’s eight knobs are sliders', doc.querySelectorAll('.knob[role="slider"]').length === 8, doc.querySelectorAll('.knob[role="slider"]').length)
   check('the example capture is shown', doc.getElementById('capture-name').textContent.trim().length > 0, doc.getElementById('capture-name').textContent)
   await doc.fonts.ready
   check('the look fonts loaded', doc.fonts.check('600 15px "Lexend Giga"') && doc.fonts.check('400 13px "Poppins"'))
+
+  // 1b. Rig's hardware (D-RIG-009..015): CRBN by default, every kit drawn and bound to the settings, Salvage's sheets.
+  const $d = (s) => doc.querySelector(s), $$d = (s) => [...doc.querySelectorAll(s)]
+  const visible = (el) => el && el.getClientRects().length > 0
+  const kitIs = (id) => $d(`#hw-amp .hw.k-${id}`) && $d(`#hw-cab .hw.k-${id}`)
+  check('CRBN, the owner’s kit, is the default', kitIs('crbn') && $d('#lm-kits-new [data-kit="crbn"]')?.getAttribute('aria-pressed') === 'true', $d('#hw-amp .hw')?.className)
+  // At rest Circuit lights the amp's core; its pulses (and the cabinet's) run on picks, as in the lab.
+  const lit = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 8) n++; return n }
+  const ampEnergy = () => $d('#hw-amp canvas.en')
+  try { await wait(() => ampEnergy().width > 40 && lit(ampEnergy()) > 50, 8000, 'the energy') } catch { /* reported below */ }
+  check('its energy draws behind the amp', lit(ampEnergy()) > 50, `${lit(ampEnergy())} lit samples`)
+  check('the kits on offer: ten classic, ten energy (CRBN among them)', $$d('#lm-kits-classic [data-kit]').length === 10 && $$d('#lm-kits-new [data-kit]').length === 10, `${$$d('#lm-kits-classic [data-kit]').length} + ${$$d('#lm-kits-new [data-kit]').length}`)
+  const sliders = () => $$d('#hw-amp .kn[data-param], #hw-amp .fd[data-param]').filter(visible)
+  const drawn = [], unnamed = [], unbound = []
+  for (const b of $$d('#lm-kits-classic [data-kit], #lm-kits-new [data-kit]')) {
+    b.click()
+    const id = b.dataset.kit
+    if (!kitIs(id)) { drawn.push(id); continue }
+    const logo = $$d('#hw-amp .logo').map((l) => l.textContent).join(' ')
+    if (!/CRBN/.test(logo) || !/RIG/i.test(logo)) unnamed.push(`${id}: ${logo}`)
+    const s = sliders()
+    if (s.length !== 6 || s.some((k) => k.getAttribute('role') !== 'slider') || $$d('#hw-amp .sw[data-param], #hw-cab .sw[data-param]').length !== 3) unbound.push(`${id}: ${s.length}`)
+  }
+  check('every kit draws its amp and cabinet', !drawn.length, drawn.join(', '))
+  check('“CRBN Rig” on every head (D-RIG-009 (d))', !unnamed.length, unnamed.join('; '))
+  check('every kit’s six controls and three switches are bound', !unbound.length, unbound.join('; '))
+
+  $d('#lm-kits-classic [data-kit="brit"]').click()
+  const fin = () => $d('#hw-amp .hw').style.getPropertyValue('--fin')
+  const own = fin()
+  $d('#lm-finish [data-finish="cherry"]').click()
+  const cherry = fin()
+  $d('#lm-finish [data-finish="own"]').click()
+  check('a kit opens in its own colours, and a finish recolours it', own === '#c9a24e' && cherry === '#d92b52' && fin() === '#c9a24e', `${own} / ${cherry} / ${fin()}`)
+
+  const kInput = () => $d('#hw-amp .kn[data-param="inputDB"]'), pageInput = () => $d('.knob[data-param="inputDB"]')
+  const before = +kInput().getAttribute('aria-valuenow')
+  kInput().focus(); kInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+  check('a kit knob sets its setting, and the page’s knob follows', +kInput().getAttribute('aria-valuenow') === before + 1 && +pageInput().getAttribute('aria-valuenow') === before + 1, `${before} -> ${kInput().getAttribute('aria-valuenow')}, page ${pageInput().getAttribute('aria-valuenow')}`)
+  kInput().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+  const gate = () => $d('#hw-amp .sw[data-param="gateOn"]'), gateBox = $d('input[data-param="gateOn"]')
+  gate().click()
+  const gateOff = gate().getAttribute('aria-pressed') === 'false' && !gateBox.checked && $d('#hw-amp .cc[data-param="gateThresholdDB"]').classList.contains('off')
+  gate().click()
+  check('a kit switch turns the gate off and on, dimming its knob', gateOff && gate().getAttribute('aria-pressed') === 'true' && gateBox.checked, `${gateOff}`)
+  const sw = (role) => $d(`#hw-amp .sw[data-role="${role}"]`)
+  sw('power').click()
+  const off = sw('power').getAttribute('aria-pressed') === 'false' && $d('#hw-amp [data-pilot]').textContent === 'Off' && !$d('#hw-amp .hw').classList.contains('on') && doc.getElementById('status-text').textContent === 'Off'
+  sw('power').click()
+  sw('standby').click()
+  const stby = $d('#hw-amp .hw').dataset.standby === 'true' && sw('standby').getAttribute('aria-pressed') === 'false'
+  sw('standby').click()
+  check('Power and Standby switch the amp, with the pilot and the words', off && stby && $d('#hw-amp [data-pilot]').textContent === 'On' && $d('#hw-amp .hw').dataset.standby === 'false', `${off}/${stby}`)
+
+  $d('#lm-kits-classic [data-kit="hammer"]').click()
+  const salvSetup = ['sheet:orange', 'mesh:perf', 'metal:copper', 'glow:valves', 'words:tags'].every((kv) => { const [k, v] = kv.split(':'); return $d(`#lm-salv [data-salv="${k}"][data-val="${v}"]`)?.getAttribute('aria-pressed') === 'true' })
+  check('Salvage opens in the owner’s setup, its choices in the look menu (D-RIG-015)', salvSetup && !$d('#lm-salv').hidden && html.dataset.salvWords === 'tags', `${salvSetup}/${html.dataset.salvWords}`)
+  await wait(() => /^url\("?data:image\/jpeg/.test($d('#hw-amp .k-hammer .cabinet').style.backgroundImage), 8000, 'Salvage’s photographed sheet')
+  check('Salvage paints from the library’s photographed sheets', true, $d('#hw-amp .k-hammer .cabinet').style.backgroundImage.slice(0, 30))
+  $d('#lm-salv [data-salv="mesh"][data-val="chicken"]').click()
+  check('a Salvage choice is kept', JSON.parse(win.localStorage.getItem('crbn-rig/rig')).salv.mesh === 'chicken', win.localStorage.getItem('crbn-rig/rig'))
+  $d('#lm-salv [data-salv="mesh"][data-val="perf"]').click()
+  $d('#lm-kits-new [data-kit="crbn"]').click()
 
   // 2. The engine in this browser.
   const rate = 48000
