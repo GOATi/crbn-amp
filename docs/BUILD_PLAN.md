@@ -40,7 +40,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 |---|---|---|---|
 | R1 | Rig's hardware: the kits (built, SYNC:RIG-015) | Done: the Hardware Lab (D-RIG-009..015), the texture library (D-RIG-016) | The 20 kits on the page, CRBN the default, published |
 | R1b | The Rig builder, RIG1 codes, players' own art (built, SYNC:RIG-019) | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
-| R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e)) | His look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
+| R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e); done, SYNC:RIG-019) | Done: his look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
 | R2 | The desktop on the page (U2): built and shipped (SYNC:RIG-016, RIG-017; D-RIG-017, D-RIG-018) | Done: the WebView2 SDK alone (D-RIG-017); his SimplySign session (R2b) | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1) | Nothing new (D-RIG-008 (e): guard on by default) | Both builds; no false trips on real playing |
 | R4 | The library (U3) | Nothing new | Both builds; a 5,000-file folder stays fast |
@@ -148,6 +148,12 @@ kit.
     switches, with a note.
   - Art no kit wears is forgotten when Rig next starts, so a kit deleted and reopened from its code in the same
     visit keeps its art.
+- **Shipped (2026-11-12, the owner's go-ahead in-session):**
+  - The web version is build `20261111-1249-fa1a2f5-1832688c`, and all 63 files match on the host. Roll back with
+    `--promote-only=20261111-0839-fff8c4a-f802d8f4`.
+  - Desktop 0.9.1 is signed and on the dev Hub (`packaging/hub/README.md`, Record).
+  - This session's harness refused `publish.mjs --promote` as a production deploy until the owner said yes in the
+    session, despite D-RIG-018 (a). Ask him first.
 - **Checks:** `web/check.mjs` 38 (8 new: build, parts, knob art turns, switch frames, the template, a code round
   trip, a lab code and a refused one, a reload). `packaging/windows/check.mjs` 22 (new: a kit of your own wears
   knob art set from a file, in the app).
@@ -238,6 +244,8 @@ art are the customising this section shows. It can be the end of R1b's session i
       store pictures.
     - Keep an eye on the size: the store loads the file on its page.
   - Its place in `pictures.json` `storeMedia` is second. Use new file names, since the CDN keeps a name for a day.
+  - **In the store since 2026-11-12 (SYNC:RIG-019, his OK as shown; record version 26).** Still to look at in his
+    Hub: whether the small thumbnail under the strip animates too.
   - **Made at R1b's end (SYNC:RIG-019):** `node packaging/hub/salvage-frames.mjs` makes
     `crbn-rig-shot-2b-salvage-1.png`: five frames of 1920x1080, 2 s each, 3.1 MB. The frames are his good amps in
     the order #2, #6, #1, #8, #4, each amp and its cabinet shot at 3x as his eight were. `art.html?piece=salvage`
