@@ -42,8 +42,12 @@ D-PHOTOLIVE-024 (c)):
 node web/build.mjs; node web/shots.mjs; node packaging/icons/render.mjs   # the web screenshots and icons
 node packaging/hub/desktop-shot.mjs        # the desktop capture, dist/shots/desktop.png: the packaged app playing the
                                            # demo riff (about three seconds, Output -12 dB); --kit=hammer for Salvage
+node packaging/hub/gear-shots.mjs          # the gear for the hero, card and cover, dist/shots/gear-*.png: the CRBN amp
+                                           # and cabinet, and the cover's stack (CRBN, Salvage, Compact, Rack), at 3x
+                                           # with the riff lit; --salvage= for another Salvage (docs/BUILD_PLAN.md R1c)
 node packaging/hub/pictures.mjs                                            # -> dist/hub-listing/
-#   --only=desktop renders that piece alone and leaves the rest as uploaded; a changed picture needs a new name
+#   --only=desktop renders that piece alone and leaves the rest as uploaded; a changed picture needs a new name;
+#   --only=hero-shots,cover-close --out=dist/hub-preview renders the earlier hero and cover, to compare
 $H = 'D:\Projects\crbn-launcher\scripts\hub-listing\hub-listing.ps1'; $L = 'D:\Projects\crbn-amp\dist\hub-listing'
 powershell -ExecutionPolicy Bypass -File $H plan   --app P2KLkFx6f5JQwaQKLCngoKLERMM25Fv2KLJmntLBKjXKbi1 --listing $L
 powershell -ExecutionPolicy Bypass -File $H upload --app P2KLkFx6f5JQwaQKLCngoKLERMM25Fv2KLJmntLBKjXKbi1 --listing $L
@@ -64,3 +68,4 @@ Hub never offers a web version that does not answer. `display: public` waits for
 | 2026-11-11 | **Desktop 0.9.0 on Rig's page** (R2a, D-RIG-017; R2b, D-RIG-018) from `fff8c4a`, **signed** (`package.ps1 -Sign`), `check.mjs` 21/21: manifest `e043f4dd9e25048f31838edfdcd08c041261b4f2`, 63 chunks, 2.0 MB sent; confirmed (the CDN serves it; PatcherCli 67 of 67 files byte-identical). The web version live as build `20261111-0839-fff8c4a-f802d8f4` (62 of 62 files match; roll back with `--promote-only=20261111-0647-48b3c29-5b758257`) |
 | 2026-11-11 | The new desktop picture, the owner's pick (CRBN): `crbn-rig-shot-2-desktop-2.png`, from `desktop-shot.mjs` and `pictures.mjs --only=desktop`, put first in `storeMedia` so CRBN is the first kit players see. The six other pictures are byte-identical to the CDN's. Uploaded and served 200; `apply` read back with nothing differing (record version 16) |
 | 2026-11-11 | **R1c's animated-PNG test** (`docs/BUILD_PLAN.md` R1c), with the owner's OK. `crbn-rig-test-salvage-cycle-1.png` (six Salvage frames, 1800 ms each, 3.4 MB) uploaded and put second in `storeMedia` (version 18). The CDN served it byte-identical (sha1 `27baea9d…`), Edge animated it, and the owner saw it cycle in his Hub. The record then went back to this folder's listing, with the three approved pictures (version 20, 19 of 19 fields matched). The test file stays on the CDN, unreferenced |
+| 2026-11-11 | **The store's art shows the kits** (D-RIG-019, SYNC:RIG-018), the owner's picks from previews. The hero `crbn-rig-hero-3.png` and the card `-card-3` show the CRBN amp and cabinet, from `gear-shots.mjs`. The cover `-cover-4` stacks four amps: CRBN, Salvage (his setup, seed 258637), Compact and Rack. The web shot `-shot-1-web-3` and the four looks `-looks-4` are retaken. Uploaded and served 200; `apply` read back 19 of 19 fields (version 22, then 24 for the cover); every picture's CDN bytes match the listing folder. The close-up cover `-cover-3` was live between versions 22 and 24, and stays on the CDN unreferenced |

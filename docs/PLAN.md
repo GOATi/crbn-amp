@@ -26,6 +26,10 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-018): the store's art shows the kits (crbn-launcher D-RIG-019). The hero and card show the
+  CRBN amp and cabinet. The cover stacks CRBN, Salvage, Compact and Rack. The web shot and the four looks are retaken.
+  All of it is from previews the owner picked (record version 24). His verdicts on eight Salvage amps, the fix for its
+  soft crops, and his three reference textures are in `docs/BUILD_PLAN.md` R1c.
 - 2026-11-11 (SYNC:RIG-017): R2b shipped (crbn-launcher D-RIG-018). Desktop 0.9.0 on Rig's page is signed and
   published to dev (manifest `e043f4dd…`, PatcherCli 67 of 67 files byte-identical). `check.mjs` passes 21/21 on the
   signed folder. The web version is live as build `20261111-0839-fff8c4a-f802d8f4`. The store's new desktop picture

@@ -19,7 +19,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
   (the look's own, cherry, gold, rose gold `#f29077`, Custom with a colour wheel); Livewire's look menu with the suite
   switch.
 - **Store page:** the new pictures are uploaded (record version 10). The desktop screenshot still shows upstream's
-  drawing.
+  drawing. (Since RIG-017 and RIG-018, every picture shows Rig's page and kits; record version 24.)
 - **Not built:** everything in P3 except the look. That is the power switch, squeal guard, library, favourites, rigs
   and pedals, MIDI and TONE3000 (U1 and U3 to U7), and the desktop on the page (U2).
 
@@ -131,6 +131,41 @@ really highlight how organic and customisable that skin is." It comes after R1b,
 art are the customising this section shows. It can be the end of R1b's session if there is room.
 
 - **Already done (R2b):** CRBN is the store's first picture (`crbn-rig-shot-2-desktop-2.png`, the desktop app).
+- **Already done (SYNC:RIG-018, D-RIG-019):** the hero, card and cover show the kits.
+  - The hero (`crbn-rig-hero-3.png`) and card (`-card-3`) show the CRBN amp and cabinet.
+  - The cover (`-cover-4`) is his pick: four amps stacked, CRBN, Salvage, Compact and Rack.
+  - The web shot (`-shot-1-web-3`) and the four looks (`-looks-4`) are retaken on R1's page.
+  - The gear comes from `packaging/hub/gear-shots.mjs`, the composition from `art/art.html`.
+- **His verdicts on eight Salvage amps (SYNC:RIG-018).** Use them for the cycling picture. Each is `sheet, mesh,
+  metal, glow, words, seed`, reproduced by `gear-shots.mjs --kits=hammer --salvage=...`. Shots 1 to 5 are his setup
+  (`orange, perf, copper, valves, tags`):
+  - The best:
+    - #2, seed `258637` (the cover's, and `gear-shots.mjs`'s default);
+    - #6, `pale, perf, copper, valves, paint, 651644`.
+  - Good:
+    - #1, seed `591410`;
+    - #4, seed `17617`;
+    - #8, `red, chicken, rust, neon, stamped, 439322`.
+  - Never use #3 (seed `131233`) or #5 (seed `802023`): "They look blurry and stretched." Any shuffle can draw a
+    crop like these, which is the fix below.
+  - #7, `blue, woven, steel, embers, paint, 88649`: "the paint flakes are too big". He would use it only scaled down
+    3x. Its sheet (Total Textures `mis008`) is 1200x900 at its largest, so it cannot be: it waits for a better sheet.
+- **Salvage's sheets: fix the soft crops in R1b or R1c, then new sheets when he has them.**
+  - The four sheets are 1024x768, from 1200x900 originals: `\\GOATi-SV22\Art_Resources\Textures_Sets\Total Textures
+    Volumes\Disk2_Aged_Stressed\maps_hi`.
+  - `photoTex` (`web/src/hw/hw.js`) magnifies each crop a random 1.05 to 1.9 times beyond covering the piece.
+  - 35% of crops are also turned a quarter. A turned sheet has only 768 pixels across the amp, so those crops are
+    magnified the most. At a device pixel ratio of 1.25 a sheet pixel can span about 4 screen pixels: the blur of #3
+    and #5.
+  - The fix: cap the magnification at about 1.5 screen pixels per sheet pixel, keeping the crop's aspect. Keep the
+    quarter turn only where the turned sheet still covers the piece within that cap.
+  - The canvas is drawn at no more than 2x (`k`), so shots at 3x soften Salvage a little. The cover is small enough
+    not to show it.
+  - **His reference textures**, better than the sheets in use, for sourcing new ones (his words, at RIG-018). Look
+    for these qualities at about 3600 pixels wide or more, with a licence that lets a web page serve the crops:
+    1. His favourite: https://www.pixcrafter.com/grunge-metal-with-peeling-paint-texture-background/
+    2. Second: https://texturelabs.org/textures/metal_294/
+    3. Good: https://www.textures4photoshop.com/tex/grunge-and-rust/old-rusty-painted-metal-texture-with-green-paint.aspx
 - **The second picture: Salvage, cycling.**
   - Capture several Salvage shuffles. Use `node packaging/hub/desktop-shot.mjs --kit=hammer` for the desktop. For
     the web, the page's own Shuffle, or a `seed`, gives a new crop on every piece. Include his setup (D-RIG-015 (b)).
@@ -264,8 +299,8 @@ the plug-in, so every later feature is built once (D-RIG-008 (e)). Upstream's IG
 
   `art.html` frames that capture. `pictures.mjs --only=desktop` renders the piece alone; `--desk=` and `--out=` are
   for previews. The owner picked CRBN over Salvage. The picture went up as `crbn-rig-shot-2-desktop-2.png`, first in
-  `storeMedia`, and the record reads back at version 16. The hero still shows upstream's window as an inset, and the
-  web pictures show the pre-R1 faceplate, until R1c and R9.
+  `storeMedia`, and the record reads back at version 16. Since RIG-018, the hero, card and cover show the kits, and the web
+  pictures are retaken on R1's page.
 - **A pitfall on this box:** a fresh WebView2 profile on D: (a 2 TB hard disk, 5% free) kept the page from getting
   ready for 13 to over 30 seconds; on C: (an NVMe SSD) it takes about two. `desktop-shot.mjs` keeps its profile in
   the temp folder. `check.mjs` still keeps its profile in `dist/desktop-check` on D:; if it times out waiting for

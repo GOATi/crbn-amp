@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- CRBN Rig's store pictures (packaging/hub/pictures.mjs renders each piece with headless Edge). One page, the piece
-     chosen by ?piece=hero|card|cover|logo|desktop|looks. It is served from the repo root, so it reads the looks
+     chosen by ?piece=hero|card|cover|logo|desktop|looks (and hero-shots, cover-close to compare). It is served from the repo root, so it reads the looks
      package and fonts from web/src/look/ and the screenshots from dist/ (web/shots.mjs, the desktop capture). The
      icon is the placeholder until the owner supplies artwork (D-CRBN-002 (d)). -->
 <html lang="en" data-look="capsule" data-product="rig">
@@ -31,10 +31,35 @@
   .desk img { display: block; width: 100%; }
   .pill { display: inline-block; font-size: 22px; color: var(--text); background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px; padding: 6px 18px; margin: 0 10px 10px 0; }
   section { display: none; position: absolute; inset: 0; }
+  /* The gear: a stage turned in perspective (the hero), or flat (the card), each with a soft reflection beneath. */
+  .stage { position: absolute; perspective: 2000px; }
+  .rig3d, .flat { display: flex; align-items: flex-end; gap: 14px; transform-origin: left center;
+    -webkit-box-reflect: below 10px linear-gradient(transparent 72%, rgba(255, 255, 255, .16)); }
+  .flat { position: absolute; gap: 18px; }
+  .rig3d img, .flat img, .stack img { display: block; border-radius: 10px; box-shadow: 0 30px 70px rgba(0, 0, 0, .6); }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .stack img { width: 100%; border-radius: 7px; box-shadow: 0 16px 40px rgba(0, 0, 0, .55); }
+  .cover-bg { position: absolute; inset: 0; background: radial-gradient(420px 360px at 50% 26%, rgba(217, 43, 82, .45), transparent 70%), linear-gradient(165deg, #3a0b18 0%, #14060b 46%, #0b0a0c 100%); }
 </style>
 <body>
 
+<!-- The hero and card show the gear itself: the CRBN kit's amp and cabinet as the web version draws them, at 3x, with
+     the demo riff lighting the energy (dist/shots/gear-*.png, packaging/hub/gear-shots.mjs). -->
 <section id="hero">
+  <div style="position:absolute;inset:0;background:radial-gradient(820px 340px at 68% 52%, rgba(217, 43, 82, .20), transparent 70%)"></div>
+  <div style="position:absolute;left:120px;top:300px;width:640px">
+    <img src="/dist/icons/icon-256.png" width="112" height="112" alt="" style="border-radius:25px;box-shadow:0 20px 50px rgba(217,43,82,.35)">
+    <div class="word" style="font-size:72px;margin-top:36px"><span class="crbn">CRBN</span><span class="rig">Rig</span></div>
+    <div class="tag" style="font-size:46px;margin-top:24px;line-height:1.15">Play through real gear.</div>
+    <div class="sub" style="font-size:26px;margin-top:18px;line-height:1.45">Captures of pedals, amps and cabinets, on your desktop or right in your browser.</div>
+  </div>
+  <div class="stage" style="left:800px;top:396px;width:1300px">
+    <div class="rig3d" style="transform:rotateY(26deg)"><img src="/dist/shots/gear-crbn-amp.png" alt="" style="width:1110px"><img src="/dist/shots/gear-crbn-cab.png" alt="" style="width:241px"></div>
+  </div>
+</section>
+
+<!-- The earlier hero (the web page and the desktop window), kept to compare: ?piece=hero-shots -->
+<section id="hero-shots">
   <div style="position:absolute;left:120px;top:250px;width:680px">
     <img src="/dist/icons/icon-256.png" width="128" height="128" alt="" style="border-radius:28px;box-shadow:0 20px 50px rgba(217,43,82,.35)">
     <div class="word" style="font-size:78px;margin-top:40px"><span class="crbn">CRBN</span><span class="rig">Rig</span></div>
@@ -46,20 +71,38 @@
 </section>
 
 <section id="card">
-  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-    <img src="/dist/icons/icon-512.png" width="300" height="300" alt="" style="border-radius:66px;box-shadow:0 30px 80px rgba(217,43,82,.4)">
-    <div class="word" style="font-size:112px;margin-top:64px"><span class="crbn">CRBN</span><span class="rig">Rig</span></div>
-    <div class="sub" style="font-size:40px;margin-top:30px">Play through real gear.</div>
+  <div style="position:absolute;left:0;right:0;top:150px;display:flex;align-items:center;justify-content:center;gap:40px">
+    <img src="/dist/icons/icon-256.png" width="150" height="150" alt="" style="border-radius:33px;box-shadow:0 24px 60px rgba(217,43,82,.4)">
+    <div class="word" style="font-size:100px"><span class="crbn">CRBN</span><span class="rig">Rig</span></div>
+  </div>
+  <div class="sub" style="position:absolute;left:0;right:0;top:340px;text-align:center;font-size:40px">Play through real gear.</div>
+  <div class="flat" style="left:166px;top:500px;width:1588px"><img src="/dist/shots/gear-crbn-amp.png" alt="" style="width:1290px"><img src="/dist/shots/gear-crbn-cab.png" alt="" style="width:280px"></div>
+</section>
+
+<!-- The earlier cover, a close-up of the CRBN amp, kept to compare: ?piece=cover-close -->
+<section id="cover-close">
+  <div class="cover-bg"></div>
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:84px">
+    <img src="/dist/icons/icon-512.png" width="168" height="168" alt="" style="border-radius:38px;box-shadow:0 26px 70px rgba(0,0,0,.55)">
+    <div class="word" style="font-size:50px;margin-top:46px;line-height:1.3"><span>CRBN</span><br><span class="rig">Rig</span></div>
+    <div class="sub" style="font-size:24px;margin-top:26px;padding:0 50px;line-height:1.4">Play through real gear.</div>
+  </div>
+  <!-- the right of the CRBN amp, close: the Output knob, the switches, the pilot and the lit honeycomb -->
+  <div style="position:absolute;left:0;top:560px;width:600px;height:280px;overflow:hidden;border-top:1px solid rgba(255,255,255,.06)">
+    <img src="/dist/shots/gear-crbn-amp.png" alt="" style="position:absolute;width:1330px;left:-700px;top:-14px">
   </div>
 </section>
 
+<!-- The cover, the owner's pick: four kits stacked, CRBN on top, then Salvage, Compact (the blue) and Rack (the VU meter) -->
 <section id="cover">
-  <div style="position:absolute;inset:0;background:linear-gradient(165deg,#3a0b18 0%,#14060b 46%,#0b0a0c 100%)"></div>
-  <div style="position:absolute;inset:0;background:radial-gradient(420px 360px at 50% 30%,rgba(217,43,82,.45),transparent 70%)"></div>
-  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:150px">
-    <img src="/dist/icons/icon-512.png" width="230" height="230" alt="" style="border-radius:52px;box-shadow:0 26px 70px rgba(0,0,0,.55)">
-    <div class="word" style="font-size:52px;margin-top:70px;line-height:1.3"><span>CRBN</span><br><span class="rig">Rig</span></div>
-    <div class="sub" style="font-size:26px;margin-top:40px;padding:0 50px;line-height:1.4">Play through real gear.</div>
+  <div class="cover-bg"></div>
+  <div style="position:absolute;left:0;right:0;top:56px;display:flex;align-items:center;justify-content:center;gap:18px">
+    <img src="/dist/icons/icon-256.png" width="70" height="70" alt="" style="border-radius:16px">
+    <div class="word" style="font-size:40px"><span class="crbn">CRBN</span><span class="rig">Rig</span></div>
+  </div>
+  <div class="sub" style="position:absolute;left:0;right:0;top:146px;text-align:center;font-size:22px">Play through real gear.</div>
+  <div class="stack" style="position:absolute;left:24px;top:196px;width:552px">
+    <img src="/dist/shots/gear-crbn-amp.png" alt=""><img src="/dist/shots/gear-hammer-amp.png" alt=""><img src="/dist/shots/gear-compact-amp.png" alt=""><img src="/dist/shots/gear-rack-amp.png" alt="">
   </div>
 </section>
 
@@ -93,7 +136,7 @@
 <script>
   const piece = new URLSearchParams(location.search).get('piece') ?? 'hero'
   document.getElementById(piece).style.display = 'block'
-  document.body.className = piece === 'logo' ? 'clear' : piece === 'cover' ? '' : 'glow'
+  document.body.className = piece === 'logo' ? 'clear' : piece.startsWith('cover') ? '' : 'glow'
   // ?desk=<file.png> frames another desktop capture from dist/shots (desktop-shot.mjs --out), to compare kits.
   const desk = new URLSearchParams(location.search).get('desk')
   if (/^[\w-]+\.png$/.test(desk ?? '')) for (const img of document.querySelectorAll('.desk img')) img.src = `/dist/shots/${desk}`

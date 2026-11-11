@@ -2,7 +2,8 @@
 // rendered from art/art.html with headless Edge (the sizes the other CRBN apps use, playbook §6.1). The pictures never
 // go in the repo (crbn-launcher docs/new-app-on-pavillion-hub.md §6.1).
 //   node packaging/hub/pictures.mjs        after node web/build.mjs, node web/shots.mjs and node packaging/icons/render.mjs,
-//                                          with the desktop capture at dist/shots/desktop.png (desktop-shot.mjs)
+//                                          with the desktop capture at dist/shots/desktop.png (desktop-shot.mjs) and the
+//                                          gear at dist/shots/gear-*.png (gear-shots.mjs)
 //     --only=desktop,hero                  render only these pieces (and `web`, the web shot's copy), leaving every
 //                                          other picture in the folder as it is: the CDN keeps a name for a day, so a
 //                                          picture changes only under a new name
@@ -18,7 +19,7 @@ const out = resolve(root, arg('out') ?? join('dist', 'hub-listing'))
 const only = arg('only')?.split(',')
 const desk = arg('desk')
 mkdirSync(out, { recursive: true })
-for (const need of ['dist/shots/web-capsule.png', 'dist/shots/web-holo.png', 'dist/shots/web-redline.png', 'dist/shots/web-daylight.png', `dist/shots/${desk ?? 'desktop.png'}`, 'dist/icons/icon-512.png']) {
+for (const need of ['dist/shots/web-capsule.png', 'dist/shots/web-holo.png', 'dist/shots/web-redline.png', 'dist/shots/web-daylight.png', `dist/shots/${desk ?? 'desktop.png'}`, 'dist/icons/icon-512.png', 'dist/shots/gear-crbn-amp.png', 'dist/shots/gear-crbn-cab.png', 'dist/shots/gear-hammer-amp.png', 'dist/shots/gear-compact-amp.png', 'dist/shots/gear-rack-amp.png']) {
   if (!existsSync(join(root, need))) throw new Error(`${need} is missing (see this file's header)`)
 }
 
@@ -34,20 +35,23 @@ await new Promise((ok) => server.listen(0, '127.0.0.1', ok))
 const art = (piece) => `http://127.0.0.1:${server.address().port}/packaging/hub/art/art.html?piece=${piece}${desk ? `&desk=${encodeURIComponent(desk)}` : ''}`
 
 const pieces = [
-  ['hero', 'crbn-rig-hero-2.png', 1920, 1080],
-  ['card', 'crbn-rig-card-2.png', 1920, 1080],
-  ['cover', 'crbn-rig-cover-2.png', 600, 840],
+  ['hero', 'crbn-rig-hero-3.png', 1920, 1080], // -3: the gear (the kits, R1)
+  ['card', 'crbn-rig-card-3.png', 1920, 1080],
+  ['cover', 'crbn-rig-cover-4.png', 600, 840], // -4: four kits stacked, the owner's pick
   ['logo', 'crbn-rig-logo-2.png', 800, 240, true],
   ['desktop', 'crbn-rig-shot-2-desktop-2.png', 1920, 1080], // -2: the app on Rig's page (R2b)
-  ['looks', 'crbn-rig-shot-3-looks-3.png', 1920, 1080],
+  ['looks', 'crbn-rig-shot-3-looks-4.png', 1920, 1080],
+  // to compare, rendered only when --only names them
+  ['hero-shots', 'compare-hero-shots.png', 1920, 1080, false, true],
+  ['cover-close', 'compare-cover-close.png', 600, 840, false, true],
 ]
 try {
-  for (const [piece, name, width, height, transparent] of pieces.filter(([p]) => !only || only.includes(p))) {
+  for (const [piece, name, width, height, transparent] of pieces.filter(([p, , , , , compare]) => only ? only.includes(p) : !compare)) {
     await screenshot(art(piece), join(out, name), { width, height, transparent })
     console.log(`${name} ${width}x${height} (${(statSync(join(out, name)).size / 1024).toFixed(0)} KiB)`)
   }
 } finally { server.close() }
-if (!only || only.includes('web')) copyFileSync(join(root, 'dist', 'shots', 'web-capsule.png'), join(out, 'crbn-rig-shot-1-web-2.png'))
+if (!only || only.includes('web')) copyFileSync(join(root, 'dist', 'shots', 'web-capsule.png'), join(out, 'crbn-rig-shot-1-web-3.png'))
 if (arg('out')) {
   console.log(`pictures: ${out}`) // a preview, not the listing
 } else {
