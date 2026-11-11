@@ -206,6 +206,8 @@ select:disabled { color: var(--text-faint); }
 /* Hardware (b, the default since R1): the kit picked under Rig's hardware draws the amp and the cabinet (hw/hw.js,
    hw/hw.css; D-RIG-009..015), in place of the islands' and the stripe's own drawing. */
 #amp > .rig-hw, #cab > .rig-hw { display: none; }
+/* resting while nobody uses Rig (D-RIG-016 (e)): the kits' own animations (glows, flicker, lamps) hold still too */
+.rig-hw.rest *, .rig-hw.rest *::before, .rig-hw.rest *::after { animation-play-state: paused !important; }
 :root[data-amp='b'] .chain > :is(#amp, #cab) { display: flex; flex-direction: column; padding: 0; background: none; border-radius: 0; }
 :root[data-amp='b'] :is(#amp > .amp-front, #cab > .cab-front) { display: none; }
 :root[data-amp='b'] :is(#amp, #cab) > .rig-hw { display: flex; flex-direction: column; flex: 1; min-width: 0; }

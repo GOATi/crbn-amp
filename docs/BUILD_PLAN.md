@@ -98,7 +98,8 @@ setup in the app's screenshots on Pavillion (R9).
 - **The code:** `web/src/hw/hw.js` holds the lab's kits, drawing, cutouts, Salvage and energy engine nearly
   verbatim (each part marked with its lab lines), then the page's side. That side binds every knob, fader and
   switch to Rig's settings, feeds the energy from the input level, and wires Power and Standby (page-level until
-  R3). `hw.css` is the lab's CSS scoped under `.rig-hw`.
+  R3). `hw.css` is the lab's CSS scoped under `.rig-hw`. The energy rests on a still frame after 30 s with
+  nothing playing and nobody using the page (D-RIG-016 (e)).
 - **Salvage:** its sheets come from the texture library (`web/src/hw/tex/`, D-RIG-016 (a)), with his setup the
   default and players' choices in the menu.
 - **The checks:** `node web/check.mjs` has 30 checks, 13 of them for the hardware.

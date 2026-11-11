@@ -1236,7 +1236,7 @@ function sizeSurface (s) {
   s.dpr = Math.min(1.75, window.devicePixelRatio || 1)
   s.canvas.width = Math.max(1, Math.round(s.geo.W * s.dpr)); s.canvas.height = Math.max(1, Math.round(s.geo.H * s.dpr))
   s.st = FX[kitOf(s.hw).fx].init()
-  if (!MOTION) stillSoon()
+  if (!moving()) stillSoon()
 }
 const stageAmp = () => AMP_HW
 const ampLevel = hw => hw.classList.contains('on') ? (hw.dataset.standby === 'true' ? .22 : 1) : 0
@@ -1338,20 +1338,36 @@ function liveStep (dt) {
   }
 }
 
-// the loop; a still, lit frame when the system asks for less motion (D-RIG-009 (e))
+// The loop. A still frame when the system asks for less motion (D-RIG-009 (e)), and when nobody is using Rig
+// (D-RIG-016 (e)): with nothing playing and no pointer, key, wheel or touch for IDLE_MS, the energy rests on that frame
+// and the kits' CSS animations pause, until the next touch or note. The desktop Hub keeps a covered window's pages
+// running (SYNC:CLIENT-091), so without this an open Rig would keep a tenth of a core busy all day.
 const motionQuery = matchMedia('(prefers-reduced-motion: reduce)')
-let MOTION = !motionQuery.matches, raf = 0, last = 0, T = 0
+const IDLE_MS = 30000
+let MOTION = !motionQuery.matches, raf = 0, last = 0, T = 0, lastUse = performance.now(), resting = false
+const HOLDERS = new Set()
+const moving = () => MOTION && !resting
 function frame (now) {
   const dt = Math.min(.05, last ? (now - last) / 1000 : .016); last = now; T += dt
   sigStep(dt, now); liveStep(dt)
   for (const s of SURFACES) { if (!s.canvas.isConnected) { SURFACES.delete(s); continue } if (s.vis && s.geo && s.st) drawSurface(s, T + s.t0, dt) }
+  if (!SIG.on && now - lastUse > IDLE_MS) { raf = 0; rest(); return }
   raf = MOTION && SURFACES.size + LIVE.length ? requestAnimationFrame(frame) : 0
 }
-function startLoop () { if (MOTION && !raf) { last = 0; raf = requestAnimationFrame(frame) } else if (!MOTION) stillSoon() }
+function startLoop () { if (moving() && !raf) { last = 0; raf = requestAnimationFrame(frame) } else if (!moving()) stillSoon() }
+function rest () { resting = true; for (const h of HOLDERS) h.classList.add('rest'); still() }
+function wake () {
+  lastUse = performance.now()
+  if (!resting) return
+  resting = false
+  for (const h of HOLDERS) h.classList.remove('rest')
+  startLoop()
+}
+for (const t of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) addEventListener(t, wake, { capture: true, passive: true })
 let stillTimer = 0
 function stillSoon () { clearTimeout(stillTimer); stillTimer = setTimeout(still, 60) }
 function still () {
-  if (MOTION) return
+  if (moving()) return
   const keep = { ...SIG }
   for (const s of SURFACES) {
     if (!s.geo || !s.canvas.isConnected) continue
@@ -1396,6 +1412,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
   if (!document.getElementById('hw-defs')) document.body.insertAdjacentHTML('afterbegin', DEFS.replace('<svg ', '<svg id="hw-defs" '))
   const state = { kit: null, power: true, standby: false, values: {}, capture: ['', ''], ir: ['', ''], slim: false }
   const holders = [ampHolder, cabHolder]
+  for (const h of holders) HOLDERS.add(h)
   const both = sel => [...$$(sel, ampHolder), ...$$(sel, cabHolder)]
 
   function forget () {
@@ -1452,8 +1469,8 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     for (const [p, v] of Object.entries(state.values)) reflect(p, v)
     setPower(state.power); setStandby(state.standby)
     setCapture(...state.capture); setIR(...state.ir); setSlim(state.slim)
-    if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => { for (const s of SURFACES) layoutHW(s.hw); for (const el of $$(SALV_SEL)) scheduleSalvage(el) })
-    startLoop()
+    if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => { for (const s of SURFACES) layoutHW(s.hw); for (const el of $(SALV_SEL)) scheduleSalvage(el) })
+    wake(); startLoop()
   }
 
   function applyFinish () {
@@ -1465,7 +1482,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
       if (hw.__surf) hw.__surf.col = hex2rgb(fin)
     }
     for (const h of holders) for (const el of $$(SALV_SEL, h)) scheduleSalvage(el)
-    if (!MOTION) stillSoon()
+    if (!moving()) stillSoon()
   }
   function setFinish (own, hex) { FINISH = own ? 'own' : 'set'; FIN_COLOR = hex; applyFinish() }
 
@@ -1495,7 +1512,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     }
     for (const q of DIMS[p] ?? []) for (const cc of $$(`.cc[data-param="${q}"]`, ampHolder)) cc.classList.toggle('off', v < .5)
     if (p === 'irOn') cabHolder.firstElementChild?.classList.toggle('ir-off', v < .5)
-    if (!MOTION) stillSoon()
+    if (!moving()) stillSoon()
   }
 
   function setPower (on) {
@@ -1503,13 +1520,13 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     for (const h of holders) for (const hw of $$('.hw', h)) hw.classList.toggle('on', on)
     for (const sw of $$('.sw[data-role="power"]', ampHolder)) { sw.setAttribute('aria-pressed', String(on)); const st = sw.parentElement.querySelector('.st'); if (st) st.textContent = STATE_WORD.power[on ? 1 : 0] }
     for (const p of $$('[data-pilot]', ampHolder)) p.textContent = on ? 'On' : 'Off'
-    if (!MOTION) stillSoon()
+    if (!moving()) stillSoon()
   }
   function setStandby (standby) {
     state.standby = standby
     if (AMP_HW) AMP_HW.dataset.standby = String(standby)
     for (const sw of $$('.sw[data-role="standby"]', ampHolder)) { sw.setAttribute('aria-pressed', String(!standby)); const st = sw.parentElement.querySelector('.st'); if (st) st.textContent = STATE_WORD.standby[standby ? 0 : 1] }
-    if (!MOTION) stillSoon()
+    if (!moving()) stillSoon()
   }
   function setCapture (name, sub) {
     state.capture = [name, sub]
@@ -1526,7 +1543,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
   function setSlim (on) { state.slim = on; for (const cc of $$('.cc[data-param="slim"]', ampHolder)) cc.hidden = !on }
 
   /** The input's peak since the last frame (after the input gain), and whether anything is playing. */
-  function level (peak, playing) { SIG.on = playing; SIG.peak = Math.max(SIG.peak, peak) }
+  function level (peak, playing) { SIG.on = playing; SIG.peak = Math.max(SIG.peak, peak); if (playing) wake() }
 
   let salvKey = ''
   function setSalvage (c, seed) {
