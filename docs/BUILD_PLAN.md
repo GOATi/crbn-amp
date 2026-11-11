@@ -42,7 +42,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R1b | The Rig builder, RIG1 codes, players' own art (built, SYNC:RIG-019) | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
 | R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e); done, SYNC:RIG-019) | Done: his look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
 | R2 | The desktop on the page (U2): built and shipped (SYNC:RIG-016, RIG-017; D-RIG-017, D-RIG-018) | Done: the WebView2 SDK alone (D-RIG-017); his SimplySign session (R2b) | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
-| R3 | Power, auto-off, squeal guard (U1) | Nothing new (D-RIG-008 (e): guard on by default) | Both builds; no false trips on real playing |
+| R3 | Power, auto-off, squeal guard (U1): built and shipped (SYNC:RIG-020, D-RIG-021) | Done: auto-play (resume if playing at close), the web publish, his SimplySign session | Both builds; no false trips on real playing (the synthetic set passes; his real playing is still to try) |
 | R4 | The library (U3) | Nothing new | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
 | R6 | Rigs, variants and pedals (U5) | Nothing new | Pedals in series, hot-swapped while playing |
@@ -390,6 +390,71 @@ the header pill (A) and the big button (C) in the look menu; Space as the key.
     trip it.
   - Add these to `web/engine/test.mjs` so both builds run them.
   - `web/check.mjs` gains checks for the controls and the banner.
+
+### R3, as built (2026-11-12, SYNC:RIG-020, D-RIG-021)
+
+Web build `20261111-1620-1e45d76-b2af5c94`, live. Desktop **0.9.2**, signed, on the dev Hub.
+
+- **The engine** (`web/engine/rig_guard.h`, which `rig_engine.cpp` includes, so both builds compile it):
+  - **Standby** is an engine parameter. The output fades out over 20 ms and back, and the input stays open. The web
+    version's GainNode fade and the desktop host's own fade are gone.
+  - **The squeal guard** listens to the output and the input together: a 43 ms frame about every 11 ms, between
+    200 Hz and 16 kHz. It suspects a squeal when all of these hold:
+    - a narrow, loud peak (half the output's energy in five bins above 1.5 kHz, 70% below; louder than -40 dBFS);
+    - the peak keeps its frequency within 0.6% and does not fade;
+    - the input carries the same tone and does not fade either;
+    - the input follows the output at a steady ratio.
+    It waits 70 ms above 1.5 kHz and 120 ms below. Then it asks: it dips its own output 4 dB for 50 ms. It trips only
+    when the dip comes back through the input, against the input's own trend: a fall of 2 dB or more, then a turn
+    upward of 2 dB or more about 50 ms later. A loop answers so whether it is saturated or still growing (a growing
+    loop collapses under the dip, then regrows). It confirms over one more frame unless that frame holds a tone at
+    another frequency (a new note's attack can look like an answer). A tone that does not answer is asked again a
+    second later, three times at most while it holds.
+    - **Why it asks:** listening alone cannot tell a squeal from a steady tone someone plays in. NAM Core's example
+      clip, which the page plays as its "demo riff", is a second of silence and a second of a 220 Hz sine, and the
+      first build tripped on it. The guard and auto-off also rest while the riff plays, since nothing can feed back
+      then.
+  - **Auto-off** watches the input for a pulled jack: a spike at -1 dBFS or more, then either of these.
+    - Within 30 ms, dead silence for 300 ms: below -60 dBFS peak and -75 dBFS RMS. A palm mute cannot fall that fast.
+    - Mains hum: two 200 ms windows where the comb of twelve 50 Hz or 60 Hz harmonics carries 80% of the energy. A
+      seven-string's low B at 61.7 Hz does not count.
+  - Neither listens in standby or once muted. A write of `clearTrip` (Turn back on, or Space) lifts the mute.
+  - `rig_status` reports what muted the output, the frequency, a trip count, how long the tone held, when, and the
+    fade's gain. New params: `standby`, `guardOn`, `autoOff`, `clearTrip`.
+- **The input device:** a browser's track `ended`, or the device leaving the list, puts the amp in standby with
+  "Auto-off: your input device went away". On the desktop the same happens when the driver stops delivering audio
+  while the guitar plays, except within 30 s of opening Audio settings, which restarts the driver.
+- **The page:**
+  - Power B is the default: the kit's own pilot and switches on the hardware, and the page's own lamp and toggles
+    (`.pw-lamp`, `.pw-bat`) on the islands and the stripe. A (a header pill beside the guard's state) and C (a big
+    button before the chain) are in the look menu under Power.
+  - Space is the key everywhere but text fields, dialogs and the look menu, matched by key as well as code (keys
+    without a scan code carry no code).
+  - The banner says why, in words, with "Turn back on (Space)": Standby; the squeal guard, with the frequency and how
+    long it held; auto-off on silence, on hum (with its frequency), or on the device.
+  - The pilot reads On, Standby, Muted or Off.
+  - Protection in the setup holds the Squeal guard and Auto-off switches, both on (D-RIG-008 (e)).
+- **The desktop app plays the guitar at open** if it was playing (not in standby, not muted) when it last closed. That
+  was his pick of three. A first run still waits for Play my guitar.
+- **Tests:**
+  - `web/engine/test.mjs`: 25 cases from `web/engine/scenarios.mjs` through the wasm and MSVC builds, the same sample
+    for sample and on every trip.
+    - Seven real feedback loops trip within 300 ms of turning loud, the slowest 289 ms: 800 Hz to 5 kHz, a fuzz,
+      over the riff, at 44.1 kHz.
+    - Four pulled jacks trip auto-off: hum at 50 and 60 Hz, dead silence, and 44.1 kHz.
+    - Fourteen cases trip nothing: the riff (clean, at +20 dB, through a fuzz), long notes (clean, at +20 dB,
+      through a fuzz, beating, slowly decaying), chords hit to clip and muted, a low B struck hard, and three sweeps.
+    - It also checks Standby's fade and Turn back on.
+    - The fuzz is an LSTM of one cell, `fuzzCapture()`: NAM Core's examples are mostly clean.
+  - `web/check.mjs`: 44 checks (6 new). They cover the power drawings, Space, the Protection switches, and the guard in
+    a real Web Audio loop through the worklet (2409 Hz). Auto-off trips through the page's own input, with Edge's fake
+    microphone playing a pulled jack, and a lost device comes back on Turn back on.
+  - `packaging/windows/check.mjs`: 26 checks (4 new): Space through the engine, a real Space from Windows, auto-off in
+    the native engine with the page's banner, and a second opening that plays the guitar at once.
+- **What it does not prove:** every case is synthetic. "No false trips on real playing" is his to try: real playing,
+  a real laptop's microphone and speakers, a real pulled cable. The dip is 4 dB for 50 ms, heard only on a steady tone
+  that passes every other test first (a synth pad, a sine). A held note that blooms into real feedback is muted, as
+  the guard on by default means; Protection turns it off for anyone who wants that feedback.
 
 ### R4. The library (U3)
 

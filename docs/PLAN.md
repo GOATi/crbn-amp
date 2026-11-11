@@ -26,6 +26,15 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-12 (SYNC:RIG-020): R3 is built and shipped (crbn-launcher D-RIG-021): power, auto-off and the squeal guard
+  (U1), in the engine both builds run (`web/engine/rig_guard.h`) and in the page. Standby is the engine's 20 ms fade.
+  The guard asks before it trips: it dips its own output 4 dB for 50 ms and trips when the dip comes back through the
+  input. Auto-off works on a pulled jack (a spike, then dead silence or 50/60 Hz hum) and on the input device going
+  away. Power B is the default, with A and C in the look menu, and Space as the key. The banner says why. The desktop
+  plays the guitar at open if it was playing at close. Checks: `web/engine/test.mjs` 25 guard cases in both builds,
+  `web/check.mjs` 44, `packaging/windows/check.mjs` 26. Web build `20261111-1620-1e45d76-b2af5c94`; desktop 0.9.2
+  signed on dev (manifest `2ba04875…`, 68 of 68). His real playing is the test still to come.
+
 - 2026-11-11 (SYNC:RIG-018): the store's art shows the kits (crbn-launcher D-RIG-019). The hero and card show the
   CRBN amp and cabinet. The cover stacks CRBN, Salvage, Compact and Rack. The web shot and the four looks are retaken.
   All of it is from previews the owner picked (record version 24). His verdicts on eight Salvage amps, the fix for its
