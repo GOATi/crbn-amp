@@ -734,6 +734,27 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .salv-opts .sheets { margin-top: 0; }
 .salv-opts .sheets > span { min-width: 86px; }
 @media (max-width: 640px) { .salv-opts .sheets > span { min-width: 0; flex-basis: 100%; } }
+
+/* v6: the owner's notes on Salvage in version 5 (D-RIG-013) */
+/* the opening in the faceplate: the sheet's cut edge (dark above, catching light below), the faceplate's shadow cast
+   down onto the grille set behind it, and a dark frame inside the opening that the grille is bolted to */
+.k-hammer .gz { border: 2px solid; border-color: rgba(0,0,0,.78) rgba(0,0,0,.55) rgba(255,232,206,.3) rgba(0,0,0,.55); box-shadow: 0 -1px 0 rgba(0,0,0,.45), 0 1px 0 rgba(255,240,220,.16), inset 0 0 0 1px rgba(0,0,0,.6); }
+.k-hammer .gz::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border: 5px solid #1f1c19; border-radius: 1px; box-shadow: inset 0 0 0 1px rgba(255,235,210,.07), inset 0 3px 4px rgba(0,0,0,.7), 0 0 0 1px rgba(0,0,0,.5); }
+.k-hammer .gz::before { content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; box-shadow: inset 0 12px 14px -6px rgba(0,0,0,.9), inset 10px 0 12px -8px rgba(0,0,0,.65), inset -10px 0 12px -8px rgba(0,0,0,.6), inset 0 -8px 10px -8px rgba(0,0,0,.55); }
+.k-hammer .gz > .logo-box { z-index: 3; }
+/* old bolts: dull, slotted, rusted at the head and bleeding rust onto the metal */
+.k-hammer .salv-plate .rv, .k-hammer .salv-bolt { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, rgba(176,164,146,.5) 0 9%, transparent 32%), radial-gradient(circle, #564c43 0 42%, #42382e 68%, #281f17 100%); box-shadow: 0 1px 1px rgba(0,0,0,.85), 0 0 0 .5px rgba(0,0,0,.6), 0 0 4px 1.5px rgba(100,40,10,.55); }
+.k-hammer .salv-plate .rv::before, .k-hammer .salv-bolt::before { content: ''; position: absolute; left: 1px; right: 1px; top: 50%; height: 1.4px; margin-top: -.7px; background: rgba(14,9,5,.88); box-shadow: 0 .5px 0 rgba(255,232,206,.14); transform: rotate(var(--sr, 24deg)); }
+.k-hammer .salv-plate .rv::after, .k-hammer .salv-bolt::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 70% 76%, rgba(134,58,18,.8), transparent 56%); }
+.k-hammer .salv-plate .rv:nth-of-type(2), .k-hammer .salv-bolt.b2 { --sr: -38deg; } .k-hammer .salv-plate .rv:nth-of-type(3), .k-hammer .salv-bolt.b3 { --sr: 72deg; } .k-hammer .salv-plate .rv:nth-of-type(4), .k-hammer .salv-bolt.b4 { --sr: -8deg; }
+.k-hammer .salv-bolt { z-index: 3; width: 9px; height: 9px; }
+.k-hammer .salv-bolt.b1 { left: 2px; top: 2px; } .k-hammer .salv-bolt.b2 { right: 2px; top: 2px; }
+.k-hammer .salv-bolt.b3 { left: 2px; bottom: 2px; } .k-hammer .salv-bolt.b4 { right: 2px; bottom: 2px; }
+/* the stamps: no white. Light stamps show aged steel, not bright metal; on the plate the shadow inside the top of each
+   letter is half what it was */
+.k-hammer .lb[data-ink="light"], .k-hammer .st[data-ink="light"], .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(92,86,80,.96) 8%, rgba(184,176,164,.96) 72%); }
+.k-hammer .salv-plate[data-ink="light"] .logo, .k-hammer .salv-plate[data-ink="light"] .salv-name b { background-image: linear-gradient(180deg, rgba(120,112,103,.96) 10%, rgba(172,164,152,.96) 62%); filter: drop-shadow(0 -1px 0 rgba(0,0,0,.45)) drop-shadow(0 -2px 1px rgba(0,0,0,.15)) drop-shadow(0 1px 0 rgba(255,236,214,.16)); }
+.k-hammer .salv-plate[data-ink="dark"] .logo, .k-hammer .salv-plate[data-ink="dark"] .salv-name b { background-image: linear-gradient(180deg, rgba(30,19,11,.86) 10%, rgba(52,33,20,.74) 70%); filter: drop-shadow(0 1.5px 0 rgba(255,236,214,.38)) drop-shadow(0 -1px 0 rgba(0,0,0,.22)); }
 @media (max-width: 1080px) {
   .kit, .builder { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'show' 'info'; }
   .intro { grid-template-columns: minmax(0, 1fr); }
@@ -831,13 +852,13 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
         <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
     </div>
     <div class="changes">
-      <b>Version 5: your notes on Salvage</b>
+      <b>Version 6: your notes on Salvage</b>
       <ul>
-        <li>Under Salvage are the <b>choices players will get</b>: the sheet, the grille, the grille's metal and the glow behind it, with <b>Shuffle</b> for new crops.</li>
-        <li><b>Six grilles</b>: expanded metal, chicken wire, woven wire, perforated sheet, welded grid and bar grate.</li>
-        <li><b>Grilles in old bare metal</b>, with no paint: old steel, galvanised, rusted iron and aged copper. The same scrap is still there too.</li>
-        <li><b>Five glows</b>: embers, valves, furnace, neon, or none.</li>
-        <li><b>Every word is stamped into the metal</b>, with a shadow on its upper wall and light on its lower lip. On light metal the stamp reads dark. On dark metal it shows bright bare steel, where the punch broke the paint. That includes CRBN RIG and SALVAGE on the plate and the pedals' names. The capture's label-maker tape keeps its raised letters.</li>
+        <li>Salvage opens with <b>your choices</b>: the Rust and orange sheet, a perforated sheet in old steel, and valves behind it.</li>
+        <li>The <b>welded grid and bar grate are gone</b>. Every grille metal is darker, so the grille sits back behind the faceplate.</li>
+        <li><b>The grille opening has depth</b>. The faceplate's cut edge is dark above and catches the light below, and the faceplate casts a shadow down onto the grille. The grille sits on a dark frame inside the opening, bolted in at its corners.</li>
+        <li><b>The plate</b> has no white. Its letters show aged steel, and the shadow inside the top of each letter is half what it was. Its bolts are old: dull, slotted, rusted at the head and bleeding rust onto the plate.</li>
+        <li>The words on the panel use the same aged steel in place of white.</li>
       </ul>
     </div>
   </section>
@@ -976,7 +997,7 @@ const KITS = [
     knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'led', logo: 'CRBN RIG',
     capture: 'Garage fuzz', pedal: 'Scrap fuzz', pedal2: 'Boost',
     pitch: 'Real salvaged sheet metal, from photographs: coats of old paint worn through to bare steel, rust that blooms and runs, scratches and stains. Each amp and pedal takes its own crop of the sheet, turned and flipped, so no two pieces match.',
-    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; words stamped into it, dark on light metal and bright bare steel on dark; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'A grille of the player’s choice (expanded metal, chicken wire, woven wire, perforated sheet, welded grid or bar grate) in the same scrap or old bare metal, over a glow of their choice; the name stamped into a riveted plate cut from another sheet.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
+    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; words stamped into it, dark on light metal and bright bare steel on dark; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'A grille of the player’s choice (expanded metal, chicken wire, woven wire or perforated sheet) in the same scrap or old bare metal, set back behind the faceplate and bolted in at its corners, over a glow of their choice; the name stamped into a plate cut from another sheet and bolted on.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
     reach: 'A finish tints the sheet. In the kit’s own colours the metal is as photographed.' },
   { id: 'rack', fam: 'classic', name: 'Rack', after: 'studio and rack gear: brushed aluminium, ears and handles, a VU meter', own: '#c6cbd0', lamp: '#ffb340',
     knob: 'alu', scale: 'ticks', pwr: 'bat mini', tg: 'lit', lampT: 'vu', foot: '3pdt', led: 'led', logo: 'CRBN Rig',
@@ -1293,7 +1314,7 @@ function pedalHTML (kit, name) {
 }
 function cabHTML (kit) {
   const isNew = kit.fam === 'new'
-  const inner = isNew ? '' : kit.id === 'rack' ? '<span class="vents" aria-hidden="true"></span>' : kit.id === 'hammer' ? '<i class="spk"></i><i class="spk"></i><canvas class="salv-mesh" aria-hidden="true"></canvas>' : '<i class="spk"></i><i class="spk"></i>'
+  const inner = isNew ? '' : kit.id === 'rack' ? '<span class="vents" aria-hidden="true"></span>' : kit.id === 'hammer' ? '<i class="spk"></i><i class="spk"></i><canvas class="salv-mesh" aria-hidden="true"></canvas>' + SALV_BOLTS : '<i class="spk"></i><i class="spk"></i>'
   return `<div class="hw cab ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="cab"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}<div class="gz">${inner}</div><div class="cplate"><span class="lb">Cabinet IR</span><b>2×12 open back</b><small>Dynamic mic, on axis</small>${swHTML(kit.tg, 'ir', 'IR', true)}</div></div></div></div>`
 }
 function meterHTML (label, id) {
@@ -1552,7 +1573,7 @@ const SALV_SEL = '.k-hammer .cabinet, .k-hammer .pface, .k-hammer .salv-plate, .
 // Salvage's grille: a warm glow, expanded metal from the scrap, and the name on a plate riveted over it (D-RIG-011)
 function salvGZ (kit) {
   const stamp = [...'SALVAGE'].map((c, i) => `<b style="--r:${[-2, 1.5, -1, 2, -1.5, 1, -2][i]}deg;--y:${[1, -.5, 0, 1, -1, .5, -.5][i]}px">${c}</b>`).join('')
-  return `<i class="salv-glow" data-glow="${SALV_GLOW}" aria-hidden="true"></i><canvas class="salv-mesh" aria-hidden="true"></canvas><div class="logo-box"><span class="salv-plate"><span class="logo">CRBN RIG</span><span class="salv-name"><span class="vh">Salvage</span><span aria-hidden="true" style="display:contents">${stamp}</span></span><i class="rv"></i><i class="rv"></i><i class="rv"></i><i class="rv"></i></span><span class="sub">${kit.capture}</span></div>`
+  return `<i class="salv-glow" data-glow="${SALV_GLOW}" aria-hidden="true"></i><canvas class="salv-mesh" aria-hidden="true"></canvas>${SALV_BOLTS}<div class="logo-box"><span class="salv-plate"><span class="logo">CRBN RIG</span><span class="salv-name"><span class="vh">Salvage</span><span aria-hidden="true" style="display:contents">${stamp}</span></span><i class="rv"></i><i class="rv"></i><i class="rv"></i><i class="rv"></i></span><span class="sub">${kit.capture}</span></div>`
 }
 // A sheet's crop, as on the faceplates: its own scale, offset, quarter turn and flips.
 function sheetCrop (g, w, h, img, R) {
@@ -1563,10 +1584,11 @@ function sheetCrop (g, w, h, img, R) {
 }
 // Expanded metal, drawn straight into its canvas: the strands carry the scrap's paint and rust, cast a shadow on the
 // glow behind, and catch its light on their lower edges. A torn spot or two.
-const MESH_TYPES = [['expanded', 'Expanded metal'], ['chicken', 'Chicken wire'], ['woven', 'Woven wire'], ['perf', 'Perforated sheet'], ['grid', 'Welded grid'], ['bars', 'Bar grate']]
+const SALV_BOLTS = [1, 2, 3, 4].map(n => '<i class="salv-bolt b' + n + '" aria-hidden="true"></i>').join('')
+const MESH_TYPES = [['expanded', 'Expanded metal'], ['chicken', 'Chicken wire'], ['woven', 'Woven wire'], ['perf', 'Perforated sheet']]
 const MESH_METALS = [['scrap', 'The same scrap'], ['steel', 'Old steel'], ['galv', 'Galvanised'], ['rust', 'Rusted iron'], ['copper', 'Aged copper']]
 const GLOWS = [['embers', 'Embers'], ['valves', 'Valves'], ['furnace', 'Furnace'], ['neon', 'Neon'], ['none', 'None']]
-let SALV_MESH = 'expanded', SALV_METAL = 'scrap', SALV_GLOW = 'embers'
+let SALV_MESH = 'perf', SALV_METAL = 'steel', SALV_GLOW = 'valves'
 const GLOW_EDGE = { embers: 'rgba(255,130,50,.26)', valves: 'rgba(255,150,60,.24)', furnace: 'rgba(255,170,80,.32)', neon: 'rgba(120,190,255,.28)', none: '' }
 // Each grille: a mask of its metal, and its shading (light above, shadow below, the glow on its lower edges).
 const jit = (x, y) => { const s = Math.sin(Math.round(x * 10) * 1.29898 + Math.round(y * 10) * 7.8233) * 43758.5453; return s - Math.floor(s) - .5 }
@@ -1623,26 +1645,6 @@ const MESH_GEO = {
       mask: m => { m.fillStyle = '#000'; m.fillRect(0, 0, w, h); m.globalCompositeOperation = 'destination-out'; ring(m, 0, r); m.fill(); m.globalCompositeOperation = 'source-over' },
       shade: (s, edge) => { s.lineWidth = .9; s.strokeStyle = 'rgba(0,0,0,.55)'; ring(s, -.9, r + .2); s.stroke(); s.strokeStyle = 'rgba(255,255,255,.3)'; ring(s, .9, r + .2); s.stroke(); if (edge) { s.strokeStyle = edge; s.lineWidth = 1; ring(s, .5, r + .4); s.stroke() } }
     }
-  },
-  grid (w, h, R) {
-    const P = 17, ox = R() * P, oy = R() * P, nx = Math.ceil(w / P) + 2, ny = Math.ceil(h / P) + 2
-    const lines = (c, dx = 0, dy = 0) => { c.beginPath(); for (let i = -1; i < ny; i++) { c.moveTo(0, oy + i * P + dy); c.lineTo(w, oy + i * P + dy) } for (let j = -1; j < nx; j++) { c.moveTo(ox + j * P + dx, 0); c.lineTo(ox + j * P + dx, h) } }
-    const welds = (c, d) => { c.beginPath(); for (let i = -1; i < ny; i++) for (let j = -1; j < nx; j++) { const x = ox + j * P, y = oy + i * P, rr = 2.1 + jit(x, y) * .8; c.moveTo(x + rr, y + d); c.arc(x, y + d, rr, 0, TAU) } }
-    return {
-      mask: m => { m.strokeStyle = '#000'; m.fillStyle = '#000'; m.lineWidth = 2.5; lines(m); m.stroke(); welds(m, 0); m.fill() },
-      shade: (s, edge) => { s.lineWidth = .8; s.strokeStyle = 'rgba(255,255,255,.32)'; lines(s, -.8, -.8); s.stroke(); s.strokeStyle = 'rgba(0,0,0,.5)'; lines(s, .9, .9); s.stroke(); s.fillStyle = 'rgba(255,255,255,.18)'; welds(s, -.6); s.fill(); if (edge) { s.strokeStyle = edge; s.lineWidth = .9; lines(s, 0, 1.3); s.stroke() } }
-    }
-  },
-  bars (w, h, R) {
-    const P = 12, bh = 6, oy = R() * P, bars = [], straps = [w * (.16 + R() * .06), w * (.5 + (R() - .5) * .08), w * (.82 + R() * .05)]
-    for (let y = oy - P; y < h + P; y += P) bars.push(y + jit(y, 3) * 1.2)
-    return {
-      mask: m => { m.fillStyle = '#000'; for (const y of bars) m.fillRect(0, y, w, bh); for (const x of straps) m.fillRect(x - 3.5, 0, 7, h) },
-      shade: (s, edge) => {
-        for (const y of bars) { s.fillStyle = 'rgba(255,255,255,.3)'; s.fillRect(0, y, w, 1); s.fillStyle = 'rgba(0,0,0,.5)'; s.fillRect(0, y + bh - 1.2, w, 1.2); if (edge) { s.fillStyle = edge; s.fillRect(0, y + bh - 2.2, w, 1) } }
-        for (const x of straps) { s.fillStyle = 'rgba(255,255,255,.22)'; s.fillRect(x - 3.5, 0, 1, h); s.fillStyle = 'rgba(0,0,0,.45)'; s.fillRect(x + 2.5, 0, 1, h); for (const y of bars) { const g = s.createRadialGradient(x - .6, y + bh / 2 - .6, 0, x, y + bh / 2, 2); g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(1, 'rgba(0,0,0,.45)'); s.fillStyle = g; s.beginPath(); s.arc(x, y + bh / 2, 1.8, 0, TAU); s.fill() } }
-      }
-    }
   }
 }
 // Old bare metal, drawn: no paint, or very little.
@@ -1681,9 +1683,10 @@ function meshTex (cv, w, h, img, seed, tint, glow) {
   if (tint && SALV_METAL === 'scrap') { s.globalCompositeOperation = 'color'; s.globalAlpha = .55; s.fillStyle = tint; s.fillRect(0, 0, w, h); s.globalAlpha = 1 }
   s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'destination-in'; s.drawImage(mk, 0, 0)
   s.setTransform(k, 0, 0, k, 0, 0); s.globalCompositeOperation = 'source-atop'
-  s.fillStyle = 'rgba(0,0,0,.2)'; s.fillRect(0, 0, w, h)
-  T.shade(s, glow ? GLOW_EDGE[SALV_GLOW] : '')
-  const vg = s.createRadialGradient(w * .6, h * .7, Math.min(w, h) * .2, w / 2, h / 2, Math.hypot(w, h) * .6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); s.fillStyle = vg; s.fillRect(0, 0, w, h)
+  // set back behind the faceplate: the metal sits in shade, its highlights softer
+  s.fillStyle = 'rgba(0,0,0,.44)'; s.fillRect(0, 0, w, h)
+  s.globalAlpha = .72; T.shade(s, glow ? GLOW_EDGE[SALV_GLOW] : ''); s.globalAlpha = 1
+  const vg = s.createRadialGradient(w * .6, h * .7, Math.min(w, h) * .2, w / 2, h / 2, Math.hypot(w, h) * .6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.5)'); s.fillStyle = vg; s.fillRect(0, 0, w, h)
   g.save(); g.filter = 'blur(' + (2 * k) + 'px)'; g.globalAlpha = .8; g.drawImage(mk, 2.5 * k, 3 * k); g.restore()
   g.drawImage(sk, 0, 0)
 }

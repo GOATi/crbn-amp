@@ -26,6 +26,11 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-012): the owner's Salvage choices (perforated old steel, valves) and notes recorded as
+  crbn-launcher D-RIG-013, and the lab's sixth version answers them. Four grilles remain, all sitting darker behind the
+  faceplate. The grille opening is recessed, with a cut edge, a cast shadow and a bolted frame. The plate has no white,
+  its letters' inner shadow is halved, and its bolts are old.
+
 - 2026-11-11 (SYNC:RIG-011): the owner's notes on Salvage recorded as crbn-launcher D-RIG-012, and the lab's
   fifth version answers them. Salvage has six grilles (chicken wire among them), each in the same scrap or in old bare
   metal (old steel, galvanised, rusted iron, aged copper), and five glows. Players get these choices, with Shuffle.
