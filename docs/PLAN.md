@@ -26,6 +26,12 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-009): the owner's notes on the Hardware Lab's second version recorded as crbn-launcher D-RIG-010,
+  and the lab's third version answers them. Salvage is made from photographed textures, with a crop for each piece (the
+  build will use the texture library). CRBN stands straight at the script's height. Every amp has one line of words.
+  Pedal knobs show only their end numbers (0 or 1 to 10). The stomp switch is redrawn. In the Rig builder, players can
+  save any knob or switch as a template and import their own art.
+
 - 2026-11-11 (SYNC:RIG-008): the owner's Hardware Lab picks recorded as crbn-launcher D-RIG-009. He kept 18 kits and
   made his own builder kit "CRBN" the default; players get the builder with share codes; "CRBN Rig" goes on every head.
   The lab's second version answers his notes for his look before the build: the Obsidian and Spinner knobs, the

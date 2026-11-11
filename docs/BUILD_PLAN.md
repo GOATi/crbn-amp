@@ -67,6 +67,12 @@ db: `picks/<kit>` (keep, maybe or cut, and a note), `picks/default`, `picks/q-<i
 `picks/general`. The steps below still hold, scaled to the kits he keeps. Many kept kits may need R1 and an R1b; the
 energy kits share one engine, a port of the Hub's `shell/logo-window` layers.
 
+**His picks and notes so far (D-RIG-009, D-RIG-010):** 18 kits are kept, and his own builder kit CRBN is the default.
+Players get the Rig builder with share codes. Players can also bring their own art for knobs and switches: templates go
+out, art comes in, and it is kept and shared with the kit. For that, every knob and switch is built as layered SVG.
+Salvage is drawn from the texture library's photographs, with a crop for each piece. Pedal knobs show only their end
+numbers. "CRBN Rig" stands straight on every head.
+
 - **Lab first, as before:** a small **Detail Lab** artifact (the Rig Lab's pattern: three options per area, live on a
   mock of the real page in all four looks and three finishes, Pick and a note saved to its db). Areas: the faceplate's
   finish (today's brushed stripes; a smooth satin gradient; a fine grain, or anodised flat), the knobs (today's shine;
