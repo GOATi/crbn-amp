@@ -30,7 +30,7 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 | Rig's hardware: the kits on the amp and cabinet (D-RIG-009..016), ported from the Hardware Lab | `web/src/hw/` (`hw.js`, `hw.css`, `tex/` Salvage's sheets, `fonts/`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
 | The Hub folder, and the desktop app's check | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/`; `packaging/windows/check.mjs` |
-| The Hub record and store page | `packaging/hub/` (`words.json`, `pictures.json`, `README.md`) |
+| The Hub record and store page | `packaging/hub/` (`words.json`, `pictures.json`, `README.md`; `desktop-shot.mjs` the desktop capture, `pictures.mjs` the pictures) |
 | The web host | `hosting/` (the r2-host-kit, `wrangler.jsonc`, `publish.json`, `README.md`) |
 | The placeholder icon | `packaging/icons/` (`node packaging/icons/render.mjs`) |
 | The plan and progress log | `docs/PLAN.md` |

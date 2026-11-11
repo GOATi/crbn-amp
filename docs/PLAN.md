@@ -10,7 +10,7 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 |---|---|---|
 | **P1 Desktop on the Hub** | The rebrand (name, cherry, icon, About, links, `crbn-rig.exe`), the Hub folder, the store page, `pavillion-publish` to dev, confirmed byte for byte | done on dev (2026-11-10); the owner's Install and Play to see |
 | **P2 Web on the Hub** | NAM's core in WebAssembly behind our own page in the suite's looks; guitar in through the browser; captures and IRs from disk; `rig.carbonlinear.com`; the record's `links.tool` | live on dev (2026-11-10): `rig.carbonlinear.com` serves it and the record's `links.tool` names it; in the desktop Hub's window the guitar input waits on the Hub lane's microphone grant |
-| **P3 Our UX** | The order of sessions is `docs/BUILD_PLAN.md` (R1..R9). The owner's first pass (D-RIG-006), briefed in `docs/P3-UX.md`: the power switch and squeal guard, the page on the desktop (WebView2 over the same engine), the library, favourites on standby with QWERTY keys, rigs and variants with hot-swapped pedals, drag-and-drop MIDI (his Morningstar MC8), then TONE3000 in the library | next: `docs/P3-UX.md`'s open choices first |
+| **P3 Our UX** | The order of sessions is `docs/BUILD_PLAN.md` (R1..R9). The owner's first pass (D-RIG-006), briefed in `docs/P3-UX.md`: the power switch and squeal guard, the page on the desktop (WebView2 over the same engine), the library, favourites on standby with QWERTY keys, rigs and variants with hot-swapped pedals, drag-and-drop MIDI (his Morningstar MC8), then TONE3000 in the library | R1 and R2 done (the kits; the desktop on the page, 0.9.0 signed); R1b next |
 | P4 Plug-in formats | VST3 (and AU on macOS) for DAWs: the VST3 SDK, an install the Hub can place where hosts look. Upstream's Inno installer (`NeuralAmpModeler/installer/`, with its RTF readmes and the manual PDF) is not CRBN's route and still carries upstream's words; P4 rebrands it or replaces it, with an `AppId` of its own (it has none, so Inno keys it on `AppName` and it would meet an upstream install) | later |
 | P5 Signing, review, public | Certum signing in a SimplySign session; a director's first-publish review; `display: public` | done on dev (2026-11-10, D-RIG-005): signed, reviewed, public |
 
@@ -26,6 +26,11 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-11 (SYNC:RIG-017): R2b shipped (crbn-launcher D-RIG-018). Desktop 0.9.0 on Rig's page is signed and
+  published to dev (manifest `e043f4dd…`, PatcherCli 67 of 67 files byte-identical). `check.mjs` passes 21/21 on the
+  signed folder. The web version is live as build `20261111-0839-fff8c4a-f802d8f4`. The store's new desktop picture
+  shows the CRBN kit and comes first. The owner's wish for Salvage, second and cycling, with a skins section on the
+  store page, is `docs/BUILD_PLAN.md` R1c.
 - 2026-11-11 (SYNC:RIG-016): R2a is built (crbn-launcher D-RIG-017). `crbn-rig.exe` draws Rig's page in WebView2, over
   `rig_engine.cpp` compiled in, with Rig's own host and the WebView2 SDK alone (version 1.0.4314.35, vendored as
   `WebView2/`). Upstream's IGraphics UI and DSP chain are gone. The page has two audio backends, one per build.

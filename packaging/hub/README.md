@@ -40,8 +40,10 @@ D-PHOTOLIVE-024 (c)):
 
 ```powershell
 node web/build.mjs; node web/shots.mjs; node packaging/icons/render.mjs   # the web screenshots and icons
-# the desktop capture: dist/shots/desktop.png (the app enlarged with its corner resizer; see SYNC:RIG's entry)
+node packaging/hub/desktop-shot.mjs        # the desktop capture, dist/shots/desktop.png: the packaged app playing the
+                                           # demo riff (about three seconds, Output -12 dB); --kit=hammer for Salvage
 node packaging/hub/pictures.mjs                                            # -> dist/hub-listing/
+#   --only=desktop renders that piece alone and leaves the rest as uploaded; a changed picture needs a new name
 $H = 'D:\Projects\crbn-launcher\scripts\hub-listing\hub-listing.ps1'; $L = 'D:\Projects\crbn-amp\dist\hub-listing'
 powershell -ExecutionPolicy Bypass -File $H plan   --app P2KLkFx6f5JQwaQKLCngoKLERMM25Fv2KLJmntLBKjXKbi1 --listing $L
 powershell -ExecutionPolicy Bypass -File $H upload --app P2KLkFx6f5JQwaQKLCngoKLERMM25Fv2KLJmntLBKjXKbi1 --listing $L
@@ -59,3 +61,5 @@ Hub never offers a web version that does not answer. `display: public` waits for
 | 2026-11-10 | The web version live at `https://rig.carbonlinear.com`: build `20261110-0832-b65358a-0b49ab75`, then `20261110-0855-e386b16-e2b3bf59` (the layout fix at laptop widths); `web/check.mjs --url` 45 of 45 files byte-identical. Roll back with `--promote-only=20261110-0832-b65358a-0b49ab75`. `links.tool` applied (record version 3 -> 5, 19 of 19 fields read back) |
 | 2026-11-10 | **Signed** in the owner's SimplySign session (`package.ps1 -SkipBuild -Sign`: GOATi's Certum certificate, Certum's timestamp) and republished: manifest `5735d60de50257194c00c8bc7f0e0b9015110ef7`, 4 of 8 chunks sent; confirmed (PatcherCli 5 of 5 byte-identical). **Submitted for review** (`hub-listing submit`), approved by the owner, then **`display: public`** (record version 6). The four-looks picture renamed `-looks-2` for Rig's tweed (version 8) |
 | 2026-11-11 | The owner's lab picks (D-RIG-008): the web version live as build `20261110-1452-36ad4b0-b3adb8e3` (the owner's publish; all 46 files match). New store pictures with the stompbox icon, approved by the owner: hero, card, cover, logo, the web shot and the four looks renamed `-2` / `-looks-3` (the CDN keeps a name for a day), uploaded and served 200; `apply` read back 19 of 19 fields. The desktop shot is unchanged and still shows upstream's drawing until U2 (`docs/BUILD_PLAN.md`) |
+| 2026-11-11 | **Desktop 0.9.0 on Rig's page** (R2a, D-RIG-017; R2b, D-RIG-018) from `fff8c4a`, **signed** (`package.ps1 -Sign`), `check.mjs` 21/21: manifest `e043f4dd9e25048f31838edfdcd08c041261b4f2`, 63 chunks, 2.0 MB sent; confirmed (the CDN serves it; PatcherCli 67 of 67 files byte-identical). The web version live as build `20261111-0839-fff8c4a-f802d8f4` (62 of 62 files match; roll back with `--promote-only=20261111-0647-48b3c29-5b758257`) |
+| 2026-11-11 | The new desktop picture, the owner's pick (CRBN): `crbn-rig-shot-2-desktop-2.png`, from `desktop-shot.mjs` and `pictures.mjs --only=desktop`, put first in `storeMedia` so CRBN is the first kit players see. The six other pictures are byte-identical to the CDN's. Uploaded and served 200; `apply` read back with nothing differing (record version 16) |

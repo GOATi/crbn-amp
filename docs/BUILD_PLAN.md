@@ -13,7 +13,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 
 - **Desktop app** on the dev Hub: signed, reviewed, public. It still draws upstream's IGraphics UI, which the owner
   dropped from Rig (D-RIG-007 (a)); its new stompbox icon ships with its next build. (Later the same day, R2a built
-  the app on Rig's page, D-RIG-017; R2b publishes it.)
+  the app on Rig's page, D-RIG-017, and R2b shipped it as 0.9.0, signed, D-RIG-018.)
 - **Web version** at `https://rig.carbonlinear.com`: the owner's lab picks are live (D-RIG-008): the stompbox mark;
   the Amp front layout, faceplate and LED meters by default, with the other drawings as player's choices; the finishes
   (the look's own, cherry, gold, rose gold `#f29077`, Custom with a colour wheel); Livewire's look menu with the suite
@@ -40,7 +40,8 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 |---|---|---|---|
 | R1 | Rig's hardware: the kits (built, SYNC:RIG-015) | Done: the Hardware Lab (D-RIG-009..015), the texture library (D-RIG-016) | The 20 kits on the page, CRBN the default, published |
 | R1b | The Rig builder, RIG1 codes, players' own art | Nothing new (D-RIG-009 (c), D-RIG-010 (f)) | Players build, keep and share an energy kit, and bring their own knob and switch art |
-| R2 | The desktop on the page (U2): R2a built (SYNC:RIG-016, D-RIG-017), R2b next | R2a: done (the WebView2 SDK alone, D-RIG-017). R2b: a SimplySign session | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
+| R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e)) | His look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
+| R2 | The desktop on the page (U2): built and shipped (SYNC:RIG-016, RIG-017; D-RIG-017, D-RIG-018) | Done: the WebView2 SDK alone (D-RIG-017); his SimplySign session (R2b) | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1) | Nothing new (D-RIG-008 (e): guard on by default) | Both builds; no false trips on real playing |
 | R4 | The library (U3) | Nothing new | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
@@ -120,6 +121,35 @@ kit.
 - **Sharing art** beyond the codes goes through the Hub, a store for the Hub lane to host: write it as a proposal in
   goati-sync `proposals/`.
 - **Checks:** a code round-trips a kit; imported art draws and turns; the builder's kit survives a reload.
+
+### R1c. The store's skins (D-RIG-018 (e))
+
+The owner, at R2b: "Salvage looks really awesome, and so I want it to be prominant both in screenshots, and on the app
+store page itself in a section about "Choosing and customing your own skins" section. I want the CRBN skin to be the
+first one players see, and Salvage to be the second - And ideally the salvage one cycles, and is a bit random, to
+really highlight how organic and customisable that skin is." It comes after R1b, because R1b's builder and players' own
+art are the customising this section shows. It can be the end of R1b's session if there is room.
+
+- **Already done (R2b):** CRBN is the store's first picture (`crbn-rig-shot-2-desktop-2.png`, the desktop app).
+- **The second picture: Salvage, cycling.**
+  - Capture several Salvage shuffles. Use `node packaging/hub/desktop-shot.mjs --kit=hammer` for the desktop. For
+    the web, the page's own Shuffle, or a `seed`, gives a new crop on every piece. Include his setup (D-RIG-015 (b)).
+  - Join the captures into one animated PNG that holds each look for a moment. The listing tool takes it as a
+    `.png`, and the Hub's store shows uploaded pictures as plain images from the CDN (pavillion_client `hub/packages/
+    blocks/src/legacy/storeToPage.ts`, `Picture.tsx`), so it should play there.
+  - **Test it on the dev Hub before relying on it,** in the Hub's own Electron and in a browser. If the store shows
+    only a still frame, or a resized copy, offer the owner the alternatives: a YouTube video (the store's
+    `videos`), or two or three still Salvage pictures.
+  - Its place in `pictures.json` `storeMedia` is second. Use new file names, since the CDN keeps a name for a day.
+- **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
+  `packaging/hub/words.json` `page`. It covers:
+  - the twenty kits, CRBN the default;
+  - Salvage's choices and Shuffle;
+  - the Rig builder, RIG1 share codes and players' own knob and switch art.
+
+  Show the owner the words with the pictures before `hub-listing apply`.
+- **Checks:** `hub-listing plan` shows the new names unserved, then `upload` and `apply` read back. The store shows
+  CRBN first and Salvage second.
 
 ### R2. The desktop on the page (U2): may take two sessions
 
@@ -204,6 +234,29 @@ the plug-in, so every later feature is built once (D-RIG-008 (e)). Upstream's IG
   - `node web/check.mjs` 30/30, and `node web/engine/test.mjs` all cases (most bit-identical).
 - **Not yet:** R2b (signing, publishing, the store's desktop screenshot). The VST3, AAX and macOS projects still name
   the removed files (P4). The desktop page doesn't read the suite look file (D-CRBN-024's desktop half) yet.
+
+### R2b, as built (2026-11-11, SYNC:RIG-017, D-RIG-018)
+
+- **The version:** 0.9.0, in `config.h` and `main.rc` (the owner's word), for the first build on Rig's page.
+- **Signed** in the owner's SimplySign session (`package.ps1 -Sign`): GOATi's Certum certificate, Certum's timestamp,
+  `signtool verify` clean. `packaging/windows/check.mjs` 21/21 on the signed folder; `web/check.mjs` 30/30;
+  `web/engine/test.mjs` all cases.
+- **Published to dev:** manifest `e043f4dd9e25048f31838edfdcd08c041261b4f2`, 63 chunks, 2.0 MB sent. `confirm.ps1`:
+  the CDN serves it, and PatcherCli installs 67 of 67 files byte-identical. The owner's Hub sees it after a restart.
+- **The web version** published on his word: build `20261111-0839-fff8c4a-f802d8f4`, all 62 files live.
+- **The store's desktop picture:** `packaging/hub/desktop-shot.mjs` (new) captures the real app from the Hub folder:
+  - a throwaway profile, and Output at -12 dB;
+  - the demo riff, captured at a loud moment;
+  - the window's visible bounds only.
+
+  `art.html` frames that capture. `pictures.mjs --only=desktop` renders the piece alone; `--desk=` and `--out=` are
+  for previews. The owner picked CRBN over Salvage. The picture went up as `crbn-rig-shot-2-desktop-2.png`, first in
+  `storeMedia`, and the record reads back at version 16. The hero still shows upstream's window as an inset, and the
+  web pictures show the pre-R1 faceplate, until R1c and R9.
+- **A pitfall on this box:** a fresh WebView2 profile on D: (a 2 TB hard disk, 5% free) kept the page from getting
+  ready for 13 to over 30 seconds; on C: (an NVMe SSD) it takes about two. `desktop-shot.mjs` keeps its profile in
+  the temp folder. `check.mjs` still keeps its profile in `dist/desktop-check` on D:; if it times out waiting for
+  the page, move that profile too. The app's own profile is under `%LOCALAPPDATA%` (C:).
 
 ### R3. Power, auto-off and the squeal guard (U1)
 
@@ -296,7 +349,8 @@ recommendation. Build only within those terms, crediting authors as the terms as
 - Run `publish.mjs --promote` for the web version, then check it live with `check.mjs --url`.
 - **Store:** new screenshots of the new UI on the desktop and the web, new words where the features changed
   (`packaging/hub/words.json`), all uploaded under new names after the owner sees them. At least one screenshot shows
-  Salvage in his setup (D-RIG-015).
+  Salvage in his setup (D-RIG-015). Keep R1c's order: CRBN first, Salvage cycling second, and the skins section
+  (D-RIG-018 (e)).
 - **Docs:** `docs/PLAN.md` (P3 done), `docs/P3-UX.md` (status), `packaging/hub/README.md`, a SYNC entry that names
   what is left (P4, production) for the owner.
 

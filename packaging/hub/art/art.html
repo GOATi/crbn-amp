@@ -26,9 +26,9 @@
   .sub { color: var(--text-dim); }
   .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .06); position: absolute; }
   .frame img { display: block; width: 100%; }
-  /* The desktop capture includes Windows' invisible borders (8 px left, right and bottom): crop them. */
+  /* The desktop capture is the window as the screen shows it, title bar and all (packaging/hub/desktop-shot.mjs). */
   .desk { position: absolute; overflow: hidden; border-radius: 8px; box-shadow: 0 30px 80px rgba(0, 0, 0, .65), 0 0 0 1px rgba(255, 255, 255, .08); }
-  .desk img { position: absolute; left: -8px; top: 0; }
+  .desk img { display: block; width: 100%; }
   .pill { display: inline-block; font-size: 22px; color: var(--text); background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); border-radius: 999px; padding: 6px 18px; margin: 0 10px 10px 0; }
   section { display: none; position: absolute; inset: 0; }
 </style>
@@ -42,7 +42,7 @@
     <div class="sub" style="font-size:26px;margin-top:18px;line-height:1.45">Captures of pedals, amps and cabinets, on your desktop or right in your browser.</div>
   </div>
   <div class="frame" style="left:930px;top:150px;width:1180px"><img src="/dist/shots/web-capsule.png" alt=""></div>
-  <div class="desk" style="left:900px;top:610px;width:623px;height:440px"><img src="/dist/shots/desktop.png" alt="" style="width:639px"></div>
+  <div class="desk" style="left:900px;top:640px;width:623px"><img src="/dist/shots/desktop.png" alt=""></div>
 </section>
 
 <section id="card">
@@ -71,12 +71,12 @@
 </section>
 
 <section id="desktop">
-  <div style="position:absolute;left:110px;top:120px;width:520px">
+  <div style="position:absolute;left:110px;top:290px;width:520px">
     <div class="word" style="font-size:24px;color:var(--text-dim)">The desktop app</div>
     <div class="tag" style="font-size:48px;margin-top:22px;line-height:1.15">Low latency through your audio interface.</div>
     <div class="sub" style="font-size:25px;margin-top:22px;line-height:1.5">ASIO or DirectSound. Load a capture and a cabinet IR, set the gate and the EQ, and play. Installed and kept up to date by Pavillion Hub.</div>
   </div>
-  <div class="desk" style="left:720px;top:150px;width:1101px;height:778px"><img src="/dist/shots/desktop.png" alt="" style="width:1129px"></div>
+  <div class="desk" style="left:700px;top:246px;width:1120px"><img src="/dist/shots/desktop.png" alt=""></div>
 </section>
 
 <section id="looks">
@@ -94,6 +94,9 @@
   const piece = new URLSearchParams(location.search).get('piece') ?? 'hero'
   document.getElementById(piece).style.display = 'block'
   document.body.className = piece === 'logo' ? 'clear' : piece === 'cover' ? '' : 'glow'
+  // ?desk=<file.png> frames another desktop capture from dist/shots (desktop-shot.mjs --out), to compare kits.
+  const desk = new URLSearchParams(location.search).get('desk')
+  if (/^[\w-]+\.png$/.test(desk ?? '')) for (const img of document.querySelectorAll('.desk img')) img.src = `/dist/shots/${desk}`
 </script>
 </body>
 </html>
