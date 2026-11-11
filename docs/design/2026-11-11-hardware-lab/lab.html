@@ -706,6 +706,34 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
 .hw.on.k-rack .vents::before { filter: brightness(calc(.55 + var(--heat, .5) * .7)); }
 .k-rack .vents::after { background: linear-gradient(180deg, rgba(0,0,0,.75), transparent 38%, transparent 80%, rgba(0,0,0,.4)); }
 .hw.on.k-rack .vents { box-shadow: 0 1px 0 rgba(255,255,255,.25), 0 0 16px -6px var(--lampc); }
+
+/* v5: the owner's notes on Salvage (D-RIG-012) */
+.salv-glow[data-glow="valves"] { background: radial-gradient(5.5% 46% at 30% 64%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(5.5% 46% at 44% 62%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(5.5% 46% at 58% 64%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(5.5% 46% at 72% 62%, rgba(255,214,150,.95), rgba(255,130,40,.5) 45%, transparent 78%), radial-gradient(55% 110% at 52% 100%, rgba(230,90,20,.42), transparent 72%); }
+.salv-glow[data-glow="furnace"] { background: radial-gradient(34% 95% at 56% 80%, rgba(255,250,225,1), rgba(255,196,90,.92) 20%, rgba(255,112,22,.72) 46%, rgba(170,40,10,.42) 70%, transparent 88%), radial-gradient(80% 140% at 50% 120%, rgba(200,60,10,.5), transparent 70%); }
+.salv-glow[data-glow="neon"] { background: radial-gradient(26% 70% at 44% 64%, rgba(150,225,255,.92), rgba(60,140,255,.45) 45%, transparent 75%), radial-gradient(20% 60% at 72% 58%, rgba(185,130,255,.82), rgba(110,60,255,.36) 45%, transparent 75%), radial-gradient(70% 120% at 55% 112%, rgba(40,90,220,.45), transparent 70%); }
+.salv-glow[data-glow="none"] { display: none; }
+.hw.on .salv-glow[data-glow="furnace"]::after { animation-duration: 4.8s; }
+.hw.on .salv-glow[data-glow="neon"]::after { animation: salv-buzz 2.3s linear infinite; }
+@keyframes salv-buzz { 0%, 100% { opacity: .42; } 47% { opacity: .44; } 48% { opacity: .1; } 49% { opacity: .46; } 50% { opacity: .14; } 51% { opacity: .44; } 88% { opacity: .38; } }
+/* every word on Salvage is stamped into the metal: pressed in, a shadow on its upper wall and light on its lower lip.
+   On light metal the stamp reads dark; on dark metal it shows bright bare steel where the punch broke the paint. */
+.k-hammer .lb, .k-hammer .st, .k-hammer .pname { font-family: 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: .05em; }
+.k-hammer .lb { font-size: 9px; } .k-hammer .st { opacity: 1; font-size: 8.5px; } .k-hammer .pname { font-size: 17px; letter-spacing: .08em; }
+/* the stamp's floor: in shadow under its upper wall, lit toward its lower lip (filled by background-clip, with
+   drop-shadows for the walls, so the shadow sits outside the letter, not over it) */
+.k-hammer .lb[data-ink], .k-hammer .st[data-ink], .k-hammer .pname[data-ink] { -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+.k-hammer .lb[data-ink="dark"], .k-hammer .st[data-ink="dark"], .k-hammer .pname[data-ink="dark"] { background-image: linear-gradient(180deg, rgba(8,5,2,.92) 10%, rgba(52,33,20,.74) 85%); filter: drop-shadow(0 1px 0 rgba(255,244,228,.5)) drop-shadow(0 -.5px 0 rgba(0,0,0,.4)); }
+.k-hammer .lb[data-ink="light"], .k-hammer .st[data-ink="light"], .k-hammer .pname[data-ink="light"] { background-image: linear-gradient(180deg, rgba(104,100,95,.96) 8%, rgba(238,234,226,.96) 72%); filter: drop-shadow(0 -1px 0 rgba(0,0,0,.9)) drop-shadow(0 1px 0 rgba(255,255,255,.2)); }
+.k-hammer .pname[data-ink="dark"] { filter: drop-shadow(0 1.5px 0 rgba(255,244,228,.5)) drop-shadow(0 -1px 0 rgba(0,0,0,.45)); }
+.k-hammer .pname[data-ink="light"] { filter: drop-shadow(0 -1.5px 0 rgba(0,0,0,.9)) drop-shadow(0 -2.5px 1px rgba(0,0,0,.3)) drop-shadow(0 1px 0 rgba(255,255,255,.22)); }
+.k-hammer .salv-plate .logo { font: 700 28px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; -webkit-mask-image: none; mask-image: none; }
+.k-hammer .salv-plate[data-ink] .logo, .k-hammer .salv-plate[data-ink] .salv-name b { -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+.k-hammer .salv-plate[data-ink="dark"] .logo, .k-hammer .salv-plate[data-ink="dark"] .salv-name b { background-image: linear-gradient(180deg, rgba(8,5,2,.92) 10%, rgba(52,33,20,.74) 85%); filter: drop-shadow(0 1.5px 0 rgba(255,244,228,.5)) drop-shadow(0 -1px 0 rgba(0,0,0,.45)); }
+.k-hammer .salv-plate[data-ink="light"] .logo, .k-hammer .salv-plate[data-ink="light"] .salv-name b { background-image: linear-gradient(180deg, rgba(104,100,95,.96) 8%, rgba(238,234,226,.96) 72%); filter: drop-shadow(0 -1.5px 0 rgba(0,0,0,.9)) drop-shadow(0 -2.5px 1px rgba(0,0,0,.3)) drop-shadow(0 1px 0 rgba(255,255,255,.22)); }
+.salv-opts { display: grid; gap: 6px; margin-top: 10px; }
+.salv-opts .sheets { margin-top: 0; }
+.salv-opts .sheets > span { min-width: 86px; }
+@media (max-width: 640px) { .salv-opts .sheets > span { min-width: 0; flex-basis: 100%; } }
 @media (max-width: 1080px) {
   .kit, .builder { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'head' 'show' 'info'; }
   .intro { grid-template-columns: minmax(0, 1fr); }
@@ -803,13 +831,13 @@ main { display: grid; gap: 34px; padding-block: 26px 60px; }
         <a href="https://rig.carbonlinear.com" target="_blank" rel="noopener">rig.carbonlinear.com</a>.</p>
     </div>
     <div class="changes">
-      <b>Version 4: your notes on version 3</b>
+      <b>Version 5: your notes on Salvage</b>
       <ul>
-        <li>The <b>On and Play</b> words sit half as far below their switches and pilot lights, on every amp.</li>
-        <li><b>Salvage's name</b> is on a plate cut from another scrap and riveted on. CRBN RIG is sprayed through a stencil and wears with the metal, and SALVAGE is punched in a letter at a time. The capture's name is on label-maker tape.</li>
-        <li><b>Salvage's grille</b> is expanded metal cut from the same scrap, torn in a spot or two. Behind it a warm glow flickers like heat and swells as you play. The mesh casts its shadow on the glow, and its lower edges catch the light.</li>
-        <li><b>Rack's handles</b> are redrawn: polished bars on screwed mounting blocks, casting a shadow on the panel.</li>
-        <li><b>Rack's vents</b> glow from inside, in its lamp's colour, brighter as you play.</li>
+        <li>Under Salvage are the <b>choices players will get</b>: the sheet, the grille, the grille's metal and the glow behind it, with <b>Shuffle</b> for new crops.</li>
+        <li><b>Six grilles</b>: expanded metal, chicken wire, woven wire, perforated sheet, welded grid and bar grate.</li>
+        <li><b>Grilles in old bare metal</b>, with no paint: old steel, galvanised, rusted iron and aged copper. The same scrap is still there too.</li>
+        <li><b>Five glows</b>: embers, valves, furnace, neon, or none.</li>
+        <li><b>Every word is stamped into the metal</b>, with a shadow on its upper wall and light on its lower lip. On light metal the stamp reads dark. On dark metal it shows bright bare steel, where the punch broke the paint. That includes CRBN RIG and SALVAGE on the plate and the pedals' names. The capture's label-maker tape keeps its raised letters.</li>
       </ul>
     </div>
   </section>
@@ -948,7 +976,7 @@ const KITS = [
     knob: 'dome', scale: '', pwr: 'bat', tg: 'bat', lampT: 'jewel', foot: '3pdt', led: 'led', logo: 'CRBN RIG',
     capture: 'Garage fuzz', pedal: 'Scrap fuzz', pedal2: 'Boost',
     pitch: 'Real salvaged sheet metal, from photographs: coats of old paint worn through to bare steel, rust that blooms and runs, scratches and stains. Each amp and pedal takes its own crop of the sheet, turned and flipped, so no two pieces match.',
-    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; stencilled words that turn dark or light to read on it; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'Expanded metal cut from the same scrap, over a warm glow; the name on a riveted plate cut from another sheet.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
+    parts: [['Faceplate', 'A photographed sheet of painted scrap metal, cropped fresh for each piece; words stamped into it, dark on light metal and bright bare steel on dark; two rivets.'], ['Knobs', 'Big black domes on chrome skirts.'], ['Switches', 'Chrome bat-handle toggles.'], ['Light', 'A faceted jewel, red.'], ['Cabinet', 'A grille of the player’s choice (expanded metal, chicken wire, woven wire, perforated sheet, welded grid or bar grate) in the same scrap or old bare metal, over a glow of their choice; the name stamped into a riveted plate cut from another sheet.'], ['Pedal', 'Its own crop of the same sheet, or another sheet when Mixed.']],
     reach: 'A finish tints the sheet. In the kit’s own colours the metal is as photographed.' },
   { id: 'rack', fam: 'classic', name: 'Rack', after: 'studio and rack gear: brushed aluminium, ears and handles, a VU meter', own: '#c6cbd0', lamp: '#ffb340',
     knob: 'alu', scale: 'ticks', pwr: 'bat mini', tg: 'lit', lampT: 'vu', foot: '3pdt', led: 'led', logo: 'CRBN Rig',
@@ -1524,7 +1552,7 @@ const SALV_SEL = '.k-hammer .cabinet, .k-hammer .pface, .k-hammer .salv-plate, .
 // Salvage's grille: a warm glow, expanded metal from the scrap, and the name on a plate riveted over it (D-RIG-011)
 function salvGZ (kit) {
   const stamp = [...'SALVAGE'].map((c, i) => `<b style="--r:${[-2, 1.5, -1, 2, -1.5, 1, -2][i]}deg;--y:${[1, -.5, 0, 1, -1, .5, -.5][i]}px">${c}</b>`).join('')
-  return `<i class="salv-glow" aria-hidden="true"></i><canvas class="salv-mesh" aria-hidden="true"></canvas><div class="logo-box"><span class="salv-plate"><span class="logo">CRBN RIG</span><span class="salv-name"><span class="vh">Salvage</span><span aria-hidden="true" style="display:contents">${stamp}</span></span><i class="rv"></i><i class="rv"></i><i class="rv"></i><i class="rv"></i></span><span class="sub">${kit.capture}</span></div>`
+  return `<i class="salv-glow" data-glow="${SALV_GLOW}" aria-hidden="true"></i><canvas class="salv-mesh" aria-hidden="true"></canvas><div class="logo-box"><span class="salv-plate"><span class="logo">CRBN RIG</span><span class="salv-name"><span class="vh">Salvage</span><span aria-hidden="true" style="display:contents">${stamp}</span></span><i class="rv"></i><i class="rv"></i><i class="rv"></i><i class="rv"></i></span><span class="sub">${kit.capture}</span></div>`
 }
 // A sheet's crop, as on the faceplates: its own scale, offset, quarter turn and flips.
 function sheetCrop (g, w, h, img, R) {
@@ -1535,27 +1563,126 @@ function sheetCrop (g, w, h, img, R) {
 }
 // Expanded metal, drawn straight into its canvas: the strands carry the scrap's paint and rust, cast a shadow on the
 // glow behind, and catch its light on their lower edges. A torn spot or two.
+const MESH_TYPES = [['expanded', 'Expanded metal'], ['chicken', 'Chicken wire'], ['woven', 'Woven wire'], ['perf', 'Perforated sheet'], ['grid', 'Welded grid'], ['bars', 'Bar grate']]
+const MESH_METALS = [['scrap', 'The same scrap'], ['steel', 'Old steel'], ['galv', 'Galvanised'], ['rust', 'Rusted iron'], ['copper', 'Aged copper']]
+const GLOWS = [['embers', 'Embers'], ['valves', 'Valves'], ['furnace', 'Furnace'], ['neon', 'Neon'], ['none', 'None']]
+let SALV_MESH = 'expanded', SALV_METAL = 'scrap', SALV_GLOW = 'embers'
+const GLOW_EDGE = { embers: 'rgba(255,130,50,.26)', valves: 'rgba(255,150,60,.24)', furnace: 'rgba(255,170,80,.32)', neon: 'rgba(120,190,255,.28)', none: '' }
+// Each grille: a mask of its metal, and its shading (light above, shadow below, the glow on its lower edges).
+const jit = (x, y) => { const s = Math.sin(Math.round(x * 10) * 1.29898 + Math.round(y * 10) * 7.8233) * 43758.5453; return s - Math.floor(s) - .5 }
+const MESH_GEO = {
+  expanded (w, h, R) {
+    const DW = 26, DH = 13, ox = R() * DW, oy = R() * DH
+    const p = (c, dx = 0, dy = 0) => { c.beginPath(); for (let j = -2; j * DH / 2 < h + DH; j++) for (let i = -2; i * DW < w + DW; i++) { const cx = i * DW + (j & 1 ? DW / 2 : 0) + ox + dx, cy = j * DH / 2 + oy + dy; c.moveTo(cx - DW / 2, cy); c.lineTo(cx, cy - DH / 2); c.lineTo(cx + DW / 2, cy); c.lineTo(cx, cy + DH / 2); c.closePath() } }
+    return {
+      mask: m => { m.lineJoin = 'round'; m.lineWidth = 3.6; m.strokeStyle = '#000'; p(m); m.stroke() },
+      shade: (s, edge) => { s.lineWidth = 1; s.strokeStyle = 'rgba(255,255,255,.3)'; p(s, 0, -1.1); s.stroke(); s.lineWidth = 1.3; s.strokeStyle = 'rgba(0,0,0,.55)'; p(s, 0, 1.3); s.stroke(); if (edge) { s.lineWidth = 1.2; s.strokeStyle = edge; p(s, 0, 1.7); s.stroke() } }
+    }
+  },
+  chicken (w, h, R) {
+    // hexagonal netting: each cell's two upright sides are a pair of wires twisted together
+    const W = 21, H = 25, t = 5, ox = R() * W, oy = R() * H, J = 1.5
+    const V = (x, y) => [x + jit(x, y) * J, y + jit(y, x) * J]
+    const cells = []
+    for (let j = -2; j * (H / 2 + t) < h + H; j++) for (let i = -2; i * W < w + W; i++) cells.push([i * W + (j & 1 ? W / 2 : 0) + ox, j * (H / 2 + t) + oy])
+    const hex = (c, dx = 0, dy = 0) => { c.beginPath(); for (const [x, y] of cells) { const q = [V(x, y - H / 2), V(x + W / 2, y - t), V(x + W / 2, y + t), V(x, y + H / 2), V(x - W / 2, y + t), V(x - W / 2, y - t)]; c.moveTo(q[0][0] + dx, q[0][1] + dy); for (let k = 1; k <= 6; k++) c.lineTo(q[k % 6][0] + dx, q[k % 6][1] + dy) } }
+    const twists = (c, dx = 0, dy = 0) => { c.beginPath(); for (const [x, y] of cells) { const a = V(x + W / 2, y - t), b = V(x + W / 2, y + t); c.moveTo(a[0] + dx, a[1] + dy); c.lineTo(b[0] + dx, b[1] + dy) } }
+    return {
+      mask: m => { m.lineJoin = 'round'; m.lineCap = 'round'; m.strokeStyle = '#000'; m.lineWidth = 1.4; hex(m); m.stroke(); m.lineWidth = 2.8; twists(m); m.stroke() },
+      shade: (s, edge) => {
+        s.lineWidth = .7; s.strokeStyle = 'rgba(255,255,255,.4)'; hex(s, 0, -.6); s.stroke()
+        s.lineWidth = .8; s.strokeStyle = 'rgba(0,0,0,.5)'; hex(s, 0, .7); s.stroke()
+        s.beginPath(); for (const [x, y] of cells) { const [ax, ay] = V(x + W / 2, y - t), [, by] = V(x + W / 2, y + t); for (let yy = ay + 1.2; yy < by; yy += 2.2) { s.moveTo(ax - 1.4, yy - .9); s.lineTo(ax + 1.4, yy + .9) } }
+        s.lineWidth = .7; s.strokeStyle = 'rgba(0,0,0,.6)'; s.stroke()
+        if (edge) { s.lineWidth = .8; s.strokeStyle = edge; hex(s, 0, 1.1); s.stroke() }
+      }
+    }
+  },
+  woven (w, h, R) {
+    const P = 7, ox = R() * P, oy = R() * P, nx = Math.ceil(w / P) + 2, ny = Math.ceil(h / P) + 2
+    return {
+      mask: m => { m.strokeStyle = '#000'; m.lineWidth = 1.8; m.beginPath(); for (let i = -1; i < ny; i++) { m.moveTo(0, oy + i * P); m.lineTo(w, oy + i * P) } for (let j = -1; j < nx; j++) { m.moveTo(ox + j * P, 0); m.lineTo(ox + j * P, h) } m.stroke() },
+      shade: (s, edge) => {
+        // over and under: at each crossing one wire lies on top, lit, with the other in its shadow
+        const hi = new Path2D(), lo = new Path2D()
+        for (let i = -1; i < ny; i++) for (let j = -1; j < nx; j++) {
+          const x = ox + j * P, y = oy + i * P
+          if ((i + j) & 1) { hi.moveTo(x - 2.6, y - .45); hi.lineTo(x + 2.6, y - .45); lo.moveTo(x - .9, y - 2.4); lo.lineTo(x - .9, y + 2.4); lo.moveTo(x + .9, y - 2.4); lo.lineTo(x + .9, y + 2.4) }
+          else { hi.moveTo(x - .45, y - 2.6); hi.lineTo(x - .45, y + 2.6); lo.moveTo(x - 2.4, y - .9); lo.lineTo(x + 2.4, y - .9); lo.moveTo(x - 2.4, y + .9); lo.lineTo(x + 2.4, y + .9) }
+        }
+        s.lineWidth = .7; s.strokeStyle = 'rgba(0,0,0,.5)'; s.stroke(lo); s.lineWidth = .7; s.strokeStyle = 'rgba(255,255,255,.4)'; s.stroke(hi)
+        if (edge) { s.fillStyle = edge; s.globalAlpha = .5; s.fillRect(0, 0, w, h); s.globalAlpha = 1 }
+      }
+    }
+  },
+  perf (w, h, R) {
+    const P = 10, r = 3.5, ox = R() * P, oy = R() * P, holes = []
+    for (let i = -1; i * P * .866 < h + P; i++) for (let j = -1; j * P < w + P; j++) holes.push([ox + j * P + (i & 1 ? P / 2 : 0), oy + i * P * .866])
+    const ring = (c, dy, rr) => { c.beginPath(); for (const [x, y] of holes) { c.moveTo(x + rr, y + dy); c.arc(x, y + dy, rr, 0, TAU) } }
+    return {
+      mask: m => { m.fillStyle = '#000'; m.fillRect(0, 0, w, h); m.globalCompositeOperation = 'destination-out'; ring(m, 0, r); m.fill(); m.globalCompositeOperation = 'source-over' },
+      shade: (s, edge) => { s.lineWidth = .9; s.strokeStyle = 'rgba(0,0,0,.55)'; ring(s, -.9, r + .2); s.stroke(); s.strokeStyle = 'rgba(255,255,255,.3)'; ring(s, .9, r + .2); s.stroke(); if (edge) { s.strokeStyle = edge; s.lineWidth = 1; ring(s, .5, r + .4); s.stroke() } }
+    }
+  },
+  grid (w, h, R) {
+    const P = 17, ox = R() * P, oy = R() * P, nx = Math.ceil(w / P) + 2, ny = Math.ceil(h / P) + 2
+    const lines = (c, dx = 0, dy = 0) => { c.beginPath(); for (let i = -1; i < ny; i++) { c.moveTo(0, oy + i * P + dy); c.lineTo(w, oy + i * P + dy) } for (let j = -1; j < nx; j++) { c.moveTo(ox + j * P + dx, 0); c.lineTo(ox + j * P + dx, h) } }
+    const welds = (c, d) => { c.beginPath(); for (let i = -1; i < ny; i++) for (let j = -1; j < nx; j++) { const x = ox + j * P, y = oy + i * P, rr = 2.1 + jit(x, y) * .8; c.moveTo(x + rr, y + d); c.arc(x, y + d, rr, 0, TAU) } }
+    return {
+      mask: m => { m.strokeStyle = '#000'; m.fillStyle = '#000'; m.lineWidth = 2.5; lines(m); m.stroke(); welds(m, 0); m.fill() },
+      shade: (s, edge) => { s.lineWidth = .8; s.strokeStyle = 'rgba(255,255,255,.32)'; lines(s, -.8, -.8); s.stroke(); s.strokeStyle = 'rgba(0,0,0,.5)'; lines(s, .9, .9); s.stroke(); s.fillStyle = 'rgba(255,255,255,.18)'; welds(s, -.6); s.fill(); if (edge) { s.strokeStyle = edge; s.lineWidth = .9; lines(s, 0, 1.3); s.stroke() } }
+    }
+  },
+  bars (w, h, R) {
+    const P = 12, bh = 6, oy = R() * P, bars = [], straps = [w * (.16 + R() * .06), w * (.5 + (R() - .5) * .08), w * (.82 + R() * .05)]
+    for (let y = oy - P; y < h + P; y += P) bars.push(y + jit(y, 3) * 1.2)
+    return {
+      mask: m => { m.fillStyle = '#000'; for (const y of bars) m.fillRect(0, y, w, bh); for (const x of straps) m.fillRect(x - 3.5, 0, 7, h) },
+      shade: (s, edge) => {
+        for (const y of bars) { s.fillStyle = 'rgba(255,255,255,.3)'; s.fillRect(0, y, w, 1); s.fillStyle = 'rgba(0,0,0,.5)'; s.fillRect(0, y + bh - 1.2, w, 1.2); if (edge) { s.fillStyle = edge; s.fillRect(0, y + bh - 2.2, w, 1) } }
+        for (const x of straps) { s.fillStyle = 'rgba(255,255,255,.22)'; s.fillRect(x - 3.5, 0, 1, h); s.fillStyle = 'rgba(0,0,0,.45)'; s.fillRect(x + 2.5, 0, 1, h); for (const y of bars) { const g = s.createRadialGradient(x - .6, y + bh / 2 - .6, 0, x, y + bh / 2, 2); g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(1, 'rgba(0,0,0,.45)'); s.fillStyle = g; s.beginPath(); s.arc(x, y + bh / 2, 1.8, 0, TAU); s.fill() } }
+      }
+    }
+  }
+}
+// Old bare metal, drawn: no paint, or very little.
+const METAL = {
+  steel: { base: '#5b6065', blot: ['#3e4348', '#777d83', '#4a5664', '#685a4c', '#2f3236'], rust: .35, streak: 1 },
+  galv: { base: '#9aa0a4', blot: ['#bcc1c4', '#80878c', '#a9afa9', '#d6d9d4', '#6f767b'], rust: .08, spangle: 1 },
+  rust: { base: '#6b381b', blot: ['#8c4a21', '#4a2411', '#a65b2a', '#3b2b22', '#7d4a2c', '#b8692f'], rust: 1.2 },
+  copper: { base: '#87522f', blot: ['#a8683f', '#6b3d22', '#c4825a', '#5a3a2a', '#9a5e3a'], rust: 0, verdigris: 1 }
+}
+function metalPaint (g, w, h, kind, R) {
+  const M = METAL[kind], rgb = hx => { const c = hex2rgb(hx); return c.r + ',' + c.g + ',' + c.b }
+  const blob = (x, y, r, col, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${rgb(col)},${a})`); gr.addColorStop(1, `rgba(${rgb(col)},0)`); g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r) }
+  g.fillStyle = M.base; g.fillRect(0, 0, w, h)
+  for (let i = 0, n = 30 + w * h / 700; i < n; i++) blob(R() * w, R() * h, 5 + R() * 38, M.blot[(R() * M.blot.length) | 0], .25 + R() * .45)
+  if (M.spangle) for (let i = 0, n = w * h / 160; i < n; i++) { const x = R() * w, y = R() * h, r = 4 + R() * 11, v = 150 + ((R() * 70) | 0); g.fillStyle = `rgba(${v},${v + 3},${v + 5},.22)`; g.beginPath(); for (let a = 0; a < TAU; a += TAU / 6) g.lineTo(x + Math.cos(a + R()) * r, y + Math.sin(a + R()) * r); g.fill() }
+  if (M.streak) for (let i = 0, n = w * h / 90; i < n; i++) { const x = R() * w, y = R() * h; g.strokeStyle = R() < .5 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.09)'; g.lineWidth = .5 + R(); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 10 + R() * 60, y + (R() - .5)); g.stroke() }
+  for (let i = 0, n = (w * h / 1500) * M.rust; i < n; i++) blob(R() * w, R() * h, 2 + R() * 14, R() < .6 ? '#7a3a14' : '#a0521f', .35 + R() * .4)
+  if (M.verdigris) for (let i = 0, n = w * h / 1100; i < n; i++) { const x = R() * w, y = R() * h; for (let k = 0; k < 5; k++) blob(x + (R() - .5) * 14, y + (R() - .5) * 8, 2 + R() * 9, R() < .5 ? '#5fa58c' : '#86c4aa', .45 + R() * .3) }
+  for (let i = 0, n = w * h / 25; i < n; i++) { g.fillStyle = R() < .5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.1)'; g.fillRect(R() * w, R() * h, 1, 1) }
+}
+// The grille, drawn straight into its canvas: its metal, its shadow cast on the glow behind, its edges lit by the glow.
 function meshTex (cv, w, h, img, seed, tint, glow) {
   const R = mulberry(seed ^ 0x3e11), k = Math.min(2, window.devicePixelRatio || 1)
   cv.width = Math.round(w * k); cv.height = Math.round(h * k)
   const g = cv.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height)
-  const DW = 26, DH = 13, ox = R() * DW, oy = R() * DH
-  const lattice = (c, dx = 0, dy = 0) => { c.beginPath(); for (let j = -2; j * DH / 2 < h + DH; j++) for (let i = -2; i * DW < w + DW; i++) { const cx = i * DW + (j & 1 ? DW / 2 : 0) + ox + dx, cy = j * DH / 2 + oy + dy; c.moveTo(cx - DW / 2, cy); c.lineTo(cx, cy - DH / 2); c.lineTo(cx + DW / 2, cy); c.lineTo(cx, cy + DH / 2); c.closePath() } }
   const layer = () => { const c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height; const x = c.getContext('2d'); x.setTransform(k, 0, 0, k, 0, 0); return [c, x] }
-  const [mk, m] = layer()
-  m.lineJoin = 'round'; m.lineWidth = 3.6; m.strokeStyle = '#000'; lattice(m); m.stroke()
+  const T = (MESH_GEO[SALV_MESH] || MESH_GEO.expanded)(w, h, R)
+  const [mk, m] = layer(); T.mask(m)
   m.globalCompositeOperation = 'destination-out'
   for (let i = 0, n = 1 + ((R() * 2.6) | 0); i < n; i++) { const x = R() * w, y = R() * h, r = 6 + R() * 10; m.beginPath(); for (let a = 0; a < TAU; a += TAU / 10) { const rr = r * (.55 + R() * .7); m.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * .7) } m.fill() }
   m.globalCompositeOperation = 'source-over'
   const [sk, s] = layer()
-  if (img) sheetCrop(s, w, h, img, R); else { s.fillStyle = '#6d6a64'; s.fillRect(0, 0, w, h) }
-  if (tint) { s.globalCompositeOperation = 'color'; s.globalAlpha = .55; s.fillStyle = tint; s.fillRect(0, 0, w, h); s.globalAlpha = 1 }
+  if (SALV_METAL !== 'scrap' && METAL[SALV_METAL]) metalPaint(s, w, h, SALV_METAL, R)
+  else if (img) sheetCrop(s, w, h, img, R)
+  else { s.fillStyle = '#6d6a64'; s.fillRect(0, 0, w, h) }
+  if (tint && SALV_METAL === 'scrap') { s.globalCompositeOperation = 'color'; s.globalAlpha = .55; s.fillStyle = tint; s.fillRect(0, 0, w, h); s.globalAlpha = 1 }
   s.setTransform(1, 0, 0, 1, 0, 0); s.globalCompositeOperation = 'destination-in'; s.drawImage(mk, 0, 0)
   s.setTransform(k, 0, 0, k, 0, 0); s.globalCompositeOperation = 'source-atop'
-  s.fillStyle = 'rgba(0,0,0,.22)'; s.fillRect(0, 0, w, h)
-  s.lineWidth = 1; s.strokeStyle = 'rgba(255,255,255,.3)'; lattice(s, 0, -1.1); s.stroke()
-  s.lineWidth = 1.3; s.strokeStyle = 'rgba(0,0,0,.55)'; lattice(s, 0, 1.3); s.stroke()
-  if (glow) { s.lineWidth = 1.2; s.strokeStyle = 'rgba(255,130,50,.26)'; lattice(s, 0, 1.7); s.stroke() }
+  s.fillStyle = 'rgba(0,0,0,.2)'; s.fillRect(0, 0, w, h)
+  T.shade(s, glow ? GLOW_EDGE[SALV_GLOW] : '')
   const vg = s.createRadialGradient(w * .6, h * .7, Math.min(w, h) * .2, w / 2, h / 2, Math.hypot(w, h) * .6); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.35)'); s.fillStyle = vg; s.fillRect(0, 0, w, h)
   g.save(); g.filter = 'blur(' + (2 * k) + 'px)'; g.globalAlpha = .8; g.drawImage(mk, 2.5 * k, 3 * k); g.restore()
   g.drawImage(sk, 0, 0)
@@ -1564,10 +1691,23 @@ const SALV_TEX = [['orange', 'Rust and orange', 'tex/salvage-orange.jpg'], ['red
 let SALV_SHEET = 'orange'
 const SALV_IMG = {}
 for (const [id, , src] of SALV_TEX) { const im = new Image(); im.onload = () => { SALV_IMG[id] = im; resalvage(false) }; im.src = src }
+function salvRow (key, label, list, cur) { return `<div class="sheets" role="group" aria-label="Salvage: ${label}"><span>${label}</span>${list.map(([id, t]) => `<button type="button" data-salv="${key}" data-val="${id}" aria-pressed="${id === cur}">${t}</button>`).join('')}</div>` }
 function sheetsHTML () {
-  return `<div class="sheets" role="group" aria-label="Salvage's sheet"><span>Sheet</span>${SALV_TEX.map(([id, t]) => `<button type="button" data-sheet="${id}" aria-pressed="${id === SALV_SHEET}">${t}</button>`).join('')}<button type="button" data-sheet="mixed" aria-pressed="${SALV_SHEET === 'mixed'}">Mixed</button><button type="button" data-reshuffle>Shuffle</button></div><p class="sheet-note">Your four photos, for this mock. The build draws from our texture library instead.</p>`
+  return `<div class="salv-opts">${salvRow('sheet', 'Sheet', [...SALV_TEX.map(x => [x[0], x[1]]), ['mixed', 'Mixed']], SALV_SHEET)}${salvRow('mesh', 'Grille', MESH_TYPES, SALV_MESH)}${salvRow('metal', 'Grille metal', MESH_METALS, SALV_METAL)}${salvRow('glow', 'Glow', GLOWS, SALV_GLOW)}<div class="sheets"><span></span><button type="button" data-reshuffle>Shuffle</button></div></div><p class="sheet-note">Players get these same choices in Rig, with Shuffle for new crops. Your four photos are for this mock; the build draws from our texture library.</p>`
 }
-function syncSheets () { for (const b of $$('[data-sheet]')) b.setAttribute('aria-pressed', String(b.dataset.sheet === SALV_SHEET)) }
+function salvCur () { return { sheet: SALV_SHEET, mesh: SALV_MESH, metal: SALV_METAL, glow: SALV_GLOW } }
+function syncSheets () {
+  const cur = salvCur()
+  for (const b of $$('[data-salv]')) b.setAttribute('aria-pressed', String(b.dataset.val === cur[b.dataset.salv]))
+  for (const g of $$('.salv-glow')) g.dataset.glow = SALV_GLOW
+}
+function setSalv (key, val) {
+  const list = { sheet: [...SALV_TEX, ['mixed']], mesh: MESH_TYPES, metal: MESH_METALS, glow: GLOWS }[key]
+  if (!list || typeof val !== 'string' || !list.some(x => x[0] === val)) return false
+  if (salvCur()[key] === val) return false
+  if (key === 'sheet') SALV_SHEET = val; else if (key === 'mesh') SALV_MESH = val; else if (key === 'metal') SALV_METAL = val; else SALV_GLOW = val
+  return true
+}
 function resalvage (reseed) { for (const el of $$(SALV_SEL)) { if (reseed) el.__seed = (Math.random() * 1e9) | 0; el.__sk = ''; scheduleSalvage(el) } }
 function paintSalvage (el) {
   if (!el.isConnected) return
@@ -1578,7 +1718,7 @@ function paintSalvage (el) {
   // the name plate is cut from another scrap than the amp
   const sheet = el.classList.contains('salv-plate') && SALV_SHEET !== 'mixed' ? SALV_TEX[(SALV_TEX.findIndex(x => x[0] === base) + 1) % SALV_TEX.length][0] : base
   const img = SALV_IMG[sheet], tint = FINISH === 'own' ? '' : finFor(kitOf(hw))
-  const key = `${w}x${h}:${tint}:${img ? sheet : 'drawn:' + finFor(kitOf(hw))}:${el.__seed}`
+  const key = `${w}x${h}:${tint}:${img ? sheet : 'drawn:' + finFor(kitOf(hw))}:${el.__seed}` + (isMesh ? `:${SALV_MESH}:${SALV_METAL}:${SALV_GLOW}` : '')
   if (el.__sk === key) return
   el.__sk = key
   if (isMesh) { meshTex(el, w, h, img, el.__seed, tint, !hw.classList.contains('cab')); return }
@@ -1592,6 +1732,7 @@ function paintSalvage (el) {
     el.style.setProperty('--ink', r.light ? '#17130e' : '#f5f0e6')
     el.style.setProperty('--halo', r.light ? INK_HALO[1] : INK_HALO[0])
     if (r.canvas) inkEach(el, r.canvas)
+    if (el.classList.contains('salv-plate')) el.dataset.ink = r.light ? 'dark' : 'light'
   } else {
     el.style.backgroundImage = `url(${salvageTex(w, h, finFor(kitOf(hw)), el.__seed)})`; el.style.backgroundSize = '100% 100%'; el.style.backgroundPosition = '0 0'
     el.style.removeProperty('--ink'); el.style.removeProperty('--halo')
@@ -1610,7 +1751,7 @@ function inkEach (el, c) {
       const d = sg.getImageData(0, 0, 8, 4).data; let L = 0
       for (let i = 0; i < d.length; i += 4) L += (.2126 * d[i] + .7152 * d[i + 1] + .0722 * d[i + 2]) / 255
       const light = L / 32 > .5
-      t.style.setProperty('--ink', light ? '#17130e' : '#f5f0e6'); t.style.setProperty('--halo', INK_HALO[light ? 1 : 0])
+      t.dataset.ink = light ? 'dark' : 'light'
     }
   } catch (err) {}
 }
@@ -2299,7 +2440,7 @@ function docData (id) {
   if (id === 'builder') return { name: BUILDER.kitName, fx: BUILDER.fx, cut: BUILDER.cut, mesh: BUILDER.mesh, mat: BUILDER.mat, knob: BUILDER.knob, own: BUILDER.own, keep: builderKeep, note: builderNote, art: { knob: (BUILDER.art || {}).knobId || null, sw: (BUILDER.art || {}).swId || null, name: (BUILDER.art || {}).name || '' }, at }
   if (id.startsWith('q-')) { const q = id.slice(2); return { answer: qAns[q] || null, note: qNotes[q] || '', at } }
   const v = saved[id] || {}
-  return { verdict: v.verdict || null, note: v.note || '', ...(id === 'hammer' ? { sheet: SALV_SHEET } : {}), at }
+  return { verdict: v.verdict || null, note: v.note || '', ...(id === 'hammer' ? salvCur() : {}), at }
 }
 function save (id) {
   if (!db) { if (!warned) { warned = true; toast('Picked here, but not saved: open the lab on claude.ai to save your picks.') } return }
@@ -2314,7 +2455,7 @@ function save (id) {
 function applySnap (snap, first) {
   for (const d of snap.docs) {
     const id = d.id, v = d.data() || {}
-    if (id === 'hammer' && typeof v.sheet === 'string' && v.sheet !== SALV_SHEET && (v.sheet === 'mixed' || SALV_TEX.some(x => x[0] === v.sheet))) { SALV_SHEET = v.sheet; syncSheets(); resalvage(false) }
+    if (id === 'hammer') { let ch = false; for (const key of ['sheet', 'mesh', 'metal', 'glow']) if (setSalv(key, v[key])) ch = true; if (ch) { syncSheets(); resalvage(false) } }
     if (KIT[id]) saved[id] = { verdict: ['keep', 'maybe', 'cut'].includes(v.verdict) ? v.verdict : null, note: noteDirty[id] ? ((saved[id] && saved[id].note) || '') : (typeof v.note === 'string' ? v.note : '') }
     else if (id === 'default') defKit = KIT[v.kit] ? v.kit : null
     else if (id === 'general') { if (!noteDirty.general) generalNote = typeof v.note === 'string' ? v.note : '' }
@@ -2352,7 +2493,7 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button, a.ix')
   if (!t) return
   if (t.matches('.sw, .fs')) { flip(t); return }
-  if (t.dataset.sheet) { SALV_SHEET = t.dataset.sheet; syncSheets(); resalvage(false); save('hammer'); return }
+  if (t.dataset.salv) { if (setSalv(t.dataset.salv, t.dataset.val)) { syncSheets(); resalvage(false); save('hammer') } return }
   if (t.hasAttribute('data-reshuffle')) { resalvage(true); return }
   if (t.id === 'art-save') { saveTemplate(); return }
   if (t.id === 'art-copy') { copyText(templateFor($('#art-from').value).svg, 'Template copied as SVG text: paste it into a new .svg file.'); return }
