@@ -137,9 +137,22 @@ art are the customising this section shows. It can be the end of R1b's session i
   - Join the captures into one animated PNG that holds each look for a moment. The listing tool takes it as a
     `.png`, and the Hub's store shows uploaded pictures as plain images from the CDN (pavillion_client `hub/packages/
     blocks/src/legacy/storeToPage.ts`, `Picture.tsx`), so it should play there.
-  - **Test it on the dev Hub before relying on it,** in the Hub's own Electron and in a browser. If the store shows
-    only a still frame, or a resized copy, offer the owner the alternatives: a YouTube video (the store's
-    `videos`), or two or three still Salvage pictures.
+  - **Tested at R2b's end (SYNC:RIG-017 ADDENDUM): the store plays an animated PNG.** The test was a
+    `crbn-rig-test-salvage-cycle-1.png`: six web-page frames at 1920x1080, 1800 ms each, looping, 3.4 MB. It went
+    second in `storeMedia` for a few minutes (record version 18), then the record went back to the three pictures
+    (version 20).
+    - The CDN serves the bytes unchanged (sha1 `27baea9d…`, `image/png`, all six frames).
+    - Edge animates the CDN's `<img>`: about 66,000 and 118,000 pixels change between screenshots 1.8 s apart.
+    - In his Hub, the owner: "Yes, it works, and looks great."
+    - Not yet looked at: whether the small thumbnail under the strip animates as well. Check that when R1c applies.
+    - How the frames were made: `web/probe.mjs` steps. Each one sets `localStorage['crbn-rig/rig']`, with `kit:
+      'hammer'`, a `salv` of sheet, mesh, metal, glow and words, and a `seed`. Then it goes to
+      `/?example&look=capsule` at 1536x864, device pixel ratio 1.25, and takes a shot.
+    - Pillow joined the frames: `frames[0].save(out, save_all=True, append_images=frames[1:], duration=1800,
+      loop=0)`.
+    - The test file stays on the CDN, unreferenced. R1c's real picture needs a new name anyway, framed like the other
+      store pictures.
+    - Keep an eye on the size: the store loads the file on its page.
   - Its place in `pictures.json` `storeMedia` is second. Use new file names, since the CDN keeps a name for a day.
 - **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
   `packaging/hub/words.json` `page`. It covers:

@@ -30,7 +30,8 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
   published to dev (manifest `e043f4dd…`, PatcherCli 67 of 67 files byte-identical). `check.mjs` passes 21/21 on the
   signed folder. The web version is live as build `20261111-0839-fff8c4a-f802d8f4`. The store's new desktop picture
   shows the CRBN kit and comes first. The owner's wish for Salvage, second and cycling, with a skins section on the
-  store page, is `docs/BUILD_PLAN.md` R1c.
+  store page, is `docs/BUILD_PLAN.md` R1c. Its open question is answered (RIG-017's ADDENDUM): an animated PNG
+  plays in the Hub's store. It was tested with the owner for a few minutes, then the record went back.
 - 2026-11-11 (SYNC:RIG-016): R2a is built (crbn-launcher D-RIG-017). `crbn-rig.exe` draws Rig's page in WebView2, over
   `rig_engine.cpp` compiled in, with Rig's own host and the WebView2 SDK alone (version 1.0.4314.35, vendored as
   `WebView2/`). Upstream's IGraphics UI and DSP chain are gone. The page has two audio backends, one per build.
