@@ -43,7 +43,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e); done, SYNC:RIG-019) | Done: his look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
 | R2 | The desktop on the page (U2): built and shipped (SYNC:RIG-016, RIG-017; D-RIG-017, D-RIG-018) | Done: the WebView2 SDK alone (D-RIG-017); his SimplySign session (R2b) | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1): built and shipped (SYNC:RIG-020, D-RIG-021) | Done: auto-play (resume if playing at close), the web publish, his SimplySign session | Both builds; no false trips on real playing (the synthetic set passes; his real playing is still to try) |
-| R4 | The library (U3): built (SYNC:RIG-021), not yet published | Nothing new; his word to publish, and a SimplySign session | Both builds; a 5,000-file folder stays fast |
+| R4 | The library (U3): built and shipped (SYNC:RIG-021, RIG-022) | Done: his word to release, his SimplySign session | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
 | R6 | Rigs, variants and pedals (U5) | Nothing new | Pedals in series, hot-swapped while playing |
 | R7 | MIDI (U6) | MIDI in the browser, yes or no; his MC8 backup file, if he has one | His MC8 drives Rig by drag and drop |
@@ -474,8 +474,8 @@ As P3-UX's U3, drawn as picked: the list (A) by default, cards (B) and shelves (
 
 ### R4, as built (2026-11-12, SYNC:RIG-021)
 
-Built and checked in both builds; not published (the web promote and the desktop's signing wait for the owner's word in
-a session). No engine change.
+Web build `20261112-0709-b07901a-0bb8a2c1`, live. Desktop **0.9.3**, signed, on the dev Hub (manifest `67e64025…`, 70 of
+70 files install byte-identical). Shipped on the owner's word in the session (SYNC:RIG-022). No engine change.
 
 - **The panel** replaces "Your captures" (`web/src/index.html`, `library-view.js`). On top, what the rig plays now: the
   capture and the cabinet IR, each with its star (when it came from the folder open now), Open (a file from anywhere)
