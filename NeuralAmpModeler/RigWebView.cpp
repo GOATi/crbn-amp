@@ -20,6 +20,7 @@ using CreateEnvironmentFn = HRESULT(STDAPICALLTYPE*)(PCWSTR, PCWSTR, ICoreWebVie
                                                      ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler*);
 using RuntimeVersionFn = HRESULT(STDAPICALLTYPE*)(PCWSTR, LPWSTR*);
 constexpr UINT_PTR kSubclassId = 0x52494721; // 'RIG!'
+constexpr UINT kDeferMessage = WM_APP + 0x52; // Defer's: the parent window runs what was deferred
 
 // WebView2Loader.dll beside the exe (WebView2/, vendored, D-RIG-017), loaded once and kept for the process's life:
 // the runtime's objects live in it.
@@ -324,6 +325,14 @@ void WebViewHost::Close()
   mParent = nullptr;
 }
 
+void WebViewHost::Defer(std::function<void()> fn)
+{
+  if (!mSubclassed || mParent == nullptr)
+    return;
+  mDeferred.push_back(std::move(fn));
+  PostMessageW(mParent, kDeferMessage, 0, 0);
+}
+
 bool WebViewHost::Post(const std::string& json)
 {
   return mView && SUCCEEDED(mView->PostWebMessageAsJson(Widen(json).c_str()));
@@ -409,6 +418,16 @@ LRESULT CALLBACK WebViewHost::ParentProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
       const RECT* r = reinterpret_cast<const RECT*>(lParam);
       SetWindowPos(hwnd, nullptr, r->left, r->top, r->right - r->left, r->bottom - r->top,
                    SWP_NOZORDER | SWP_NOACTIVATE);
+      return 0;
+    }
+    case kDeferMessage:
+    {
+      // Taken off the queue first: a deferred dialog runs a message loop of its own, which may run what is deferred
+      // after it.
+      std::deque<std::function<void()>> jobs;
+      jobs.swap(host->mDeferred);
+      for (auto& job : jobs)
+        job();
       return 0;
     }
     case WM_NCDESTROY:

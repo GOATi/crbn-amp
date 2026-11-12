@@ -11,6 +11,8 @@ import { DEFAULTS, MUTED } from './engine.js'
 import { DEFAULT_CUSTOM, FINISHES, HEX_RE, finishHex, finishVars, hex2rgb, hsv2rgb, inkFor, readouts, rgb2hex, rgb2hsv } from './finish.js'
 import { DEFAULT_KIT, KIT_LIST, KIT_PARTS, SALVAGE_CHOICES, SALVAGE_DEFAULTS, artTemplate, createHardware } from './hw/hw.js'
 import { ART_NAME_MAX, ART_TYPES, MAX_KITS, NAME_MAX, artURL, artURLNow, importArt, isOwnId, loadKits, makeKit, readCode, saveKits, sameKit, shareCode, tidyArt } from './kits.js'
+import { createLibrary } from './library.js'
+import { createLibraryView } from './library-view.js'
 import { applyPrefs, fontOf, loadLooks, loadPrefs, lookList, looks, ownPrefs, sanitize, savePrefs, setEvery, sharesAcrossApps } from './look.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
@@ -274,8 +276,9 @@ function wirePowerKey() {
 // ------------------------------------------------------------------------------------------------- the audio
 // One backend or the other (above), with the same calls; the page keeps what the person chose and sends it.
 const inputLost = () => { if (power) setMuted({ why: 'device', hz: 0, seconds: 0 }) }
+let lib = null, libView = null // the library (build plan R4), made in start()
 const audio = inDesktopApp()
-  ? createDesktopAudio({ onChange: () => updateStatus(), onInputLost: inputLost })
+  ? createDesktopAudio({ onChange: () => updateStatus(), onInputLost: inputLost, onLibChanged: () => lib?.refresh() })
   : createWebAudio({ onError: (text) => toast(text), onChange: () => updateStatus(), onInputLost: inputLost })
 const desktop = audio.kind === 'desktop'
 let metersRunning = false
@@ -388,7 +391,8 @@ function showDriver() {
 }
 
 // ------------------------------------------------------------------------------------------------- the capture
-const capture = { name: '', bytes: null, meta: null, info: null }
+// `from` is { key, p } when it came from the library (its folder's key and its path there), else null.
+const capture = { name: '', bytes: null, meta: null, info: null, from: null }
 
 function parseCapture(bytes) {
   let json
@@ -397,10 +401,10 @@ function parseCapture(bytes) {
   return json.metadata ?? {}
 }
 
-async function useCapture(name, bytes, { remember = true, example = false } = {}) {
+async function useCapture(name, bytes, { remember = true, example = false, from = null } = {}) {
   const meta = parseCapture(bytes)
   const previous = { ...capture }
-  Object.assign(capture, { name, bytes, meta, info: null, example })
+  Object.assign(capture, { name, bytes, meta, info: null, example, from })
   showCapture('Loading…')
   if (audio.started) {
     const result = await sendCapture()
@@ -412,7 +416,8 @@ async function useCapture(name, bytes, { remember = true, example = false } = {}
     }
   }
   showCapture()
-  if (remember) await rememberFile('capture', name, bytes)
+  libView?.refreshMarks()
+  if (remember) await rememberFile('capture', name, bytes, from)
 }
 
 async function sendCapture() {
@@ -435,16 +440,29 @@ function fillChips(list, chips) {
   list.innerHTML = ''
   for (const c of chips) { const li = document.createElement('li'); li.textContent = c; list.append(li) }
 }
+// The library's star beside what the rig plays, when it came from the folder open now.
+function syncRigStars() {
+  for (const [slot, f] of [['capture', capture], ['ir', ir]]) {
+    const b = $(`${slot}-star`), here = Boolean(f.bytes && f.from && lib?.key && f.from.key === lib.key)
+    b.hidden = !here
+    if (!here) continue
+    const on = lib.isFav(f.from.p)
+    b.setAttribute('aria-pressed', String(on))
+    b.setAttribute('aria-label', on ? 'Starred: in your favourites' : 'Star: add to your favourites')
+    b.title = on ? 'In your favourites: click to take it out' : 'Add to your favourites'
+  }
+}
 function showCapture(note) {
   const drop = $('capture-drop')
   const has = Boolean(capture.bytes)
   drop.classList.toggle('has', has)
-  drop.querySelector('.empty').hidden = has
-  drop.querySelector('.loaded').hidden = !has
-  $('capture-kind').hidden = true
+  drop.querySelector('[data-clear]').hidden = !has
   $('amp-logo').classList.toggle('none', !has)
+  syncRigStars()
   if (!has) {
     $('slim').hidden = true
+    $('capture-name').textContent = 'None yet'
+    $('capture-meta').textContent = lib?.entries.length ? 'Pick one from your library below' : 'Drop a .nam here, or open your library below'
     $('amp-logo').textContent = 'No capture'; $('amp-band-name').textContent = 'No capture'
     $('amp-sub').textContent = 'Drop a .nam capture here'
     fillChips($('amp-chips'), [])
@@ -457,36 +475,38 @@ function showCapture(note) {
   $('capture-name').textContent = name
   $('amp-logo').textContent = name; $('amp-band-name').textContent = name
   const chips = [TYPES[m.gear_type] ?? m.gear_type, m.tone_type?.replace(/_/g, ' ')].filter(Boolean)
-  fillChips($('capture-chips'), chips); fillChips($('amp-chips'), chips)
+  fillChips($('amp-chips'), chips)
   const gear = [m.gear_make, m.gear_model].filter(Boolean).join(' ')
   const lines = []
   if (note) lines.push(note)
   if (gear) lines.push(gear)
-  if (m.modeled_by) lines.push(`Captured by ${m.modeled_by}`)
-  if (capture.example) lines.push('From Neural Amp Modeler Core: drop your own capture to replace it')
+  if (m.modeled_by) lines.push(`by ${m.modeled_by}`)
+  if (capture.example) lines.push('From Neural Amp Modeler Core')
   if (capture.info?.sampleRate && audio.sampleRate && Math.abs(capture.info.sampleRate - audio.sampleRate) > 1) lines.push(`Recorded at ${capture.info.sampleRate / 1000} kHz, resampled`)
   $('capture-meta').textContent = lines.join(' · ')
+  $('capture-meta').title = capture.from?.p ?? capture.name
   $('amp-sub').textContent = [note, gear, ...chips, m.modeled_by && `captured by ${m.modeled_by}`].filter(Boolean).join(' · ')
   hardware?.setCapture(note ? `${name} · ${note}` : name, $('amp-sub').textContent)
 }
 
 async function clearCapture() {
-  Object.assign(capture, { name: '', bytes: null, meta: null, info: null, example: false })
+  Object.assign(capture, { name: '', bytes: null, meta: null, info: null, example: false, from: null })
   if (audio.started) audio.clearCapture()
   showCapture()
+  libView?.refreshMarks()
   await forgetFile('capture')
 }
 
 // ------------------------------------------------------------------------------------------------- the cabinet IR
-const ir = { name: '', bytes: null, seconds: 0 }
+const ir = { name: '', bytes: null, seconds: 0, from: null }
 
 async function prepareIR() {
   ir.seconds = (await audio.loadIR(ir.bytes)).seconds
 }
 
-async function useIR(name, bytes, { remember = true } = {}) {
+async function useIR(name, bytes, { remember = true, from = null } = {}) {
   const previous = { ...ir }
-  Object.assign(ir, { name, bytes })
+  Object.assign(ir, { name, bytes, from })
   if (audio.started) {
     try { await prepareIR() } catch (err) {
       Object.assign(ir, previous); showIR()
@@ -494,26 +514,63 @@ async function useIR(name, bytes, { remember = true } = {}) {
     }
   }
   showIR()
-  if (remember) await rememberFile('ir', name, bytes)
+  libView?.refreshMarks()
+  if (remember) await rememberFile('ir', name, bytes, from)
 }
 
 function showIR() {
   const drop = $('ir-drop'), has = Boolean(ir.bytes)
   drop.classList.toggle('has', has)
-  drop.querySelector('.empty').hidden = has
-  drop.querySelector('.loaded').hidden = !has
-  if (!has) { $('cab-name').textContent = 'No IR'; $('cab-meta').textContent = 'Drop a .wav here'; hardware?.setIR('', ''); return }
+  drop.querySelector('[data-clear]').hidden = !has
+  syncRigStars()
+  if (!has) {
+    $('ir-name').textContent = 'None'; $('ir-meta').textContent = 'Drop a .wav here for a speaker cabinet'
+    $('cab-name').textContent = 'No IR'; $('cab-meta').textContent = 'Drop a .wav here'; hardware?.setIR('', ''); return
+  }
   const name = ir.name.replace(/\.wav$/i, ''), meta = ir.seconds ? `${Math.round(ir.seconds * 1000)} ms impulse response` : 'Impulse response'
   $('ir-name').textContent = name; $('ir-meta').textContent = meta
+  $('ir-meta').title = ir.from?.p ?? ir.name
   $('cab-name').textContent = name; $('cab-meta').textContent = meta
   hardware?.setIR(name, meta)
 }
 
 async function clearIR() {
-  Object.assign(ir, { name: '', bytes: null, seconds: 0 })
+  Object.assign(ir, { name: '', bytes: null, seconds: 0, from: null })
   audio.clearIR()
   showIR()
+  libView?.refreshMarks()
   await forgetFile('ir')
+}
+
+// ------------------------------------------------------------------------------------------------- the library
+// The person's folder of captures and IRs (build plan R4, P3-UX U3): library.js reads and indexes it, library-view.js
+// draws it. A click plays a file through the same path a dropped file takes; a star keeps it among the folder's
+// favourites, which build plan R5 puts on standby.
+async function playEntry(e) {
+  const bytes = await lib.read(e.p)
+  const name = e.p.slice(e.p.lastIndexOf('/') + 1), from = { key: lib.key, p: e.p }
+  if (e.k === 'ir') await useIR(name, bytes, { from })
+  else await useCapture(name, bytes, { from })
+}
+function playingPaths() {
+  const here = (f) => (f.bytes && f.from && f.from.key === lib?.key ? f.from.p : null)
+  return { capture: here(capture), ir: here(ir) }
+}
+function makeLibrary() {
+  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') syncRigStars() } })
+  libView = createLibraryView({ lib, play: playEntry, playing: playingPaths, toast, pickFiles: () => $('lib-dir').click() })
+  $('lib-dir').addEventListener('change', (e) => { const f = e.target.files; if (f?.length) lib.openFiles(f).catch((err) => toast(String(err?.message ?? err))); e.target.value = '' })
+  for (const slot of ['capture', 'ir']) {
+    $(`${slot}-star`).addEventListener('click', () => { const f = slot === 'ir' ? ir : capture; if (f.from && f.from.key === lib.key) lib.toggleFav(f.from.p) })
+  }
+  // A browser looks at the folder again when the person comes back to the page (the desktop app watches it instead).
+  let lookedAt = Date.now()
+  addEventListener('focus', () => {
+    if (desktop || lib.status !== 'ready' || !lib.kept || Date.now() - lookedAt < 20000) return
+    lookedAt = Date.now()
+    lib.refresh({ quick: true })
+  })
+  libView.render()
 }
 
 // ------------------------------------------------------------------------------------------------- files in
@@ -543,8 +600,11 @@ function wireFiles() {
   addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
   addEventListener('drop', (e) => {
     e.preventDefault(); depth = 0; document.body.classList.remove('dragging'); clearOver()
-    const file = e.dataTransfer?.files[0]
-    if (file) takeFile(file, e.target.closest?.('[data-slot]')?.dataset.slot)
+    const file = e.dataTransfer?.files[0], slot = e.target.closest?.('[data-slot]')?.dataset.slot
+    const item = [...(e.dataTransfer?.items ?? [])].find((i) => i.kind === 'file')
+    // A folder becomes the library (read during the drop: its items are gone after it); a file plays.
+    const folder = item && lib ? lib.openDropped(item) : Promise.resolve(false)
+    folder.then((was) => { if (!was && file) takeFile(file, slot) }, (err) => toast(`That folder could not be read: ${err?.message ?? err}`))
   })
   for (const zone of document.querySelectorAll('[data-slot]')) {
     zone.addEventListener('dragover', () => zone.classList.add('over'))
@@ -613,8 +673,8 @@ function meterLoop() {
 const RIG_KEY = 'crbn-rig/rig'
 // v2 (R1): the hardware kit, Salvage's choices and the seed of its crops. Before v2 the default finish was the look's
 // own; a v1 finish of 'look' was never a choice a person made, so it becomes the kit's own.
-const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
-const abc = (v) => (/^[abc]$/.test(v) ? v : 'b')
+const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', library: 'a', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
+const abc = (v, d = 'b') => (/^[abc]$/.test(v) ? v : d)
 const kitId = (v) => (KIT_LIST.some((k) => k.id === v) || (isOwnId(v) && kits.some((k) => k.id === v)) ? v : DEFAULT_KIT)
 const salvOf = (s) => Object.fromEntries(Object.entries(SALVAGE_DEFAULTS).map(([k, d]) => [k, SALVAGE_CHOICES[k].some((c) => c[0] === s?.[k]) ? s[k] : d]))
 function loadRig() {
@@ -625,7 +685,7 @@ function loadRig() {
     v: 2,
     finish: FINISHES.some((f) => f.id === finish) ? finish : 'own',
     custom: HEX_RE.test(r.custom ?? '') ? r.custom.toLowerCase() : DEFAULT_CUSTOM,
-    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power),
+    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power), library: abc(r.library, 'a'),
     kit: kitId(r.kit), salv: salvOf(r.salv), seed: Number.isInteger(r.seed) && r.seed > 0 ? r.seed : 1,
   }
 }
@@ -636,6 +696,7 @@ const saveRig = () => { if (keepRig) try { localStorage.setItem(RIG_KEY, JSON.st
 function applyAll() {
   const { look, accent } = applyPrefs(prefs)
   root.dataset.layout = rig.layout; root.dataset.amp = rig.amp; root.dataset.meters = rig.meters; root.dataset.power = rig.power
+  if (root.dataset.library !== rig.library) { root.dataset.library = rig.library; libView?.render() }
   const hex = finishHex(rig, look.id)
   for (const [k, v] of Object.entries(finishVars(hex))) root.style.setProperty(k, v)
   if (hardware) {
@@ -1043,6 +1104,7 @@ async function start() {
   rig = loadRig()
   if (query.has('look')) { prefs = { ...prefs, look: query.get('look') }; prefs = sanitize(prefs); keepPrefs = false }
   for (const k of ['layout', 'amp', 'meters', 'power']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
+  if (query.has('library')) { rig.library = abc(query.get('library'), 'a'); keepRig = false }
   // ?kit= shows a hardware kit (Salvage's id is hammer, after the kit it replaced) for a scripted screenshot
   if (query.has('kit')) { rig.kit = kitId(query.get('kit')); rig.amp = 'b'; keepRig = false }
   if (query.has('finish')) {
@@ -1072,6 +1134,7 @@ async function start() {
   for (const name of Object.keys(PAGE_DEFAULTS)) reflect(name)
   meterIn = meterOf('meter-in'); meterOut = meterOf('meter-out')
 
+  makeLibrary()
   wireFiles()
   $('play-guitar').addEventListener('click', playGuitar)
   $('play-demo').addEventListener('click', toggleDemo)
@@ -1105,9 +1168,11 @@ async function start() {
   if (query.has('example')) await loadExample()
   // The person's last capture and IR, if this browser remembered them.
   const c = query.has('example') ? null : await recallFile('capture')
-  if (c) { try { await useCapture(c.name, new Uint8Array(c.bytes), { remember: false }) } catch { await forgetFile('capture') } }
+  if (c) { try { await useCapture(c.name, new Uint8Array(c.bytes), { remember: false, from: c.from ?? null }) } catch { await forgetFile('capture') } }
   const i = await recallFile('ir')
-  if (i) { try { await useIR(i.name, new Uint8Array(i.bytes), { remember: false }) } catch { await forgetFile('ir') } }
+  if (i) { try { await useIR(i.name, new Uint8Array(i.bytes), { remember: false, from: i.from ?? null }) } catch { await forgetFile('ir') } }
+  // The library's folder from last time: it shows what it indexed then at once, and looks for changes behind it.
+  lib.restore().catch((err) => toast(`Your library could not open: ${err?.message ?? err}`))
   // The desktop app's engine starts with the page, so the capture, IR and status are there at once. Since R3, with the
   // squeal guard on, it plays the guitar when it opens if it was playing when it last closed (the owner's word); a
   // first run still waits for Play my guitar. A browser always waits: it needs a click to make a sound, and asks first.

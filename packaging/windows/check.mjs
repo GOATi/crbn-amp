@@ -10,12 +10,15 @@
 //    words, the audio driver's status, the demo riff through the native engine with both meters moving, the Output
 //    knob, Standby and Space acting on the sound, a cabinet IR scaling it as the desktop always did, auto-off tripping
 //    in the native engine and the page saying why, Audio settings opening the driver's dialog, and a screenshot of the
-//    window. Then it opens the app again on the same profile: it was playing the guitar when it closed, so it plays it
-//    at once (R3). The riff and the guitar play quietly (Output at -40 and -30 dB) through the default devices.
+//    window; the library (R4): a generated 5,000-file folder picked in the app's folder dialog, indexed natively in time
+//    and read as the web version reads it, searched, played, starred and watched. Then it opens the app again on the
+//    same profile: it was playing the guitar when it closed, so it plays it at once (R3), and the library is back. The riff and the guitar play quietly (Output at -40 and -30 dB) through the default devices.
 // It will not start beside a running CRBN Rig (one copy runs at a time). Exit code 0 when every check passes.
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { HEAD_BYTES, TAIL_BYTES, WAV_HEAD_BYTES, entryOf, namInfo, wavInfo } from '../../web/src/library.js'
+import { libraryFixture } from '../../web/test/library-fixture.mjs'
 
 const root = resolve(import.meta.dirname, '..', '..')
 const out = join(root, 'dist', 'desktop-check')
@@ -93,11 +96,13 @@ if (!process.argv.includes('--no-app')) {
   }
   const until = async (expression, ms, what) => {
     for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await js(expression).catch(() => false)) return true
-    throw new Error(`timed out waiting for ${what}`)
+    // what the page shows, to say why
+    const said = await js("JSON.stringify({ ready: document.documentElement.dataset.ready ?? null, state: document.readyState, toast: document.getElementById('toast')?.textContent ?? '' })").catch((e) => String(e?.message ?? e))
+    throw new Error(`timed out waiting for ${what}: ${said}${errors.length ? `; ${errors.slice(0, 2).join(' | ')}` : ''}`)
   }
   // The window's own handles, for the dialog check (PowerShell over user32).
   const ps = (script) => spawnSync('pwsh', ['-NoProfile', '-Command', script], { encoding: 'utf8' }).stdout.trim()
-  const user32 = `Add-Type 'using System;using System.Runtime.InteropServices;public static class U{[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowW(string c,string t);[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);[DllImport("user32.dll")]public static extern bool PostMessageW(IntPtr h,uint m,IntPtr w,IntPtr l);}';`
+  const user32 = `Add-Type 'using System;using System.Runtime.InteropServices;public static class U{[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowW(string c,string t);[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);[DllImport("user32.dll")]public static extern bool PostMessageW(IntPtr h,uint m,IntPtr w,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindow(IntPtr h);[DllImport("user32.dll")]public static extern IntPtr GetDlgItem(IntPtr d,int i);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr SendMessageW(IntPtr h,uint m,IntPtr w,string l);}';`
   try {
     let target
     for (let i = 0; i < 120 && !target; i++) {
@@ -229,6 +234,61 @@ if (!process.argv.includes('--no-app')) {
       check('a real Space puts the amp in standby, and back', spaced === 'standby' && unspaced === 'on', `${spaced} -> ${unspaced}`)
     }
 
+    // The library (build plan R4, RigLibrary.cpp): a generated 5,000-file folder on this disk, with NAM Core's examples,
+    // picked through the app's own folder dialog (its Folder box typed into, then OK, as a person would), indexed by the
+    // app natively, every entry equal to library.js's reading of the same file, searched in time, played, starred, and
+    // watched: a file copied in appears by itself.
+    {
+      const libDir = join(out, 'library'), examplesDir = join(root, 'NeuralAmpModelerCore', 'example_models')
+      const template = readFileSync(join(examplesDir, 'wavenet.nam'), 'utf8')
+      const files = libraryFixture(5000, template)
+      for (const f of readdirSync(examplesDir)) files.push({ path: `NAM Core/${f}`, bytes: readFileSync(join(examplesDir, f)), expect: {} })
+      for (const f of files) { mkdirSync(join(libDir, dirname(f.path)), { recursive: true }); writeFileSync(join(libDir, f.path), f.bytes) }
+      const listed = files.filter((f) => !f.expect.hidden)
+
+      await js("document.getElementById('lib-choose').click(); true")
+      const title = 'Choose the folder with your captures and IRs'
+      // The Folder box (1152) takes the path and "Use this folder" (1) is clicked, as a person types and clicks.
+      const picked = ps(`${user32} for ($i = 0; $i -lt 50; $i++) { $h = [U]::FindWindowW('#32770', '${title}'); if ($h -ne [IntPtr]::Zero) { $p = 0; [void][U]::GetWindowThreadProcessId($h, [ref]$p); if ($p -eq ${app.pid}) { break } }; $h = [IntPtr]::Zero; Start-Sleep -Milliseconds 100 }
+        if ($h -eq [IntPtr]::Zero) { 'no dialog'; return }
+        [void][U]::SendMessageW([U]::GetDlgItem($h, 1152), 0x000C, [IntPtr]::Zero, '${libDir.replace(/'/g, "''")}')
+        [void][U]::PostMessageW([U]::GetDlgItem($h, 1), 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+        for ($i = 0; $i -lt 40 -and [U]::IsWindow($h); $i++) { Start-Sleep -Milliseconds 100 }
+        if ([U]::IsWindow($h)) { [void][U]::PostMessageW($h, 0x0111, [IntPtr]2, [IntPtr]::Zero); 'still open' } else { 'picked' }`)
+      await until("/captures/.test(document.getElementById('lib-src').textContent) && !/reading|looking/.test(document.getElementById('lib-src').textContent)", 60000, 'the library to be indexed')
+      const head = await js("({ src: document.getElementById('lib-src').textContent, title: document.getElementById('lib-src').title, timing: JSON.parse(document.getElementById('lib-src').dataset.opened) })")
+      const caps = listed.filter((f) => f.path.endsWith('.nam')).length
+      check('the library: the app’s folder dialog picks a folder', picked === 'picked' && head.title.toLowerCase() === libDir.toLowerCase(), `${picked}: ${head.title}`)
+      check('5,000 files (and NAM Core’s examples) index natively in under 10 s', head.timing.ms < 10000 && head.src.endsWith(`${caps.toLocaleString('en-GB')} captures, ${(listed.length - caps).toLocaleString('en-GB')} IRs`), `${head.src}; ${JSON.stringify(head.timing)}`)
+
+      // Both builds read a folder alike: every entry the app read equals library.js's reading of the same file.
+      const kept = await js(`new Promise((ok) => { const r = indexedDB.open('crbn-rig'); r.onsuccess = () => { const g = r.result.transaction('lib').objectStore('lib').get('index:path:' + ${JSON.stringify(libDir.toLowerCase())}); g.onsuccess = () => { ok(g.result?.entries ?? []); r.result.close() } } })`)
+      const td = new TextDecoder(), byPath = new Map(kept.map((e) => [e.p, e])), differ = []
+      for (const f of listed) {
+        const b = new Uint8Array(f.bytes)
+        const info = f.path.endsWith('.wav') ? wavInfo(b.subarray(0, WAV_HEAD_BYTES), b.length)
+          : namInfo(td.decode(b.subarray(0, HEAD_BYTES)), td.decode(b.length <= HEAD_BYTES ? b.subarray(0, HEAD_BYTES) : b.subarray(b.length - TAIL_BYTES)))
+        const want = entryOf({ p: f.path, s: b.length, m: 0 }, info), got = byPath.get(f.path)
+        if (!got) { differ.push(`${f.path}: not listed`); continue }
+        for (const k of ['k', 'n', 'gear', 'make', 'model', 'tone', 'by', 'rate', 'ch', 'sec', 's', 'bad']) if (got[k] !== want[k]) differ.push(`${f.path} ${k}: ${got[k]} vs ${want[k]}`)
+      }
+      check('the app reads every file as the web version does (RigLibrary.cpp and library.js)', !differ.length && kept.length === listed.length, differ.slice(0, 3).join('; ') || `${kept.length} entries alike`)
+
+      const searchMs = await js(`(async () => { const q = document.getElementById('lib-q'), times = []; for (const v of ['m', 'mar', 'marshall', 'marshall crunch', 'überschall', '']) { await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))); const t0 = performance.now(); q.value = v; q.dispatchEvent(new Event('input')); await new Promise((r) => requestAnimationFrame(r)); times.push(performance.now() - t0) } return Math.max(...times) })()`)
+      check('a search of 5,000 draws in under 50 ms', searchMs < 50, `${searchMs.toFixed(1)} ms to the frame at worst`)
+
+      await js("(() => { const q = document.getElementById('lib-q'); q.value = 'Core/wavenet.nam'; q.dispatchEvent(new Event('input')); document.querySelector('#lib-body .lib-go').click(); return true })()")
+      await until("document.getElementById('capture-name').textContent === 'Test Model' && document.querySelector('#lib-body .lib-row.playing')", 10000, 'the capture from the library')
+      await js("document.querySelector('#lib-body .lib-star').click(); true")
+      const starred = await js("document.querySelector('#lib-body .lib-star').getAttribute('aria-pressed') === 'true' && document.getElementById('capture-star').getAttribute('aria-pressed') === 'true'")
+      check('a click plays a capture from the library in the native engine, and a star keeps it', starred, await js("document.getElementById('capture-meta').textContent"))
+
+      writeFileSync(join(libDir, 'Copied in.nam'), template)
+      await until(`document.getElementById('lib-src').textContent.includes('${(caps + 1).toLocaleString('en-GB')} captures')`, 15000, 'the copied file')
+      check('the app watches the folder: a file copied in appears by itself', true, await js("document.getElementById('lib-src').textContent + ' · the amp ' + document.documentElement.dataset.powerState + (document.getElementById('banner').hidden ? '' : ': ' + document.getElementById('banner-title').textContent)"))
+      await js("(() => { const q = document.getElementById('lib-q'); q.value = ''; q.dispatchEvent(new Event('input')); return true })()")
+    }
+
     // Auto-off in the app's native engine (build plan R3): the guitar plays, and then the engine hears a pulled jack (a
     // quiet hiss, contacts scraping near full scale, dead silence), sent as the riff past the page, so the guard and
     // auto-off listen as they do to the guitar. The page says why, and Turn back on lifts it.
@@ -249,7 +309,8 @@ if (!process.argv.includes('--no-app')) {
     await js("document.getElementById('banner-on').click(); chrome.webview.postMessage({ type: 'source', source: 'live' }); true")
     await sleep(300)
     const liftedOff = await js("document.getElementById('banner').hidden && document.documentElement.dataset.powerState === 'on'")
-    check('auto-off: a pulled jack in the native engine mutes it, the page says why, Turn back on lifts it', liftedOff && /went dead after a loud pop/.test(offWords), offWords)
+    const afterLift = liftedOff ? '' : await js("` (then: ${document.documentElement.dataset.powerState}, ${document.getElementById('banner').hidden ? 'no banner' : document.getElementById('banner-title').textContent}, ${document.getElementById('status-text').textContent})`")
+    check('auto-off: a pulled jack in the native engine mutes it, the page says why, Turn back on lifts it', liftedOff && /went dead after a loud pop/.test(offWords), offWords + afterLift)
 
     // The page's look in the screenshot, then Audio settings: iPlug2's own dialog, owned by the app.
     const shot = await send('Page.captureScreenshot', { format: 'png' })
@@ -296,6 +357,13 @@ if (!process.argv.includes('--no-app')) {
       if (text.startsWith('Live')) break
     }
     check('opened again after playing, it plays the guitar at once', text.startsWith('Live'), text || 'no status')
+    // The library's folder opens again by itself, with the favourite starred last time.
+    let favs = ''
+    for (const end = Date.now() + 30000; Date.now() < end; await sleep(200)) {
+      favs = (await js2("(() => { const s = document.getElementById('lib-src').textContent; if (!/captures/.test(s) || /reading|looking/.test(s)) return ''; const c = document.querySelector('#lib-chips [data-favs]'); c.click(); const r = [...document.querySelectorAll('#lib-body .lib-row:not(.hd) b')].map((b) => b.textContent).join(); c.click(); return s + ' | ' + r })()")) ?? ''
+      if (favs) break
+    }
+    check('opened again, the library’s folder is back with its favourite', /captures/.test(favs) && favs.endsWith('| Test Model'), favs || 'no library')
     await js2("document.getElementById('stop').click(); true")
   } catch (err) {
     check('the second opening ran to the end', false, err?.message ?? err)

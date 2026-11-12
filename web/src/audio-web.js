@@ -107,7 +107,9 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
     /** Standby: the engine fades the output over 20 ms and keeps listening to the input. */
     setStandby(on) { post({ type: 'param', name: 'standby', value: on ? 1 : 0 }) },
     /** The person turned the output back on: the squeal guard's or auto-off's mute lifts. */
-    resume() { post({ type: 'param', name: 'clearTrip', value: 1 }); if (status) status = { ...status, muted: 0 } },
+    // Only the engine's own next report says it is unmuted: marking the last one unmuted here let a report already on its
+    // way, still muted, read as a new trip and mute the page again (found in R4's desktop check).
+    resume() { post({ type: 'param', name: 'clearTrip', value: 1 }) },
 
     /** The guitar through the browser's input (it asks the person the first time). */
     async playGuitar(deviceId) {

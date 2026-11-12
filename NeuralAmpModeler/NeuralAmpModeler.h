@@ -11,6 +11,7 @@
 
 #include "IPlug_include_in_plug_hdr.h"
 #include "RigDesktop.h"
+#include "RigLibrary.h"
 #include "RigWebView.h"
 
 const int kNumPresets = 1;
@@ -40,6 +41,7 @@ private:
 
   rig::Desktop mEngine;
   rig::WebViewHost mView;
+  rig::Library mLibrary; // the library's folder, read for the page (build plan R4)
   HWND mWindow = nullptr;
   HWND mFailure = nullptr; // the words shown when the page cannot be (no WebView2 runtime, missing files)
   bool mPageUp = false; // the page has said hello since it last loaded

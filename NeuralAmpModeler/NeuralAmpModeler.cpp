@@ -5,10 +5,15 @@
 //                {type:'ir', id, rate, samples}  {type:'clearIR'}  {type:'irOn', on}  {type:'standby', on}
 //                {type:'source', source: 'live' | 'demo' | 'none'}  {type:'demo', id, rate, samples}
 //                {type:'audioSettings'}  {type:'chrome', dark, caption}
+//                the library (build plan R4, RigLibrary.h): {type:'libPick', id, start}  {type:'libList', id, folder}
+//                {type:'libMeta', id, folder, paths}  {type:'libRead', id, folder, path}  {type:'libWatch', folder}
 //   app -> page  {type:'ready' | 'status', sampleRate, running, driver, input, output, buffer, latencyMs, ...}
 //                {type:'meter', input, raw, output, muted, hz, trips, seconds}  {type:'capture', id, ok, info | error}
 //                {type:'ir', id, ok, ...}
 //                {type:'demo', id, ok, error}
+//                {type:'libPick', id, ok, path}  {type:'libList', id, ok, files: [{p, s, m}], truncated, error}
+//                {type:'libMeta', id, items: [{p, metadata, rate} | {p, wav} | {p, error}]}  {type:'libRead', id, ok, b64}
+//                {type:'libChanged'}
 // `muted` is what muted the output, if anything (the squeal guard or auto-off, rig_engine.cpp's Status), with its
 // frequency; `trips` counts them, so the page sees each one. Standby, the guard and auto-off are engine parameters.
 // `samples` are float32 little-endian in base64: an IR's first channel, or the riff, at its own rate, decoded by the
@@ -277,6 +282,8 @@ void NeuralAmpModeler::OnIdle()
 {
   // Every 20 ms on the UI thread (iPlug2's idle timer).
   mEngine.Collect();
+  for (const std::string& reply : mLibrary.TakeReplies())
+    Post(reply);
   const uint64_t now = GetTickCount64();
   const uint32_t blocks = mBlocks.load(std::memory_order_relaxed);
   if (blocks != mBlocksSeen)
@@ -523,6 +530,35 @@ void NeuralAmpModeler::OnPageMessage(const std::string& text)
     const bool ok = mEngine.SetDemo(DecodeFloats(str("samples")), num("rate"), error);
     Post(Dump({{"type", "demo"}, {"id", num("id")}, {"ok", ok}, {"error", error}}));
   }
+  else if (type == "libPick")
+  {
+    // The folder dialog opens after this message returns, outside WebView2's callback.
+    const double id = num("id");
+    const std::wstring start = rig::Widen(str("start"));
+    mView.Defer([this, id, start] {
+      std::wstring picked;
+      const bool ok = mWindow != nullptr && rig::Library::PickFolder(mWindow, start, picked);
+      nlohmann::json reply = {{"type", "libPick"}, {"id", id}, {"ok", ok}};
+      if (ok)
+        reply["path"] = rig::Narrow(picked);
+      Post(Dump(reply));
+    });
+  }
+  else if (type == "libList")
+    mLibrary.List(num("id"), str("folder"));
+  else if (type == "libMeta")
+  {
+    std::vector<std::string> paths;
+    if (const auto it = m.find("paths"); it != m.end() && it->is_array())
+      for (const auto& p : *it)
+        if (p.is_string())
+          paths.push_back(p.get<std::string>());
+    mLibrary.Meta(num("id"), str("folder"), std::move(paths));
+  }
+  else if (type == "libRead")
+    mLibrary.Read(num("id"), str("folder"), str("path"));
+  else if (type == "libWatch")
+    mLibrary.Watch(str("folder"));
 #if defined(APP_API)
   else if (type == "audioSettings" && mWindow != nullptr)
     PostMessageW(mWindow, WM_COMMAND, MAKEWPARAM(ID_PREFERENCES, 0), 0); // after this message returns, not inside it

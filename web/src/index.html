@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b">
+<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b" data-library="a">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,7 +25,7 @@ try {
   if (p && /^(capsule|holo|redline|daylight)$/.test(p.look)) h.dataset.look = p.look
   if (p && p.density === 'compact') h.dataset.density = 'compact'
   var r = JSON.parse(localStorage.getItem('crbn-rig/rig') || '{}')
-  ;['layout', 'amp', 'meters'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
+  ;['layout', 'amp', 'meters', 'library'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
   if (/^[a-z]+$/.test(r.salvWords || '')) h.dataset.salvWords = r.salvWords
 } catch (e) {}
 </script>
@@ -73,47 +73,50 @@ try {
 </header>
 
 <main class="rig-page">
-  <section class="isl files" aria-labelledby="files-title">
-    <h2 id="files-title">Your captures</h2>
-    <p class="hint">Drop a <code>.nam</code> capture or a <code>.wav</code> cabinet IR anywhere on the page.</p>
-    <article class="slot" aria-labelledby="h-capture">
-      <header><h3 id="h-capture">Capture</h3><span class="tag" id="capture-kind" hidden></span></header>
-      <div class="drop" id="capture-drop" data-slot="capture" tabindex="-1">
-        <div class="empty">
-          <p><strong>Drop a <code>.nam</code> capture</strong><br>of a pedal, an amp or a whole rig</p>
-          <button class="btn" type="button" data-pick="capture">Choose a capture&hellip;</button>
-        </div>
-        <div class="loaded" hidden>
-          <p class="name" id="capture-name"></p>
-          <ul class="chips" id="capture-chips"></ul>
-          <p class="meta" id="capture-meta"></p>
-          <div class="row">
-            <button class="btn small" type="button" data-pick="capture">Change&hellip;</button>
-            <button class="btn small ghost" type="button" data-clear="capture">Remove</button>
-          </div>
+  <!-- The library (build plan R4, P3-UX U3; drawn as D-RIG-008 (d) picked: the list by default, cards and shelves in the
+       look menu). On top, what the rig plays now; under it, the person's folder of captures and IRs, searched and
+       starred. app.js and library-view.js fill it; library.js reads the folder. -->
+  <section class="isl files lib" aria-labelledby="lib-title">
+    <div class="inrig" aria-label="In the rig">
+      <div class="rig-file" id="capture-drop" data-slot="capture">
+        <span class="rf-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M9 6V4.5h6V6"/><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10.5h18"/><path d="M7 8.3h.01M10 8.3h.01M13 8.3h.01"/><path d="M7 13.5v3M10 13.5v3M13 13.5v3M16 13.5v3"/></svg></span>
+        <div class="rf-what"><span class="sec" id="h-capture">Capture</span><b class="name" id="capture-name">None yet</b><small class="meta" id="capture-meta"></small></div>
+        <div class="rf-acts">
+          <button class="lib-star" type="button" id="capture-star" aria-pressed="false" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></button>
+          <button class="btn small ghost rf-btn" type="button" data-pick="capture" title="Open a .nam capture from anywhere" aria-label="Open a .nam capture file"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5V18a1.5 1.5 0 0 0 1.5 1.5h15A1.5 1.5 0 0 0 21 18V9a1.5 1.5 0 0 0-1.5-1.5H12L10 5H4.5A1.5 1.5 0 0 0 3 6.5z"/><path d="M12 11v5M9.5 13.5 12 11l2.5 2.5"/></svg></button>
+          <button class="btn small ghost rf-btn" type="button" data-clear="capture" title="Take the capture out of the rig" aria-label="Remove the capture" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         </div>
         <input type="file" accept=".nam" hidden data-input="capture">
       </div>
-    </article>
-    <article class="slot" aria-labelledby="h-ir">
-      <header><h3 id="h-ir">Cabinet IR</h3></header>
-      <div class="drop" id="ir-drop" data-slot="ir" tabindex="-1">
-        <div class="empty">
-          <p><strong>Drop a <code>.wav</code> IR</strong><br>for a speaker cabinet</p>
-          <button class="btn" type="button" data-pick="ir">Choose an IR&hellip;</button>
-        </div>
-        <div class="loaded" hidden>
-          <p class="name" id="ir-name"></p>
-          <p class="meta" id="ir-meta"></p>
-          <div class="row">
-            <button class="btn small" type="button" data-pick="ir">Change&hellip;</button>
-            <button class="btn small ghost" type="button" data-clear="ir">Remove</button>
-          </div>
+      <div class="rig-file" id="ir-drop" data-slot="ir">
+        <span class="rf-ic" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6"/></svg></span>
+        <div class="rf-what"><span class="sec" id="h-ir">Cabinet IR</span><b class="name" id="ir-name">None</b><small class="meta" id="ir-meta"></small></div>
+        <div class="rf-acts">
+          <button class="lib-star" type="button" id="ir-star" aria-pressed="false" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg></button>
+          <button class="btn small ghost rf-btn" type="button" data-pick="ir" title="Open a .wav IR from anywhere" aria-label="Open a .wav IR file"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5V18a1.5 1.5 0 0 0 1.5 1.5h15A1.5 1.5 0 0 0 21 18V9a1.5 1.5 0 0 0-1.5-1.5H12L10 5H4.5A1.5 1.5 0 0 0 3 6.5z"/><path d="M12 11v5M9.5 13.5 12 11l2.5 2.5"/></svg></button>
+          <button class="btn small ghost rf-btn" type="button" data-clear="ir" title="Take the IR out of the rig" aria-label="Remove the IR" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         </div>
         <input type="file" accept=".wav,audio/wav" hidden data-input="ir">
       </div>
-    </article>
+    </div>
+
+    <header class="lib-head">
+      <h2 class="sec" id="lib-title">Library</h2>
+      <span class="lib-src" id="lib-src" aria-live="polite">No folder yet</span>
+      <button class="btn small ghost lib-again" type="button" id="lib-again" title="Look for new and changed files" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span class="lib-vh">Look again</span></button>
+      <button class="btn small" type="button" id="lib-choose">Choose a folder&hellip;</button>
+    </header>
+    <div class="lib-empty" id="lib-empty"></div>
+    <div class="lib-tools" id="lib-tools" hidden>
+      <label class="lib-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input type="search" id="lib-q" placeholder="Search captures, gear, makers, tones" aria-label="Search the library" autocomplete="off" spellcheck="false"></label>
+      <div class="lib-chips" id="lib-chips" role="group" aria-label="Show"></div>
+      <label class="lib-sort"><span>Sort</span><select id="lib-sort"></select></label>
+    </div>
+    <div class="lib-body" id="lib-body"></div>
+    <p class="hint">Drop a <code>.nam</code> capture or a <code>.wav</code> cabinet IR anywhere on the page to play it, or a folder to make it your library.</p>
     <a class="out-link" href="https://www.tone3000.com" target="_blank" rel="noopener">Find captures and IRs on TONE3000 &#8599;</a>
+    <input type="file" id="lib-dir" webkitdirectory multiple hidden>
   </section>
 
   <section class="isl rig" aria-label="The rig">
@@ -297,6 +300,8 @@ try {
       <button type="button" role="radio" data-value="b">Hardware</button><button type="button" role="radio" data-value="a">Islands</button><button type="button" role="radio" data-value="c">Stripe</button></div></div>
     <div class="lm-row"><span id="lm-meters-l">Meters</span><div class="segmented" data-rig="meters" role="radiogroup" aria-labelledby="lm-meters-l">
       <button type="button" role="radio" data-value="b">LED</button><button type="button" role="radio" data-value="a">Bars</button><button type="button" role="radio" data-value="c">VU</button></div></div>
+    <div class="lm-row"><span id="lm-library-l">Library</span><div class="segmented" data-rig="library" role="radiogroup" aria-labelledby="lm-library-l">
+      <button type="button" role="radio" data-value="a">List</button><button type="button" role="radio" data-value="b">Cards</button><button type="button" role="radio" data-value="c">Shelves</button></div></div>
     <div class="lm-row"><span id="lm-power-l">Power</span><div class="segmented" data-rig="power" role="radiogroup" aria-labelledby="lm-power-l">
       <button type="button" role="radio" data-value="b">Pilot lamp</button><button type="button" role="radio" data-value="a">Header</button><button type="button" role="radio" data-value="c">Big button</button></div></div>
   </section>

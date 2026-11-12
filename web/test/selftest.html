@@ -3,7 +3,7 @@
      results to /__result. Checks: the page paints in Capsule with Rig's brand; Rig's hardware (every kit, CRBN by
      default, bound to the settings, Salvage from the library's sheets); the engine plays the example capture in
      this browser, directly and through the real AudioWorklet (rig-processor.js), and the two agree; the cabinet stage
-     scales as the desktop's does. -->
+     scales as the desktop's does; the library (R4), its folder in the browser's private folder. -->
 <meta charset="utf-8">
 <title>CRBN Rig self-test</title>
 <body style="margin:0">
@@ -228,6 +228,140 @@ try {
     await wait(() => stream !== before && $p('#status-text').textContent.startsWith('Live'), 10000, 'the guitar again')
     check('auto-off: the input device going away mutes it; Turn back on opens the input again', $p('#banner').hidden || /^Auto-off: the input went dead/.test($p('#banner-title').textContent), $p('#status-text').textContent)
     $p('#stop').click()
+  }
+
+  // 1e. The library (build plan R4, P3-UX U3): a folder of the person's captures and IRs, opened through the folder
+  // handle a person's pick gives (here the browser's private folder, in place of showDirectoryPicker), indexed by what
+  // each file says, searched, filtered, played, starred, drawn three ways, and opened again after a reload; then a
+  // generated 5,000-file folder through the dropped-folder path, indexed and searched in time.
+  {
+    const { libraryFixture, writePrivateFolder } = await import('/__selftest/library-fixture.mjs')
+    const template = await (await fetch('/demo/example.nam')).text()
+    const NAM_CORE = {
+      'A2.nam': 'A2', 'lstm.nam': 'Test LSTM', 'my_model.nam': 'my_model', 'slimmable_container.nam': 'Test LSTM', 'slimmable_wavenet.nam': 'slimmable_wavenet',
+      'wavenet.nam': 'Test Model', 'wavenet_a1_standard.nam': 'wavenet_a1_standard', 'wavenet_a2_feature_test.nam': 'Generated WaveNet Model', 'wavenet_condition_dsp.nam': 'Generated WaveNet Model',
+    }
+    const examples = await Promise.all(Object.keys(NAM_CORE).map(async (f) => ({ path: `NAM Core/${f}`, bytes: new Uint8Array(await (await fetch(`/__examples/${f}`)).arrayBuffer()), expect: { k: 'nam', n: NAM_CORE[f] } })))
+    const small = [...examples, ...libraryFixture(300, template)]
+    const dir = await writePrivateFolder('Tones', small)
+    const listed = small.filter((f) => !f.expect.hidden)
+    const ld = () => frame.contentDocument, lw = () => frame.contentWindow
+    const $l = (s) => ld().querySelector(s), $$l = (s) => [...ld().querySelectorAll(s)]
+    const src = () => $l('#lib-src').textContent, count = () => +$l('#lib-body').dataset.count
+    const timing = () => JSON.parse($l('#lib-src').dataset.timing ?? 'null')
+    const frameAfter = async (fn) => { await new Promise((r) => lw().requestAnimationFrame(() => setTimeout(r, 0))); const t0 = performance.now(); fn(); await new Promise((r) => lw().requestAnimationFrame(r)); return performance.now() - t0 }
+    const search = (v) => frameAfter(() => { const q = $l('#lib-q'); q.value = v; q.dispatchEvent(new (lw().Event)('input')) })
+    const kept = () => new Promise((ok) => {
+      const req = indexedDB.open('crbn-rig')
+      req.onsuccess = () => { const db = req.result, g = db.transaction('lib').objectStore('lib').get('index:handle:Tones'); g.onsuccess = () => { ok(g.result?.entries ?? []); db.close() }; g.onerror = () => ok([]) }
+      req.onerror = () => ok([])
+    })
+
+    check('the library replaces Your captures: no folder yet, and a way to choose one', /No folder yet/.test(src()) && $l('#lib-empty [data-choose]') && $l('#lib-tools').hidden, src())
+    lw().showDirectoryPicker = async () => dir
+    $l('#lib-choose').click()
+    await wait(() => /captures/.test(src()) && !/reading|looking/.test(src()), 30000, 'the folder to be indexed')
+    const caps = listed.filter((f) => f.expect.k === 'nam').length, irs = listed.length - caps
+    check('a folder opens and is indexed: its captures and IRs, not its hidden or other files', src() === `Tones · ${caps} captures, ${irs} IRs` && count() === listed.length, `${src()}; expected ${caps} and ${irs}`)
+
+    // What each file says, read from its head and tail by library.js's rules (and RigLibrary.cpp's on the desktop).
+    const index = new Map((await kept()).map((e) => [e.p, e]))
+    const wrong = []
+    for (const f of listed) {
+      const e = index.get(f.path), x = f.expect
+      if (!e) { wrong.push(`${f.path}: missing`); continue }
+      const keys = x.k === 'ir' ? ['k', 'rate', 'ch'] : Object.keys(x)
+      for (const k of keys) if (e[k] !== x[k]) wrong.push(`${f.path} ${k}: ${e[k]} vs ${x[k]}`)
+      if (x.k === 'ir' && Math.abs(e.sec - x.sec) > 1e-3) wrong.push(`${f.path} sec: ${e.sec} vs ${x.sec}`)
+    }
+    check('the index reads what each file says: NAM Core’s examples (top, container, tail, none) and the folder’s', !wrong.length && index.size === listed.length, wrong.slice(0, 3).join('; ') || `${index.size} entries`)
+
+    const ms = await search('jcm')
+    const shown = $$l('#lib-body .lib-row:not(.hd) b').map((b) => b.textContent)
+    check('search as you type: every word must match', count() === listed.filter((f) => /jcm/i.test(f.path)).length && shown.length && shown.every((t) => /JCM/.test(t)), `${count()} for “jcm”, ${ms.toFixed(1)} ms to the frame`)
+    await search('NAM Core test lstm')
+    check('search reaches the file’s folder and its metadata together', count() === 2, `${count()} for “NAM Core test lstm”`)
+    await search('')
+    $l('#lib-chips [data-group="cabs"]').click()
+    const cabs = count()
+    $l('#lib-chips [data-tone="fuzz"]')?.click()
+    const fuzzCabs = count()
+    $l('#lib-chips [data-group=""]').click()
+    const fuzz = count()
+    $l('#lib-chips [data-tone="fuzz"]').click()
+    check('chips filter by gear and by tone, and All brings everything back', cabs === irs && fuzzCabs === 0 && fuzz === listed.filter((f) => f.expect.tone === 'fuzz').length && count() === listed.length, `cabinets ${cabs}, fuzz cabinets ${fuzzCabs}, fuzz ${fuzz}, all ${count()}`)
+    const sortSel = $l('#lib-sort')
+    sortSel.value = 'maker'; sortSel.dispatchEvent(new (lw().Event)('change'))
+    const firstMaker = $l('#lib-body .lib-row:not(.hd) small')?.textContent
+    sortSel.value = 'name'; sortSel.dispatchEvent(new (lw().Event)('change'))
+    check('sort by maker', /Bogner|Boss|Darkglass/.test(firstMaker ?? ''), firstMaker)
+
+    // Click to hear it: the capture goes into the amp, its row says Playing; an IR goes into the cabinet.
+    await search('Core/wavenet.nam')
+    $l('#lib-body .lib-go').click()
+    await wait(() => $l('#capture-name').textContent === 'Test Model' && $l('#lib-body .lib-row.playing'), 8000, 'the capture from the library')
+    check('a click plays a capture from the library, and its row says Playing (in words)', $l('#amp-logo').textContent === 'Test Model' && /Playing/.test($l('#lib-body .lib-row.playing').textContent) && !$l('#capture-star').hidden, $l('#capture-meta').textContent)
+    await search('')
+    $l('#lib-chips [data-group="cabs"]').click()
+    $l('#lib-body .lib-go').click()
+    await wait(() => /ms impulse response/.test($l('#ir-meta').textContent), 8000, 'the IR from the library')
+    check('a click puts an IR in the cabinet', $l('#cab-name').textContent === $l('#ir-name').textContent && $l('#lib-body .lib-card.playing, #lib-body .lib-row.playing'), $l('#ir-meta').textContent)
+    $l('#lib-chips [data-group=""]').click()
+
+    // A star on every row; Favourites shows them; the amp's own star is the same favourite.
+    await search('Core/wavenet.nam')
+    $l('#lib-body .lib-star').click()
+    await search('')
+    $l('#lib-chips [data-favs]').click()
+    const favRows = $$l('#lib-body .lib-row:not(.hd)').map((r) => r.querySelector('b').textContent)
+    $l('#lib-chips [data-favs]').click()
+    check('a star keeps a favourite; Favourites shows it; the rig’s own star agrees', favRows.length === 1 && favRows[0] === 'Test Model' && $l('#capture-star').getAttribute('aria-pressed') === 'true', favRows.join(', '))
+
+    // The three drawings (D-RIG-008 (d)): the list by default, cards and shelves in the look menu.
+    const pickLib = (v) => $l(`.segmented[data-rig="library"] [data-value="${v}"]`).click()
+    const isList = ld().documentElement.dataset.library === 'a' && $l('#lib-body .lib-list')
+    pickLib('b'); const isCards = $$l('#lib-body .lib-card').length > 10 && !$l('#lib-body .lib-list')
+    pickLib('c'); const shelves = $$l('#lib-body .lib-shelf-sec .sec').map((s) => s.textContent)
+    pickLib('a')
+    check('the library is a list by default, with cards and shelves in the look menu', isList && isCards && shelves.join(',') === 'Amps,Pedals,Full rigs,Cabinets,Other', `${Boolean(isList)}/${isCards}/${shelves.join(',')}`)
+
+    // The page opened again (without ?example, so what was playing comes back too): the folder opens itself again
+    // (its handle kept), with the favourite and what was playing.
+    const before = ld()
+    lw().location.href = '/'
+    await wait(() => ld() !== before && ld()?.documentElement.dataset.ready === 'true' && /captures/.test(ld().getElementById('lib-src')?.textContent ?? '') && !/reading|looking/.test(ld().getElementById('lib-src').textContent), 30000, 'the library after a reload')
+    const t = timing()
+    $l('#lib-chips [data-favs]').click()
+    const afterFavs = $$l('#lib-body .lib-row:not(.hd)').map((r) => r.querySelector('b').textContent)
+    $l('#lib-chips [data-favs]').click()
+    check('after a reload the folder is open again, a quick look, with the favourite and the Playing mark', afterFavs.join() === 'Test Model' && t?.quick && t.read === 0 && $l('#capture-name').textContent === 'Test Model' && $l('#lib-body .lib-row.playing'), `${afterFavs.join()}; ${JSON.stringify(t)}`)
+
+    // A file added to the folder appears on Look again.
+    const added = await (await dir.getFileHandle('Added later.nam', { create: true })).createWritable()
+    await added.write(template.replace('"Test Model"', '"Added later"')); await added.close()
+    $l('#lib-again').click()
+    await wait(() => count() === listed.length + 1 && !/reading|looking/.test(src()), 15000, 'the added file')
+    check('Look again finds a file added to the folder, reading only it', timing()?.read === 1 && timing()?.quick === false, JSON.stringify(timing()))
+
+    // 5,000 files (build plan R4: under 10 s to index, under 50 ms to search), through a dropped folder's files: the
+    // page's own reading, from real files in memory. A browser's private folder adds its own cost per file (about
+    // 3 ms each in headless Edge on Box-C), measured in the R4 notes; the desktop check indexes 5,000 from a real disk.
+    const big = libraryFixture(5000, template).filter((f) => !f.expect.hidden)
+    const dt = new (lw().DataTransfer)()
+    for (const f of big) dt.items.add(new (lw().File)([f.bytes], f.path.split('/').pop(), { lastModified: 1762900000000 }))
+    const input = $l('#lib-dir')
+    input.files = dt.files
+    const t0 = performance.now()
+    input.dispatchEvent(new (lw().Event)('change'))
+    await wait(() => /5,000|4,750/.test(src()) && !/reading|looking/.test(src()), 60000, '5,000 files')
+    const indexMs = performance.now() - t0, scan = timing()
+    const times = []
+    for (const v of ['m', 'ma', 'mar', 'mars', 'marshall', 'marshall c', 'marshall crunch', 'überschall', 'uber', '']) times.push(await search(v))
+    const worst = Math.max(...times)
+    check('5,000 files index in under 10 s, and a search draws in under 50 ms', indexMs < 10000 && worst < 50 && count() === 5000, `indexed in ${(indexMs / 1000).toFixed(2)} s (${JSON.stringify(scan)}); slowest search ${worst.toFixed(1)} ms to the frame`)
+    results.library = { indexMs: Math.round(indexMs), scan, searchMs: +worst.toFixed(1) }
+    // the page as the rest of the self-test expects it: the handle folder again, nothing loaded from it
+    await lw().navigator.storage.getDirectory().then((r) => r.removeEntry('Tones', { recursive: true })).catch(() => {})
   }
 
   // 2. The engine in this browser.

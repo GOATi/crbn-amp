@@ -3,6 +3,7 @@
   <ItemGroup>
     <ClCompile Include="..\NeuralAmpModeler.cpp" />
     <ClCompile Include="..\RigDesktop.cpp" />
+    <ClCompile Include="..\RigLibrary.cpp" />
     <ClCompile Include="..\RigWebView.cpp" />
     <ClCompile Include="..\..\web\engine\rig_engine.cpp" />
     <ClCompile Include="..\..\iPlug2\IPlug\IPlugAPIBase.cpp">
@@ -94,6 +95,7 @@
   <ItemGroup>
     <ClInclude Include="..\NeuralAmpModeler.h" />
     <ClInclude Include="..\RigDesktop.h" />
+    <ClInclude Include="..\RigLibrary.h" />
     <ClInclude Include="..\RigWebView.h" />
     <ClInclude Include="..\resources\resource.h">
       <Filter>resources</Filter>

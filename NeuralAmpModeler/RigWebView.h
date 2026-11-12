@@ -5,6 +5,7 @@
 // Implementation Library. Everything here runs on the UI thread.
 #pragma once
 
+#include <deque>
 #include <functional>
 #include <memory>
 #include <string>
@@ -46,6 +47,9 @@ public:
   bool IsOpen() const { return mView != nullptr; }
   // The runtime's version, once Open has found it.
   const std::wstring& RuntimeVersion() const { return mRuntimeVersion; }
+  // Runs `fn` on the UI thread once the message being handled is done, outside any WebView2 callback: a modal dialog
+  // (the library's folder dialog) must not open inside one. UI thread only; dropped if the view closes first.
+  void Defer(std::function<void()> fn);
 
 private:
   void OnControllerCreated(ICoreWebView2Controller* controller);
@@ -67,6 +71,7 @@ private:
   Microsoft::WRL::ComPtr<ICoreWebView2Controller> mController;
   Microsoft::WRL::ComPtr<ICoreWebView2> mView;
   bool mSubclassed = false;
+  std::deque<std::function<void()>> mDeferred;
 };
 
 // UTF-8 and UTF-16, for the messages and paths.

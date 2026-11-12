@@ -5,7 +5,10 @@
 //                                         and the engine plays the example capture through the real AudioWorklet,
 //                                         equal to the engine run directly, with the cabinet stage scaled as the
 //                                         desktop's; the power switch, Standby, the squeal guard in a real feedback
-//                                         loop through the worklet, and auto-off through the page's own input.
+//                                         loop through the worklet, and auto-off through the page's own input;
+//                                         the library (R4): NAM Core's examples and a generated folder opened as the
+//                                         person's folder, searched, filtered, played, starred and reopened after a
+//                                         reload, and a generated 5,000-file folder indexed and searched in time.
 //   node web/check.mjs --url=<origin>     the live host: /__build names a build, and every file of the artifact is
 //                                         served byte for byte (SHA-256).
 import { createHash } from 'node:crypto'
@@ -41,13 +44,13 @@ if (urlArg) {
 }
 
 const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm',
   '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.wav': 'audio/wav', '.nam': 'application/json', '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
 }
 let deliver
-const result = new Promise((ok, fail) => { deliver = ok; setTimeout(() => fail(new Error('the self-test sent nothing in 120 s')), 120000).unref() })
+const result = new Promise((ok, fail) => { deliver = ok; setTimeout(() => fail(new Error('the self-test sent nothing in 240 s')), 240000).unref() })
 const server = createServer((req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://x').pathname)
   if (req.method === 'POST' && path === '/__result') {
@@ -55,8 +58,10 @@ const server = createServer((req, res) => {
     req.on('data', (d) => parts.push(d)).on('end', () => { res.writeHead(204).end(); deliver(JSON.parse(Buffer.concat(parts).toString())) })
     return
   }
-  const base = path.startsWith('/__selftest/') ? join(root, 'web', 'test') : artifact
-  const rel = path.startsWith('/__selftest/') ? path.slice('/__selftest/'.length) : path.slice(1) || 'index.html'
+  // /__selftest/ is web/test; /__examples/ NAM Core's example captures, which the library indexes (build plan R4)
+  const [prefix, dir] = path.startsWith('/__selftest/') ? ['/__selftest/', join(root, 'web', 'test')] : path.startsWith('/__examples/') ? ['/__examples/', join(root, 'NeuralAmpModelerCore', 'example_models')] : ['/', artifact]
+  const base = dir
+  const rel = path.slice(prefix.length) || 'index.html'
   const file = normalize(join(base, rel.endsWith('/') ? rel + 'index.html' : rel))
   if (!file.startsWith(base + sep)) { res.writeHead(403).end(); return }
   let bytes
@@ -93,6 +98,7 @@ try { report = await result } finally { await browser.stop(); server.close() }
 
 for (const c of report.checks) console.log(`${c.ok ? 'ok  ' : 'FAIL'}  ${c.name}${c.detail ? `  (${c.detail.split('\n')[0]})` : ''}`)
 if (report.realtime) console.log(`engine speed in this browser: ${report.realtime}x real time; worklet render ${report.workletMs} ms`)
+if (report.library) console.log(`library: 5,000 files indexed in ${(report.library.indexMs / 1000).toFixed(2)} s (listing ${report.library.scan?.listMs} ms, reading ${report.library.scan?.readMs} ms); the slowest search ${report.library.searchMs} ms to the frame`)
 const failed = report.checks.filter((c) => !c.ok)
 console.log(failed.length ? `${failed.length} FAILED (${report.userAgent})` : `web check: all ${report.checks.length} checks pass in ${report.userAgent.match(/Edg\/[\d.]+/)?.[0] ?? 'Edge'}`)
 process.exit(failed.length ? 1 : 0)

@@ -13,6 +13,7 @@
 //   { "metrics": 6000, "label": "crbn idle" }                                the renderer's task and script time, as a
 //                                                                            share of the wall clock over that many ms
 //   { "wait": 1000 }
+// web/test is served under /__selftest/ (the library's fixture: import('/__selftest/library-fixture.mjs')).
 //
 // Notes from R1: the self-test (web/test/selftest.html) runs the page inside an iframe, so wait for a drawing to appear
 // rather than sleeping a fixed time; a canvas reads back with getImageData (same origin); the energy rests after 30 s
@@ -44,11 +45,13 @@ if (process.argv[2] === '--clashes') {
 
 const site = join(root, 'dist', 'web')
 const steps = JSON.parse(readFileSync(process.argv[2], 'utf8'))
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.wav': 'audio/wav', '.nam': 'application/json', '.md': 'text/markdown', '.txt': 'text/plain' }
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.wav': 'audio/wav', '.nam': 'application/json', '.md': 'text/markdown', '.txt': 'text/plain' }
 const server = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-  const file = normalize(join(site, p === '/' ? 'index.html' : p.slice(1)))
-  if (!file.startsWith(site + sep)) { res.writeHead(403).end(); return }
+  // /__selftest/ is web/test (the library's fixture, R4), as web/check.mjs serves it; the rest is the built site
+  const base = p.startsWith('/__selftest/') ? join(root, 'web', 'test') : site
+  const file = normalize(join(base, p === '/' ? 'index.html' : p.startsWith('/__selftest/') ? p.slice(12) : p.slice(1)))
+  if (!file.startsWith(base + sep)) { res.writeHead(403).end(); return }
   let bytes
   try { bytes = readFileSync(file) } catch { res.writeHead(404).end(); return }
   res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(bytes)

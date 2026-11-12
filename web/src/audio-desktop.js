@@ -7,6 +7,10 @@
 // Standby, the squeal guard and auto-off are the engine's (build plan R3); its status comes with the meters. When the
 // driver stops delivering audio while the guitar plays (an interface unplugged), onInputLost says so, unless Audio
 // settings was opened in the last 30 s (changing the device or buffer restarts the driver).
+//
+// The library (build plan R4) reads its folder through the app as well: the app's own folder dialog, the folder's
+// listing, what each file says about itself (read natively, by library.js's rules), a file's bytes, and a watch that
+// says when the folder changes (onLibChanged).
 import { PARAM } from './engine.js'
 
 /** True inside the desktop app's WebView2. */
@@ -37,7 +41,7 @@ function base64(floats) {
   return btoa(s)
 }
 
-export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {} } = {}) {
+export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {}, onLibChanged = () => {} } = {}) {
   const view = globalThis.chrome.webview
   const post = (m) => view.postMessage(m)
   let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, settingsAt = -Infinity
@@ -52,6 +56,8 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     if (m.type === 'meter') {
       peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); peaks.output = Math.max(peaks.output, m.output)
       if ('muted' in m) engine = { muted: m.muted, hz: m.hz, trips: m.trips, seconds: m.seconds }
+    } else if (m.type === 'libChanged') {
+      onLibChanged()
     } else if (m.type === 'ready' || m.type === 'status') {
       const was = status?.running
       status = m
@@ -99,7 +105,9 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     setIROn(on) { post({ type: 'irOn', on: Boolean(on) }) },
     setStandby(on) { this.setParam('standby', on ? 1 : 0) },
     /** The person turned the output back on: the squeal guard's or auto-off's mute lifts. */
-    resume() { this.setParam('clearTrip', 1); if (engine) engine = { ...engine, muted: 0 } },
+    // Only the engine's own next report says it is unmuted: marking the last one unmuted here let a meter message already
+    // on its way, still muted, read as a new trip and mute the page again (found in R4's desktop check).
+    resume() { this.setParam('clearTrip', 1) },
 
     /** The guitar through the driver's inputs: no permission to ask, the device is the Audio settings' pick. */
     async playGuitar() { source = 'guitar'; post({ type: 'source', source: 'live' }) },
@@ -129,5 +137,17 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     openAudioSettings() { settingsAt = performance.now(); post({ type: 'audioSettings' }) },
     /** The window's title bar follows the page's look. */
     setTitleBar(dark, caption) { post({ type: 'chrome', dark: Boolean(dark), caption }) },
+
+    // The library's folder, read by the app (library.js's desktop source).
+    /** The app's folder dialog: { ok, path } or { ok: false } when the person cancels. */
+    libPick(start = '') { return ask({ type: 'libPick', start }) },
+    /** Every .nam and .wav under the folder: { ok, files: [{ p, s, m }], truncated, error }. */
+    libList(folder) { return ask({ type: 'libList', folder }) },
+    /** What each file says: { items: [{ p, metadata, rate } | { p, wav } | { p, error }] }. */
+    libMeta(folder, paths) { return ask({ type: 'libMeta', folder, paths }) },
+    /** One file's bytes: { ok, b64, error }. */
+    libRead(folder, path) { return ask({ type: 'libRead', folder, path }) },
+    /** Watches the folder (an empty path stops): the app says libChanged when its files change. */
+    libWatch(folder) { post({ type: 'libWatch', folder }) },
   }
 }
