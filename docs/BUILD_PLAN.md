@@ -556,6 +556,9 @@ a session). No engine change.
     it twice in five runs before the fix, and none in four after.
   - The desktop check's real keys (an arrow, typing, Space) failed once in eight runs, before the library's part, as if
     another window had taken the focus: worth watching, not changed.
+  - In the web version a click on a capture while the guitar plays drops the sound for about 0.1 s: the engine loads a
+    capture on the audio thread, and a standard WaveNet takes 90 ms (measured under R5 below). The desktop builds a
+    capture on its UI thread and swaps it in at once. R5's slots are where this goes away.
 
 ### R5. Favourites on standby (U4)
 
@@ -567,6 +570,23 @@ Arrows give next and previous.
   or key-down instead.
 - **Tests:** a switch has no gap, and no click above the crossfade (an offline render compared against a reference
   crossfade); keys work with the look menu shut and are ignored while typing in a field.
+- **Measured before R5** (2026-11-12, SYNC:RIG-021, the shipped `rig-engine.wasm` in Node's V8; headless Edge runs it about
+  a quarter slower):
+  - A **standard WaveNet** capture (NAM Core's `wavenet_a1_standard.nam`, 411 KB, the common TONE3000 kind) takes
+    **90 ms** to load (median of ten; 153 ms at worst) and plays at **2.1x real time** (1 s of audio in 482 ms). `A2.nam`
+    (664 KB) loads in 146 ms and plays at 6.6x; the small test models load in 2 to 18 ms.
+  - A load runs on the audio thread: **every switch in the web version today drops out for about 0.1 s**, R4's
+    click-to-play included. Ten pads cannot be loaded there while the guitar plays.
+  - Most of a load is warming the model, twice: `ResamplingNAM`'s constructor resets (and so prewarms) it, and
+    `BuildModel` resets it again. A prewarm runs the receptive field (about 4,096 samples for a standard WaveNet), about
+    40 ms each at 2.1x. Building with `get_dsp`'s `DspLoadOptions{prewarm = false}` and warming once, or warming on live
+    input under the crossfade, is the first thing to try; then measure again in both builds.
+  - **Two standard captures at once need about 96% of the audio thread in Node, more in a browser**, so a crossfade that
+    runs both models may underrun in the web version on a machine like Box-C. Options to weigh: a short dip (fade out,
+    swap, fade in, one model at a time) in the browser with the true crossfade on the desktop; or a crossfade only
+    where the page measures the headroom. R6's pedals in series meet the same limit.
+  - Memory is not the limit: the engine's linear memory is 32 MB with or without a standard capture (its weights are
+    about 100 KB of floats). Ten held captures cost about ten times one model's buffers; measure in R5.
 
 ### R6. Rigs, variants and pedals (U5)
 
