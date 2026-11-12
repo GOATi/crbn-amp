@@ -43,7 +43,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R1c | The store's skins: Salvage second and cycling, a skins section (D-RIG-018 (e); done, SYNC:RIG-019) | Done: his look at the pictures and words before upload | The store shows CRBN, then Salvage cycling through its shuffles, and a section on choosing and customising skins |
 | R2 | The desktop on the page (U2): built and shipped (SYNC:RIG-016, RIG-017; D-RIG-017, D-RIG-018) | Done: the WebView2 SDK alone (D-RIG-017); his SimplySign session (R2b) | `crbn-rig.exe` shows the page over the native engine; signed, published, confirmed |
 | R3 | Power, auto-off, squeal guard (U1): built and shipped (SYNC:RIG-020, D-RIG-021) | Done: auto-play (resume if playing at close), the web publish, his SimplySign session | Both builds; no false trips on real playing (the synthetic set passes; his real playing is still to try) |
-| R4 | The library (U3) | Nothing new | Both builds; a 5,000-file folder stays fast |
+| R4 | The library (U3): built (SYNC:RIG-021), not yet published | Nothing new; his word to publish, and a SimplySign session | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
 | R6 | Rigs, variants and pedals (U5) | Nothing new | Pedals in series, hot-swapped while playing |
 | R7 | MIDI (U6) | MIDI in the browser, yes or no; his MC8 backup file, if he has one | His MC8 drives Rig by drag and drop |
@@ -471,6 +471,91 @@ As P3-UX's U3, drawn as picked: the list (A) by default, cards (B) and shelves (
   click to hear it.
 - **Tests:** an index of NAM Core's examples; a generated 5,000-file folder indexes in under 10 s and searches in
   under 50 ms; favourites survive a reload.
+
+### R4, as built (2026-11-12, SYNC:RIG-021)
+
+Built and checked in both builds; not published (the web promote and the desktop's signing wait for the owner's word in
+a session). No engine change.
+
+- **The panel** replaces "Your captures" (`web/src/index.html`, `library-view.js`). On top, what the rig plays now: the
+  capture and the cabinet IR, each with its star (when it came from the folder open now), Open (a file from anywhere)
+  and Remove. Under it, the library: the folder's name and counts, Look again, Change; search, chips and sort; then the
+  folder's files, drawn as D-RIG-008 (d) picked: **A, the list**, by default, with B (cards) and C (shelves by gear)
+  under "Library" in the look menu. In the Amp front layout the panel is 280 to 340 px wide and keeps to the window's
+  height, the list scrolling inside it.
+- **What a person does:**
+  - Search as they type: every word must appear in the name, the file's path, the make, model, who captured it, the
+    gear or the tone, accents folded ("uber" finds Überschall).
+  - Chips for the gear (All, Amps, Pedals, Full rigs, Cabinets, Other), Favourites, and the tones (Clean, Overdrive,
+    Crunch, High gain, Fuzz); only chips the folder has are drawn.
+  - Sort by name, gear, maker, who captured it, or newest.
+  - A star on every row and card, and on the rig's own capture and IR.
+  - A click plays it: a capture into the amp, an IR into the cabinet, through the same path a dropped file takes. Its
+    row says Playing, in words. Up and down move through the list; Enter in the search plays the first match.
+  - Dropping a folder anywhere makes it the library; a file still plays.
+- **The index** (`web/src/library.js`, one module for both builds):
+  - Per file: its relative path, size and modified time, and what it says. For a capture: the metadata's name, gear
+    type, make, model, tone type and who captured it, and its sample rate. For an IR: its rate, channels and length.
+  - What a file says is read from its first 16 KB and last 8 KB, never the whole file. The metadata is the top level's
+    if it is in the head (as NAM's trainer and TONE3000 write it); else the last one in the tail (a SlimmableContainer's
+    own, after its submodels); else the first nested one (a container's submodel's). The sample rate is the last one in
+    the tail. A capture without metadata is named after its file. A WAV is read from its first 64 KB.
+  - Kept in IndexedDB (the `lib` store, version 3 of `crbn-rig`; in the desktop app, under the app's WebView2 profile in
+    `%LOCALAPPDATA%\CRBNAmp`). A fresh look reads only the files whose size or time changed.
+  - Favourites are relative paths, kept per folder in `localStorage` (`crbn-rig/favourites`); a browser folder is known
+    by its name, so two folders of one name share them. A dropped file outside the folder has no star yet: R5 decides
+    whether a pad can hold one.
+  - At most 50,000 files, 12 folders deep; names starting with a dot are skipped.
+- **Where the files come from:**
+  - **A browser:** `showDirectoryPicker`, its handle kept in IndexedDB. Next visit the folder opens itself if the
+    browser still grants it, or offers "Open Tones" (one click) if it asks again. Without that API (or where a view
+    refuses it): `<input webkitdirectory>` or a dropped folder, kept for the visit. A browser charges a few milliseconds
+    to open each file, so opening the page or coming back to it is a **quick look** (the names; new files read), and
+    **Look again** opens every file, to find files changed in place.
+  - **The desktop app** (`NeuralAmpModeler/RigLibrary.cpp`): Windows' folder dialog ("Choose the folder with your
+    captures and IRs", "Use this folder"), opened after the page's message returns (`WebViewHost::Defer`), never inside
+    WebView2's callback. A worker thread lists the folder, reads what each file says by the same rules, and reads a file
+    to play; its replies reach the page through `OnIdle`. A watch (`FindFirstChangeNotification`, quiet for 0.8 s) says
+    when the folder changes, and the page looks again. Only `.nam` and `.wav` files under the folder are read, at most
+    64 MB; a path part of `..`, or one holding `:` or `\`, is refused. The messages are `libPick`, `libList`, `libMeta`,
+    `libRead`, `libWatch` and `libChanged` (NeuralAmpModeler.cpp's list).
+- **Speed** (Box-C):
+  - **Desktop:** 5,009 files (the generated 5,000 and NAM Core's 9) indexed natively in **1.6 s** (listing 0.18 s,
+    reading 1.4 s); a look with nothing changed takes 0.1 s.
+  - **Web, the page's own work:** 5,000 files from a dropped folder (real files, in memory) indexed in **2.5 to 4.3 s**.
+  - **Web, a browser's private folder:** about 3 ms a file in headless Edge (1.3 ms to open one, 1.6 ms to read its
+    head): 1,000 files in 2.9 s, 5,000 in 15 to 18 s on a first visit. That is the browser's cost per file, and why the
+    quick look exists. A real folder through the picker cannot be driven headless, so its speed is the owner's to see.
+  - **Search:** a few milliseconds over 5,000 entries; the slowest search to the next frame **18 to 39 ms**, in both
+    builds (59 ms once on the desktop, with 60 rows drawn, before it drew 40). Only the first 40 rows are drawn (more as the list scrolls), rows out of view are not laid out
+    (`content-visibility`), and the list goes back to its top before its rows change, not after: after, it forced the
+    page's layout there and then (108 ms before, 10 ms after).
+- **Tests:**
+  - `web/check.mjs`: 58 checks (14 new). NAM Core's 9 examples and a generated 300-file folder in the browser's private
+    folder, given as the person's pick. The index reads every file as the fixture says it should (top, container, tail,
+    no metadata; IRs mono and stereo, 44.1 and 48 kHz), and hidden files and other kinds are not listed. Search, the
+    chips, the sort, a click to play a capture and an IR, a star and Favourites, the three drawings, the page opened
+    again (the folder back by itself, a quick look reading nothing, the favourite and the Playing mark), and Look again
+    finding a file added. Then 5,000 files through a dropped folder's files: under 10 s, searches under 50 ms.
+  - `packaging/windows/check.mjs`: 33 checks (7 new). The real folder dialog (its Folder box typed into, "Use this
+    folder" clicked); 5,009 files natively in under 10 s; every entry the app read equal to `library.js`'s reading of
+    the same file, all 5,009; a search under 50 ms; a click playing a capture in the native engine, and a star; a file
+    copied in appearing by itself; and on the second opening, the folder back with its favourite.
+  - The fixture is `web/test/library-fixture.mjs`, for both checks; `web/probe.mjs` serves it under `/__selftest/`.
+- **Found:**
+  - NAM Core's `my_model.nam` and `wavenet_a1_standard.nam` carry no metadata, and `A2.nam` keeps its own after 680 KB
+    of weights: hence the head-and-tail rule.
+  - A search input's own width (twenty characters and its cancel button) widened the panel's grid column past its
+    island: `width: 0` with `flex: 1`, and the panel's column `minmax(0, 1fr)`.
+  - Headless Edge processes left by a stopped probe can hold the default audio device, and the desktop check's riff then
+    hears nothing. Stop them first (their profiles start `crbn-rig-edge-`).
+  - **An R3 race, fixed:** Turn back on could fail now and then. Both backends' `resume()` marked the engine's last
+    report unmuted at once, so the page forgot the trip it had just lifted. A report the engine had already sent, still
+    muted, then read as a new trip and muted the page again, and the desktop app did not play at its next opening. Now
+    only the engine's own next report says it is unmuted (`audio-web.js`, `audio-desktop.js`). The desktop check caught
+    it twice in five runs before the fix, and none in four after.
+  - The desktop check's real keys (an arrow, typing, Space) failed once in eight runs, before the library's part, as if
+    another window had taken the focus: worth watching, not changed.
 
 ### R5. Favourites on standby (U4)
 
