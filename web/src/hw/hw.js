@@ -187,11 +187,12 @@ const f1 = n => Math.round(n * 10) / 10
 const kitOf = hw => hw.dataset.kit === 'builder' ? BUILDER : KIT[hw.dataset.kit]
 const SIZES = { '': 40, tw: 36, md: 32, sm: 26 }
 const AMP_KNOBS = [['Input', .5], ['Gate', .3], ['Bass', .55], ['Middle', .62], ['Treble', .6], ['Output', .5]]
-// A pedal's two real controls (build plan R6): a capture has no knobs of its own, so Drive is the level into it and
-// Level the level out of it, in dB (the page's pedalDrive and pedalLevel settings).
-const PED_KNOBS = [['Drive', .5], ['Level', .5]]
+// A pedal's real controls (build plan R6): a capture has no knobs of its own, so Drive is the level into it, Level the
+// level out of it, in dB (the page's pedalDrive and pedalLevel settings), and Tone a tilt of its sound (pedalTone, R6
+// step 3) with a switch beside the lamp that puts it in or bypasses it (pedalToneOn; bypassed, the capture as captured).
+const PED_KNOBS = [['Drive', .5], ['Tone', .5], ['Level', .5]]
 // Pedals show only their end numbers: 0 where all the way down is a real setting, 1 elsewhere (D-RIG-010).
-const PED_MIN = { Level: 0, Drive: 0 }, PED_SCALE = { tweed12: 'ends' }
+const PED_MIN = { Level: 0, Drive: 0, Tone: 0 }, PED_SCALE = { tweed12: 'ends' }
 
 // ---------------------------------------------------------------- knobs
 const CK = 'M-6,-45 C-2,-47.5 2,-47.5 6,-45 L22.2,-17 A28,28 0 1,1 -22.2,-17 Z'
@@ -313,7 +314,7 @@ function faderCell (label, v) {
 }
 
 // ---------------------------------------------------------------- switches and lights
-const STATE_WORD = { power: ['Off', 'On'], standby: ['Standby', 'Play'], gate: ['Off', 'On'], eq: ['Off', 'On'], ir: ['Off', 'On'] }
+const STATE_WORD = { power: ['Off', 'On'], standby: ['Standby', 'Play'], gate: ['Off', 'On'], eq: ['Off', 'On'], ir: ['Off', 'On'], tone: ['Bypass', 'On'] }
 function swHTML (type, role, label, on, kit) {
   const art = kit && kit.art && kit.art.sw
   if (art) return `<div class="cc"><span class="lb">${label}</span><button class="sw sw-art" type="button" data-role="${role}" aria-pressed="${on}" aria-label="${label}"><i style="background-image:url('${art}')"></i></button><span class="st">${STATE_WORD[role][on ? 1 : 0]}</span></div>`
@@ -364,9 +365,11 @@ function pedalHTML (kit, name, p = 0) {
   const knobs = PED_KNOBS.map(([lb, v]) => knobCell(kit, lb, v, size, PED_SCALE[kit.scale] ? { scale: PED_SCALE[kit.scale], min: PED_MIN[lb] } : {})).join('')
   const led = `<span class="lp ${kit.led === 'jewel-sm' ? 'lp-jewel sm' : isNew ? 'lp-ring' : 'lp-led'}" aria-hidden="true">${LP_IN}</span>`
   const aria = `aria-pressed="true" aria-label="${name}: on"`
-  if (kit.foot === 'pad') return `<div class="hw pedal classic k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal" data-pedal="${p}"><div class="pface"><div class="pled">${led}<span class="lb">Check</span></div><div class="pknobs">${knobs}</div><button class="fs fs-pad" type="button" data-role="foot" ${aria}><span class="strip">${name}<small>RG-1</small></span></button></div></div>`
+  // the Tone's switch, the kit's own toggle made small, beside the lamp (R6 step 3)
+  const tone = `<div class="ptone">${swHTML(isNew ? 'lit' : String(kit.tg).replace(/^rocker$/, 'bat mini'), 'tone', 'Tone', false, kit)}</div>`
+  if (kit.foot === 'pad') return `<div class="hw pedal classic k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal" data-pedal="${p}"><div class="pface"><div class="pled">${led}<span class="lb">Check</span>${tone}</div><div class="pknobs">${knobs}</div><button class="fs fs-pad" type="button" data-role="foot" ${aria}><span class="strip">${name}<small>RG-1</small></span></button></div></div>`
   const foot = kit.foot === 'ring' ? `<button class="fs fs-ring" type="button" data-role="foot" ${aria}></button>` : `<button class="fs fs-3pdt" type="button" data-role="foot" ${aria}><i class="nut">${FS_NUT}</i><i class="cap">${FS_CAP}</i></button>`
-  return `<div class="hw pedal ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal" data-pedal="${p}"><div class="pface">${isNew ? layersHTML(kit) : ''}<div class="pled">${led}</div><div class="pplate"><div class="pknobs">${knobs}</div></div><div class="pname">${name}</div>${isNew ? '<div class="gz"></div>' : ''}${foot}</div></div>`
+  return `<div class="hw pedal ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal" data-pedal="${p}"><div class="pface">${isNew ? layersHTML(kit) : ''}<div class="pled">${led}${tone}</div><div class="pplate"><div class="pknobs">${knobs}</div></div><div class="pname">${name}</div>${isNew ? '<div class="gz"></div>' : ''}${foot}</div></div>`
 }
 function cabHTML (kit) {
   const isNew = kit.fam === 'new'
@@ -1688,6 +1691,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
         cc.dataset.param = param
         cc.insertAdjacentHTML('beforeend', '<span class="st kv" aria-hidden="true"></span>')
       }
+      for (const sw of $$('.sw[data-role="tone"]', h)) { sw.dataset.param = `pedalToneOn${p + 1}`; sw.setAttribute('aria-label', `${name}: tone`) }
     })
     hydrate(pedalHolders)
     applyFinish()
@@ -1790,12 +1794,14 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
         const hw = el.closest('.hw'); if (hw && hw.__vals) hw.__vals[el.dataset.label] = t
       }
     }
-    for (const sw of both(`.sw[data-param="${p}"]`)) {
+    for (const sw of everywhere(`.sw[data-param="${p}"]`)) {
       const on = v > .5
       sw.setAttribute('aria-pressed', String(on))
       const st = sw.parentElement.querySelector('.st'); if (st && STATE_WORD[sw.dataset.role]) st.textContent = STATE_WORD[sw.dataset.role][on ? 1 : 0]
     }
     for (const q of DIMS[p] ?? []) for (const cc of $$(`.cc[data-param="${q}"]`, ampHolder)) cc.classList.toggle('off', v < .5)
+    const tone = /^pedalToneOn([1-4])$/.exec(p)
+    if (tone) for (const cc of everywhere(`.cc[data-param="pedalTone${tone[1]}"]`)) cc.classList.toggle('off', v < .5)
     if (p === 'irOn') cabHolder.firstElementChild?.classList.toggle('ir-off', v < .5)
     if (!moving()) stillSoon()
   }

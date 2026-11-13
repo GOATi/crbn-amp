@@ -16,12 +16,13 @@ import { irGain, scaledIR } from '/ir.js'
 
 const results = { checks: [], userAgent: navigator.userAgent }
 const check = (name, ok, detail = '') => results.checks.push({ name, ok: Boolean(ok), detail: String(detail) })
-const wait = async (fn, ms, what) => {
+const waitFor = async (fn, ms, what) => {
   const until = performance.now() + ms
   while (performance.now() < until) { try { if (fn()) return true } catch { /* not yet */ } await new Promise((r) => setTimeout(r, 50)) }
   throw new Error(`timed out waiting for ${what}`)
 }
-const rms = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length)
+const wait = waitFor
+const rms =(a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length)
 
 try {
   // 1. The page.
@@ -415,7 +416,7 @@ try {
       dropLib('NAM Core/wavenet.nam', spot(0))
       await wait(() => pstate(0) === 'on', 15000, 'the pedal heard')
       const hwPedal = () => $l('#board-row .hw.pedal[data-pedal="0"]')
-      const shown = hwPedal()?.querySelector('.pname')?.textContent === 'Test Model' && $$l('#board-row .hw.pedal .kn').map((k) => k.dataset.param).join() === 'pedalDrive1,pedalLevel1'
+      const shown = hwPedal()?.querySelector('.pname')?.textContent === 'Test Model' && $$l('#board-row .hw.pedal .kn').map((k) => k.dataset.param).join() === 'pedalDrive1,pedalTone1,pedalLevel1'
       await wait(() => hwPedal()?.querySelector('.pface')?.style.backgroundImage.startsWith('url'), 8000, 'the pedal’s Salvage')
       const after = { seed: ampFace().__seed, image: ampFace().style.backgroundImage, wear: ampFace().dataset.wear }
       check('a capture dragged from the library onto the board is a pedal, heard while the riff plays (R6)', empty && shown && pstate(0) === 'on' && pstate(1) === 'empty', `${pstate(0)}; ${hwPedal()?.querySelector('.pname')?.textContent}; next ${pstate(1)}`)
@@ -434,14 +435,145 @@ try {
       check('a pedal’s Drive is a setting, kept like the amp’s knobs', Math.abs(+drive.getAttribute('aria-valuenow') - 1) < 1e-9 && saved === 1, `${drive.getAttribute('aria-valuenow')} dB, kept ${saved} (was ${kept.pedalDrive1})`)
       const load = $l('#load')
       check('the board shows the audio thread’s load while it plays', !load.hidden && /^CPU \d+%$/.test(load.textContent), load.textContent)
-      frame.contentWindow.location.reload()
-      await wait(() => ld().documentElement.dataset.ready === 'true' && pstate(0) === 'on', 30000, 'the board after a reload')
+      // Opened again without ?example (which skips the board by design), and waited on in the new document: until R6
+      // step 3 this reloaded ?example and waited on the old document, which passed before the reload landed.
+      const was = ld()
+      lw().location.href = '/'
+      await wait(() => ld() !== was && ld().documentElement.dataset.ready === 'true' && pstate(0) === 'on', 30000, 'the board after a reload')
       check('the board is there again after a reload', $l('#board-row .hw.pedal[data-pedal="0"] .pname')?.textContent === 'Test Model', $l('#board-row .pspot')?.title)
       $l('#board-row [data-remove="0"]').click()
       await wait(() => pstate(0) === 'empty', 5000, 'taken off')
       const forgot = lw().localStorage.getItem('crbn-rig/pedals')
       check('a pedal taken off the board is gone, and forgotten', pstate(0) === 'empty' && !$l('#board-row .hw.pedal') && JSON.parse(forgot).every((x) => x === null), forgot)
       $l('#lm-kits-new [data-kit="crbn"]').click()
+      $l('#stop').click()
+    }
+
+    // R6 step 3 (SYNC:RIG-030): a pedal's Tone and its bypass switch; moving a pedal along the board; variants on Q, W
+    // and E; rigs saved, opened, exported and imported; the board's rows and chain chips.
+    {
+      const LIB_DRAG = 'application/x-crbn-rig-library', PEDAL_DRAG = 'application/x-crbn-rig-pedal'
+      const spot = (p) => $l(`#board-row .pspot[data-pedal="${p}"]`)
+      const pstate = (p) => spot(p)?.dataset.state ?? (spot(p) ? 'empty' : 'none')
+      const nameAt = (p) => $l(`#board-row .hw.pedal[data-pedal="${p}"] .pname`)?.textContent
+      const drop = (type, data, target) => {
+        const dt = new (lw().DataTransfer)()
+        dt.setData(type, data)
+        target.dispatchEvent(new (lw().DragEvent)('drop', { dataTransfer: dt, bubbles: true, cancelable: true }))
+      }
+      const key = (code) => ld().body.dispatchEvent(new (lw().KeyboardEvent)('keydown', { code, key: code.slice(3).toLowerCase(), bubbles: true, cancelable: true }))
+      const setting = (k) => JSON.parse(lw().localStorage.getItem('crbn-rig/settings') ?? '{}')[k]
+      const settle = () => new Promise((r) => setTimeout(r, 400))
+      const variantOn = () => $$l('#variants [data-variant]').findIndex((b) => b.getAttribute('aria-checked') === 'true')
+      // a timeout here says where the board was, and every toast and unhandled error since this block began
+      const said = []
+      new (lw().MutationObserver)(() => { if (!$l('#toast').hidden) said.push($l('#toast').textContent) }).observe($l('#toast'), { attributes: true, childList: true, characterData: true, subtree: true })
+      lw().addEventListener('unhandledrejection', (e) => said.push(`unhandled: ${e.reason?.stack ?? e.reason}`))
+      lw().addEventListener('error', (e) => said.push(`error: ${e.error?.stack ?? e.message}`))
+      const wait = (fn, ms, what) => waitFor(fn, ms, what).catch((err) => { throw new Error(`${err.message}: said ${JSON.stringify([...new Set(said)])}; pedals ${[0, 1, 2].map(pstate).join('/')}; ${$$l('#board-row .pspot').map((s) => s.title).join(' | ')}; toast “${$l('#toast').hidden ? '' : $l('#toast').textContent}”; demo ${$l('#play-demo').getAttribute('aria-pressed')}; status “${$l('#status-text').textContent}”; library “${$l('#lib-src').textContent}”, ${$$l('#lib-body .lib-row').length} rows; capture “${$l('#capture-name').textContent}” ${$l('#capture-meta').textContent}`) })
+      drop(LIB_DRAG, 'NAM Core/wavenet.nam', spot(0))
+      await wait(() => pstate(0) !== 'empty', 15000, 'pedal 1 on the board')
+      $l('#play-demo').click()
+      await wait(() => $l('#play-demo').getAttribute('aria-pressed') === 'true', 15000, 'the riff')
+      await wait(() => pstate(0) === 'on', 15000, 'pedal 1 heard')
+      drop(LIB_DRAG, 'NAM Core/my_model.nam', spot(1))
+      await wait(() => pstate(1) === 'on', 15000, 'pedal 2 heard')
+
+      // the Tone: bypassed out of the box, the kit's switch puts it in and the knob wakes
+      const toneSw = () => $l('#board-row .hw.pedal[data-pedal="0"] .sw[data-role="tone"]')
+      const toneCell = () => $l('#board-row .hw.pedal[data-pedal="0"] .cc[data-param="pedalTone1"]')
+      const bypassed = toneSw()?.getAttribute('aria-pressed') === 'false' && toneCell()?.classList.contains('off')
+      toneSw().click()
+      await settle()
+      check('a pedal’s Tone is bypassed out of the box; its switch puts it in, and its knob wakes (R6 step 3)', bypassed && toneSw().getAttribute('aria-pressed') === 'true' && !toneCell().classList.contains('off') && setting('pedalToneOn1') === 1, `bypassed at first ${bypassed}; kept ${setting('pedalToneOn1')}`)
+      const tone = $l('#board-row .hw.pedal[data-pedal="0"] .kn[data-param="pedalTone1"]')
+      tone.focus(); tone.dispatchEvent(new (lw().KeyboardEvent)('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }))
+      await settle()
+      check('a pedal’s Tone knob is a setting, in dB', Math.abs(setting('pedalTone1') - 1) < 1e-9 && /dB/.test(tone.getAttribute('aria-valuetext')), `${tone.getAttribute('aria-valuetext')}, kept ${setting('pedalTone1')}`)
+
+      // moving: the arrows swap two places, settings and all, both heard; a grip dropped on a place swaps them back
+      const a0 = nameAt(0), a1 = nameAt(1)
+      $l('#board-row [data-move="0:1"]').click()
+      await wait(() => nameAt(0) === a1 && nameAt(1) === a0 && pstate(0) === 'on' && pstate(1) === 'on', 15000, 'the pedals swapped')
+      await settle()
+      const moved = setting('pedalToneOn2') === 1 && Math.abs(setting('pedalTone2') - 1) < 1e-9 && setting('pedalToneOn1') === 0
+      const keptOrder = JSON.parse(lw().localStorage.getItem('crbn-rig/pedals') ?? '[]').filter(Boolean).length === 2
+      check('a pedal moves along the board by its arrows: the two swap, settings and all, both heard while the riff plays', moved && keptOrder, `${nameAt(0)}, ${nameAt(1)}; tone on ${setting('pedalToneOn1')}/${setting('pedalToneOn2')}`)
+      drop(PEDAL_DRAG, '1', spot(0))
+      await wait(() => nameAt(0) === a0 && nameAt(1) === a1 && pstate(0) === 'on' && pstate(1) === 'on', 15000, 'the pedals swapped back')
+      await settle()
+      check('a pedal’s grip dropped on another place swaps them back', setting('pedalToneOn1') === 1 && setting('pedalToneOn2') === 0, `${nameAt(0)}, ${nameAt(1)}`)
+
+      // variants: Q, W and E keep their own pedals and knobs; the keys switch them while the riff plays
+      const q0 = variantOn()
+      key('KeyW')
+      await wait(() => variantOn() === 1, 3000, 'variant W')
+      $l('#board-row .hw.pedal[data-pedal="1"] [data-role="foot"]').click()
+      await wait(() => pstate(1) === 'off', 5000, 'pedal 2 off in W')
+      key('KeyQ')
+      await wait(() => variantOn() === 0 && pstate(1) === 'on', 5000, 'Q: pedal 2 on again')
+      key('KeyW')
+      await wait(() => variantOn() === 1 && pstate(1) === 'off', 5000, 'W: pedal 2 off again')
+      const names = $$l('#variants .vn').map((n) => n.textContent).join(', ')
+      check('variants on Q, W and E: each keeps its own pedals; the keys switch them while the riff plays', q0 === 0 && names === 'Clean, Push, Lead' && pstate(0) === 'on', `${names}; in W pedal 2 is ${pstate(1)}`)
+
+      // rigs: saved by name, opened again after the board changed
+      $l('#rig-name').value = 'Test rig'
+      $l('#rig-name').dispatchEvent(new (lw().Event)('input', { bubbles: true }))
+      $l('#rig-save').click()
+      await wait(() => JSON.parse(lw().localStorage.getItem('crbn-rig/rigs') ?? '{}').book?.length === 1, 5000, 'the rig saved')
+      const book = () => JSON.parse(lw().localStorage.getItem('crbn-rig/rigs')).book
+      const saved = book()[0].rig
+      const savedOk = saved.name === 'Test rig' && saved.amp?.path && saved.pedals[0]?.path === 'NAM Core/wavenet.nam' && saved.pedals[1]?.path === 'NAM Core/my_model.nam' && saved.variants[1].pedals[1].on === false && saved.variants[0].pedals[1].on === true && $l('#rig-bar').dataset.state === 'saved'
+      check('a rig is saved by name: its amp, its pedals by their place in the library, its variants', savedOk, JSON.stringify({ amp: saved.amp, pedals: saved.pedals.map((p) => p?.path ?? null), state: $l('#rig-bar').dataset.state }))
+      $l('#board-row [data-remove="1"]').click()
+      await wait(() => pstate(1) === 'empty', 5000, 'pedal 2 off the board')
+      const bass = $l('.knob[data-param="bass"]')
+      bass.focus(); bass.dispatchEvent(new (lw().KeyboardEvent)('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }))
+      await settle()
+      const edited = $l('#rig-bar').dataset.state === 'edited'
+      const pick = $l('#rig-pick')
+      pick.value = book()[0].id
+      pick.dispatchEvent(new (lw().Event)('change', { bubbles: true }))
+      await wait(() => nameAt(1) === a1 && setting('bass') === saved.settings.bass && $l('#rig-bar').dataset.state === 'saved', 15000, 'the rig opened again')
+      check('a saved rig opens again: the pedal taken off is back, the bass as it was, the variant it was saved in', edited && variantOn() === 1 && pstate(1) === 'off', `edited ${edited}; bass ${setting('bass')}; variant ${variantOn()}; pedal 2 ${pstate(1)}`)
+
+      // export and import: a small JSON file of names and references
+      let file = null
+      lw().showSaveFilePicker = async (o) => ({ createWritable: async () => ({ write: async (b) => { file = { name: o.suggestedName, text: await b.text() } }, close: async () => {} }) })
+      $l('#rig-export').click()
+      await wait(() => file, 3000, 'the rig to export')
+      delete lw().showSaveFilePicker
+      const out = JSON.parse(file.text)
+      check('a rig exports as a small JSON file of names and references, never the captures', file.name === 'Test rig.rig.json' && out.format === 'crbn-rig' && out.version === 1 && file.text.length < 4000 && !/weights/.test(file.text) && out.pedals[0].name === 'wavenet.nam', `${file.name}, ${file.text.length} bytes`)
+      const give = (text, name) => { const dt = new (lw().DataTransfer)(); dt.items.add(new (lw().File)([text], name)); const i = $l('#rig-file'); i.files = dt.files; i.dispatchEvent(new (lw().Event)('change', { bubbles: true })) }
+      give(JSON.stringify({ hello: 1 }), 'nope.json')
+      await wait(() => /not a CRBN Rig rig/.test($l('#toast').textContent), 3000, 'a file that is not a rig refused')
+      const refused = book().length === 1
+      $l('#board-row [data-remove="1"]').click()
+      await wait(() => pstate(1) === 'empty', 5000, 'pedal 2 off again')
+      give(file.text, file.name)
+      await wait(() => book().length === 2 && nameAt(1) === a1, 15000, 'the rig imported and opened')
+      check('a rig file imports as a new rig and opens, its files found in the library; a file that is not a rig is refused', refused && book()[1].rig.name === 'Test rig 2' && $l('#rig-name').value === 'Test rig 2', `${book().map((b) => b.rig.name).join(', ')}`)
+
+      // the board's other drawings: rows and chain chips; a chip opens its controls
+      const pickPed = (v) => $l(`.segmented[data-rig="pedals"] [data-value="${v}"]`).click()
+      const isStomp = $l('#board-row').dataset.drawing === 'b' && $$l('#board-row .hw.pedal').length === 2
+      pickPed('a')
+      const rows = $$l('#board-row .prow:not(.empty)').length === 2 && $$l('#board-row .prow .knob').length === 6 && !$l('#board-row .hw.pedal')
+      pickPed('c')
+      const chips = $$l('#board-row .pchip.ped').length === 2 && /Amp ·/.test($l('#board-row .pchip.amp').textContent)
+      $l('#board-row [data-open="0"]').click()
+      const panel = $$l('#board-row .cpanel .knob').length === 3 && $l('#board-row .cpanel [data-foot="0"]')
+      pickPed('b')
+      check('the board as stompboxes by default, with rows and chain chips in the look menu; a chip opens its controls', isStomp && rows && chips && panel && $$l('#board-row .hw.pedal').length === 2, `${isStomp}/${rows}/${chips}/${Boolean(panel)}`)
+
+      // after a reload: the rigs, the rig open, the variant picked
+      const was = ld()
+      frame.contentWindow.location.reload()
+      await wait(() => ld() !== was && ld().documentElement.dataset.ready === 'true' && pstate(1) !== 'none', 30000, 'the page after a reload')
+      check('the rigs, the rig open and its variant are there again after a reload', $l('#rig-name').value === 'Test rig 2' && variantOn() === 1 && $$l('#rig-pick option').length === 3, `${$l('#rig-name').value}; variant ${variantOn()}; ${$$l('#rig-pick option').length - 1} rigs`)
+      for (const p of [1, 0]) { $l(`#board-row [data-remove="${p}"]`)?.click(); await wait(() => pstate(p) === 'empty' || pstate(p) === 'none', 5000, 'taken off') }
       $l('#stop').click()
     }
 
@@ -610,6 +742,7 @@ try {
     const AT = 300
     const e3 = await createEngine(wasm.slice(0), rate)
     e3.loadSlot(0, packCapture(capture)); e3.loadSlot(12, packCapture(pedal)); e3.setParam('switchMode', 1); e3.setParam('pedalDrive1', 3); e3.play(0)
+    e3.setParam('pedalToneOn1', 1); e3.setParam('pedalTone1', 4) // its Tone in (R6 step 3)
     const want = new Float32Array(input.length)
     for (let b = 0, at = 0; at < input.length; b++, at += 128) {
       if (b === AT) e3.pedal(0, 12)
@@ -633,6 +766,7 @@ try {
       await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
       for (const [slot, bytes] of [[0, capture], [12, pedal]]) { const { text, weights } = packCapture(bytes); send({ type: 'slot', id: slot + 1, slot, text: text.buffer, weights: weights.buffer }, text.buffer, weights.buffer) }
       send({ type: 'param', name: 'switchMode', value: 1 }); send({ type: 'param', name: 'pedalDrive1', value: 3 }); send({ type: 'param', name: 'play', value: 0 })
+      send({ type: 'param', name: 'pedalToneOn1', value: 1 }); send({ type: 'param', name: 'pedalTone1', value: 4 })
       await settle(0)
       await ctx.resume()
     })
@@ -644,7 +778,7 @@ try {
     for (let i = 0; i < want.length; i++) { worst = Math.max(worst, Math.abs(got[i] - want[i])); if (i >= AT * 128 + 1440) changed = Math.max(changed, Math.abs(want[i])) }
     const meters = replies.filter((m) => m.type === 'meter')
     const heard = meters.at(-1)?.slots?.pedals?.[0]?.playing, load = meters.at(-1)?.load
-    check('a pedal stomped on through the worklet equals the engine run directly', worst < 1e-6 && st.pedalSwitchAt === AT * 128 && st.pedals[0].playing === 12 && heard === 12 && Number.isFinite(load), `max difference ${worst.toExponential(2)}; the fade began at block ${st.pedalSwitchAt / 128}; the worklet says pedal 1 hears slot ${heard}, load ${Number.isFinite(load) ? load.toFixed(3) : load}`)
+    check('a pedal stomped on, its Tone in, through the worklet equals the engine run directly', worst < 1e-6 && st.pedalSwitchAt === AT * 128 && st.pedals[0].playing === 12 && heard === 12 && Number.isFinite(load), `max difference ${worst.toExponential(2)}; the fade began at block ${st.pedalSwitchAt / 128}; the worklet says pedal 1 hears slot ${heard}, load ${Number.isFinite(load) ? load.toFixed(3) : load}`)
   }
 
   // The squeal guard in a real loop through the worklet (build plan R3): its output, 7 ms later through a band-pass at

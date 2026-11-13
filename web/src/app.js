@@ -15,7 +15,8 @@ import { createLibrary } from './library.js'
 import { createLibraryView } from './library-view.js'
 import { applyPrefs, connectSuite, fontOf, loadLooks, loadPrefs, lookList, looks, onSharedChange, ownPrefs, sanitize, savePrefs, setEvery, suiteReach } from './look.js'
 import { PADS, captureKey, createPadsView, createStandby } from './pads.js'
-import { createBoardView, createPedals } from './pedals.js'
+import { PEDAL_DRAG, PEDAL_KNOB, createBoardView, createPedals } from './pedals.js'
+import { PEDAL_DEFAULT, PEDAL_SETTINGS, RIG_SETTINGS, VARIANTS, VARIANT_KEYS, findInLibrary, freeName, freshVariants, keptKey, loadRigs, newId, readRigFile, rigFile, saveRigs, soundOf, tidyName } from './rigs.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
 const $ = (id) => document.getElementById(id)
@@ -39,6 +40,7 @@ function setSetting(name, value) {
   if (name === 'irOn') audio.setIROn(value > 0.5)
   if (name === 'guardOn' || name === 'autoOff') { syncProtection(); syncPower() }
   reflect(name)
+  if (PEDAL_PARAM.test(name) || name in RIG_SETTINGS) rigTouch()
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => saveSettings(settings), 300)
 }
@@ -96,21 +98,29 @@ function makeKnob(el) {
     else return
     e.preventDefault()
   })
-  knobs.set(name, draw)
+  // a setting may have more than one page knob; the board's are redrawn, so those that left the page are dropped
+  const live = (knobs.get(name) ?? []).filter((d) => d.el.isConnected)
+  draw.el = el
+  knobs.set(name, [...live, draw])
+  draw(settings[name] ?? PAGE_DEFAULTS[name])
+  if (DIMS_OF[name]) el.classList.toggle('off', settings[DIMS_OF[name]] < 0.5)
 }
 
-// What a switch turns off dims with it: the gate's threshold, the EQ's three knobs, the cabinet.
-const DIMS = { gateOn: ['gateThresholdDB'], eqOn: ['bass', 'middle', 'treble'] }
+// What a switch turns off dims with it: the gate's threshold, the EQ's three knobs, the cabinet, a pedal's Tone.
+const DIMS = { gateOn: ['gateThresholdDB'], eqOn: ['bass', 'middle', 'treble'], ...Object.fromEntries([1, 2, 3, 4].map((p) => [`pedalToneOn${p}`, [`pedalTone${p}`]])) }
+const DIMS_OF = Object.fromEntries(Object.entries(DIMS).flatMap(([sw, ks]) => ks.map((k) => [k, sw])))
+const PEDAL_PARAM = /^pedal(?:Drive|Level|Tone|ToneOn)[1-4]$/
 function reflect(name) {
   const v = settings[name]
-  knobs.get(name)?.(v)
+  for (const draw of knobs.get(name) ?? []) draw(v)
+  for (const b of document.querySelectorAll(`button[data-switch="${name}"]`)) b.setAttribute('aria-pressed', String(v > 0.5))
   for (const box of document.querySelectorAll(`input[type=checkbox][data-param="${name}"]`)) {
     box.checked = v > 0.5
     const word = box.closest('.toggle')?.querySelector('.tg-state')
     if (word) word.textContent = v > 0.5 ? 'On' : 'Off'
   }
   for (const b of document.querySelectorAll(`.segmented[data-param="${name}"] button`)) b.setAttribute('aria-checked', String(+b.dataset.value === v))
-  for (const p of DIMS[name] ?? []) document.querySelector(`.knob[data-param="${p}"]`)?.classList.toggle('off', v < 0.5)
+  for (const p of DIMS[name] ?? []) for (const k of document.querySelectorAll(`.knob[data-param="${p}"]`)) k.classList.toggle('off', v < 0.5)
   if (name === 'irOn') $('cab').classList.toggle('off', v < 0.5)
   hardware?.reflect(name, v)
 }
@@ -122,7 +132,8 @@ let hardware = null
 const specs = {}
 function specOf(name) {
   if (specs[name]) return specs[name]
-  if (/^pedal(?:Drive|Level)[1-4]$/.test(name)) return (specs[name] = { min: -12, max: 12, step: 0.1, unit: 'dB', def: 0, text: (v) => fmt(v, 'dB', 0.1) })
+  const ped = /^pedal(Drive|Level|Tone)[1-4]$/.exec(name)
+  if (ped) { const [min, max] = PEDAL_KNOB[ped[1]]; return (specs[name] = { min, max, step: 0.1, unit: 'dB', def: 0, text: (v) => fmt(v, 'dB', 0.1) }) }
   const el = document.querySelector(`.knob[data-param="${name}"]`)
   if (!el) return null
   const min = +el.dataset.min, max = +el.dataset.max, step = +el.dataset.step, unit = el.dataset.unit ?? ''
@@ -413,7 +424,7 @@ function parseCapture(bytes) {
 const slots = createStandby({ audio, parse: parseCapture, onChange: (why) => { padsView?.sync(); if (why !== 'pads') syncHeard() } })
 let padsView = null, heardState = null
 // The pedals before the amp (build plan R6): pedals.js keeps the board, the engine's pedal stages play it.
-const pedals = createPedals({ audio, parse: parseCapture, onChange: (why) => { if (why === 'board') boardView?.render(); else boardView?.sync() } })
+const pedals = createPedals({ audio, parse: parseCapture, onChange: (why) => { if (why === 'board') { boardView?.render(); rigReconcile() } else boardView?.sync() } })
 let boardView = null
 
 async function useCapture(name, bytes, { remember = true, example = false, from = null } = {}) {
@@ -518,6 +529,7 @@ function showCapture() {
   $('capture-meta').title = capture.from?.p ?? capture.name
   $('amp-sub').textContent = [note, gear, ...chips, m.modeled_by && `captured by ${m.modeled_by}`].filter(Boolean).join(' · ')
   hardware?.setCapture(note ? `${name} · ${note}` : name, $('amp-sub').textContent)
+  boardView?.sync()
 }
 
 async function clearCapture() {
@@ -566,6 +578,7 @@ function showIR() {
   $('ir-meta').title = ir.from?.p ?? ir.name
   $('cab-name').textContent = name; $('cab-meta').textContent = meta
   hardware?.setIR(name, meta)
+  boardView?.sync()
 }
 
 async function clearIR() {
@@ -675,15 +688,29 @@ function makeLibrary() {
 // ------------------------------------------------------------------------------------------------- pedals
 // The board (build plan R6, P3-UX U5): a capture dragged from the library or dropped as a file onto a place on the board
 // becomes that pedal (a place with a pedal is swapped, fading from one to the other); "Add a pedal" opens a file. Each
-// new pedal starts with its Drive and Level at 0 dB. The load beside the board is the audio thread's: past what the
-// device can run, the pedal last turned on is turned off again, and the page says why.
+// new pedal starts with its Drive, Level and Tone at 0 dB and its Tone bypassed. A pedal moves along the board by its
+// grip or its arrows (R6 step 3): two places swap, settings and all. The load beside the board is the audio thread's:
+// past what the device can run, the pedal last turned on is turned off again, and the page says why.
 let pedalAt = -1, loadShown = null, loadAt = 0, overSince = 0, lastOn = null
 const pedalName = (name) => String(name).replace(/\.nam$/i, '')
+const PEDAL_WORDS = Object.values(PEDAL_SETTINGS).map(([w]) => w) // Drive, Level, Tone, ToneOn
 async function addPedal(p, source) {
   if (p < 0) { toast('The board holds four pedals: take one off first.'); return }
-  for (const w of ['Drive', 'Level']) setSetting(`pedal${w}${p + 1}`, 0)
+  for (const w of PEDAL_WORDS) setSetting(`pedal${w}${p + 1}`, 0)
   lastOn = { p, at: performance.now() }
   try { await pedals.put(p, source) } catch (err) { toast(`${source.name}: ${err?.message ?? err}`) }
+}
+/** Swaps the pedals at places a and b, with their settings and their parts in every variant. */
+function movePedal(a, b) {
+  if (a === b || (!pedals.board[a] && !pedals.board[b])) return
+  rigs.applying = true
+  for (const w of PEDAL_WORDS) {
+    const x = settings[`pedal${w}${a + 1}`], y = settings[`pedal${w}${b + 1}`]
+    setSetting(`pedal${w}${a + 1}`, y); setSetting(`pedal${w}${b + 1}`, x)
+  }
+  for (const v of rigs.work.variants) [v.pedals[a], v.pedals[b]] = [v.pedals[b], v.pedals[a]]
+  rigs.applying = false
+  pedals.swap(a, b)
 }
 const fileSource = (file, bytes) => ({ key: captureKey({ name: file.name, size: bytes.length }), name: pedalName(file.name), read: async () => bytes })
 function libSource(e) {
@@ -693,6 +720,7 @@ function libSource(e) {
 function stompPedal(p, on) {
   pedals.toggle(p, on)
   if (pedals.board[p]?.on) lastOn = { p, at: performance.now() }
+  rigTouch()
 }
 function showLoad(load) {
   if (!Number.isFinite(load)) return
@@ -704,6 +732,7 @@ function showLoad(load) {
     if (now - overSince > 1500) {
       const b = pedals.board[lastOn.p]
       pedals.toggle(lastOn.p, false)
+      rigTouch()
       toast(`${b.name} is off: with it on, the amp and pedals needed ${Math.round(loadShown * 100)}% of the audio's time${desktop ? '' : ' in this browser'}, more than it has, so the sound would break up. Turn another pedal off first, or choose a lighter capture${desktop ? '' : ', or use the desktop app'}.`)
       lastOn = null; overSince = 0
     }
@@ -716,7 +745,14 @@ function showLoad(load) {
   out.classList.toggle('hot', loadShown > 0.8)
 }
 function wireBoard() {
-  boardView = createBoardView({ el: $('board-row'), pedals, knob: makeKnob, hardware, add: (p) => { pedalAt = p; $('pedal-file').click() }, stomp: (p) => stompPedal(p) })
+  boardView = createBoardView({
+    el: $('board-row'), pedals, knob: makeKnob, hardware, add: (p) => { pedalAt = p; $('pedal-file').click() }, stomp: (p) => stompPedal(p),
+    tone: (p) => setSetting(`pedalToneOn${p + 1}`, settings[`pedalToneOn${p + 1}`] > 0.5 ? 0 : 1),
+    toneOn: (p) => settings[`pedalToneOn${p + 1}`] > 0.5,
+    move: movePedal,
+    drawing: () => rig.pedals,
+    chain: () => ({ amp: capture.key ? $('capture-name').textContent : '', cab: ir.bytes && settings.irOn > 0.5 ? ir.name.replace(/\.wav$/i, '') : '' }),
+  })
   $('pedal-file').addEventListener('change', async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -725,9 +761,279 @@ function wireBoard() {
   boardView.render()
 }
 
+// ------------------------------------------------------------------------------------------------- rigs and variants
+// Rigs (build plan R6 step 3, P3-UX U5; rigs.js): the chain saved by name and reopened, exported and imported as a small
+// JSON file of names and references. Variants on Q, W and E: the board set three ways, the one picked following the
+// player's stomps and knobs. Rigs sit beside the pads, which stay the library's favourite captures (the owner's pick).
+const rigs = { ...loadRigs(), applying: false, ready: false }
+let rigsTimer = 0, rigDelArmed = 0, rigBarKey = ''
+const PEDAL_COUNT = pedals.size
+
+function keepRigs(now) {
+  clearTimeout(rigsTimer)
+  if (!now) { rigsTimer = setTimeout(() => keepRigs(true), 300); return }
+  if (!saveRigs(rigs)) toast('This browser won’t keep your rigs: they last until you close Rig.')
+}
+/** The board as a variant holds it: each pedal on or off, with its Drive, Level and Tone. */
+function boardNow() {
+  return pedals.board.map((b, p) => {
+    if (!b) return null
+    const e = { on: Boolean(b.on) }
+    for (const [k, [w]] of Object.entries(PEDAL_SETTINGS)) e[k] = k === 'toneOn' ? (settings[`pedal${w}${p + 1}`] > 0.5 ? 1 : 0) : settings[`pedal${w}${p + 1}`]
+    return e
+  })
+}
+// A stomp or a pedal's knob changes the variant picked; the amp's settings change the rig.
+function rigTouch() {
+  if (rigs.applying || !rigs.ready) return
+  rigs.work.variants[rigs.work.variant].pedals = boardNow()
+  keepRigs()
+  syncRigBar()
+}
+// A pedal came or went. One new to the board comes into the other variants as it is set now (on, as it came), as the
+// three variants all start as the board was: the player then stomps it out where it does not belong (the session's
+// pick, SYNC:RIG-030, for the owner's review). A pedal taken off leaves every variant.
+function rigReconcile() {
+  if (!rigs.ready) return
+  const now = boardNow()
+  rigs.work.variants.forEach((v, i) => {
+    if (i !== rigs.work.variant) v.pedals = v.pedals.map((e, p) => (pedals.board[p] ? e ?? (now[p] ? { ...now[p] } : { ...PEDAL_DEFAULT }) : null))
+  })
+  if (!rigs.applying) rigTouch()
+}
+
+// A file the rig plays, as a reference: its path in the library, else its name and size; or the example.
+function refOfKey(key) {
+  if (!key) return null
+  if (key === 'example') return { example: true, name: 'Example capture' }
+  const [kind, a, b] = key.split('\n')
+  if (kind === 'lib') return { name: b.slice(b.lastIndexOf('/') + 1), path: b, size: lib?.entries.find((e) => e.p === b)?.s ?? null }
+  if (kind === 'file') return { name: /\.nam$/i.test(a) ? a : `${a}.nam`, path: null, size: Number(b) || null }
+  return null
+}
+function irRef() {
+  if (!ir.bytes) return null
+  if (ir.from) { const p = ir.from.p; return { name: p.slice(p.lastIndexOf('/') + 1), path: p, size: ir.bytes.length } }
+  return { name: ir.name, path: null, size: ir.bytes.length }
+}
+/** The rig playing now. */
+function rigNow() {
+  const pick = {}
+  for (const k of Object.keys(RIG_SETTINGS)) pick[k] = settings[k]
+  return {
+    format: 'crbn-rig', version: 1, name: tidyName($('rig-name')?.value ?? rigs.work.name, 'New rig'),
+    amp: refOfKey(capture.key), ir: irRef(), settings: pick,
+    pedals: pedals.board.map((b) => (b ? refOfKey(b.key) : null)),
+    variants: rigs.work.variants.map((v) => ({ name: v.name, pedals: v.pedals.map((e, p) => (pedals.board[p] ? (e ? { ...e } : { ...PEDAL_DEFAULT }) : null)) })),
+    variant: rigs.work.variant,
+  }
+}
+// Files that are not in the library are kept beside the rig in this browser, so it opens again here.
+async function rigKeepFiles(r) {
+  const keep = async (ref, bytes) => { if (ref && !ref.path && !ref.example && bytes) await rememberFile(keptKey(ref), ref.name, bytes, null) }
+  await keep(r.amp, capture.bytes ?? (capture.read ? await capture.read().catch(() => null) : null))
+  await keep(r.ir, ir.bytes)
+  for (let p = 0; p < PEDAL_COUNT; p++) if (pedals.board[p]) await keep(r.pedals[p], await pedals.board[p].read().catch(() => null))
+}
+async function rigForgetFiles() {
+  const used = new Set(rigs.book.flatMap(({ rig: r }) => [r.amp, r.ir, ...r.pedals].filter((x) => x && !x.path && !x.example).map(keptKey)))
+  return used
+}
+// Where a reference's file is now: the library open now, else a file kept beside the rig; null when neither has it.
+async function rigSource(ref, kind) {
+  if (!ref) return null
+  if (ref.example) return kind === 'amp' ? { example: true } : null
+  const e = findInLibrary(ref, lib?.entries, kind === 'ir' ? 'ir' : 'nam')
+  if (e) return { entry: e }
+  const kept = await recallFile(keptKey(ref))
+  return kept ? { bytes: new Uint8Array(kept.bytes) } : null
+}
+
+/** Opens a rig: the amp, the cabinet, the amp's settings and the board, then its variant picked. */
+async function rigOpen(r, id = null) {
+  const missing = [], failed = []
+  rigs.applying = true
+  try {
+    if (!r.amp) { if (capture.key) await clearCapture() } else {
+      const s = await rigSource(r.amp, 'amp')
+      try {
+        if (!s) missing.push(r.amp.name)
+        else if (s.example) { if (!capture.example) await loadExample() }
+        else if (s.entry) { if (capture.key !== captureKey({ from: { key: lib.key, p: s.entry.p } })) await playEntry(s.entry) }
+        else if (capture.key !== captureKey({ name: r.amp.name, size: s.bytes.length })) await useCapture(r.amp.name, s.bytes)
+      } catch (err) { failed.push(`${r.amp.name} (${err?.message ?? err})`) }
+    }
+    if (!r.ir) { if (ir.bytes) await clearIR() } else {
+      const s = await rigSource(r.ir, 'ir')
+      try {
+        if (!s) missing.push(r.ir.name)
+        else if (s.entry) { if (!(ir.from?.p === s.entry.p && ir.from?.key === lib.key)) await playEntry(s.entry) }
+        else if (!(ir.name === r.ir.name && ir.bytes?.length === s.bytes.length)) await useIR(r.ir.name, s.bytes)
+      } catch (err) { failed.push(`${r.ir.name} (${err?.message ?? err})`) }
+    }
+    for (const [k, v] of Object.entries(r.settings)) setSetting(k, v)
+    for (let p = 0; p < PEDAL_COUNT; p++) {
+      const ref = r.pedals[p], s = ref ? await rigSource(ref, 'pedal') : null
+      if (ref && !s) missing.push(ref.name)
+      if (!s) { if (pedals.board[p]) pedals.remove(p); continue }
+      const src = s.entry ? libSource(s.entry) : { key: captureKey({ name: ref.name, size: s.bytes.length }), name: pedalName(ref.name), read: async () => s.bytes }
+      try { if (pedals.board[p]?.key !== src.key) await pedals.put(p, src, { on: false }) } catch (err) { failed.push(`${ref.name} (${err?.message ?? err})`); if (pedals.board[p]) pedals.remove(p) }
+    }
+  } finally { rigs.applying = false }
+  rigs.work = {
+    variant: r.variant, from: id, name: r.name,
+    variants: r.variants.map((v) => ({ name: v.name, pedals: v.pedals.map((e, p) => (pedals.board[p] ? (e ? { ...e } : { ...PEDAL_DEFAULT }) : null)) })),
+  }
+  $('rig-name').value = r.name
+  rigVariant(r.variant)
+  keepRigs(true)
+  syncRigBar(true)
+  if (missing.length) toast(`${r.name}: ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not in your library${lib?.key ? '' : ' (no library is open)'}. Open the folder that holds ${missing.length === 1 ? 'it' : 'them'}, then open the rig again.`)
+  else if (failed.length) toast(`${r.name}: ${failed.join('; ')}`)
+}
+
+/** Picks variant v (Q, W, E): each pedal on or off, and its knobs, as that variant last had them. */
+function rigVariant(v) {
+  if (!(v >= 0 && v < VARIANTS)) return
+  rigs.work.variant = v
+  const entries = rigs.work.variants[v].pedals
+  rigs.applying = true
+  try {
+    for (let p = 0; p < PEDAL_COUNT; p++) {
+      const b = pedals.board[p]
+      if (!b) continue
+      const e = entries[p] ?? { ...PEDAL_DEFAULT }
+      for (const [k, [w]] of Object.entries(PEDAL_SETTINGS)) setSetting(`pedal${w}${p + 1}`, e[k])
+      if (b.on !== e.on) stompPedal(p, e.on)
+    }
+  } finally { rigs.applying = false }
+  rigTouch()
+}
+
+async function rigSave() {
+  const r = rigNow()
+  let id = rigs.work.from
+  if (id && !rigs.book.some((b) => b.id === id)) id = null
+  if (!id && rigs.book.length >= 200) { toast('Rig keeps 200 rigs: delete one first.'); return }
+  r.name = freeName(rigs.book, r.name, id)
+  await rigKeepFiles(r)
+  if (id) rigs.book.find((b) => b.id === id).rig = r
+  else { id = newId(); rigs.book.push({ id, rig: r }) }
+  rigs.work.from = id; rigs.work.name = r.name
+  $('rig-name').value = r.name
+  keepRigs(true)
+  syncRigBar(true)
+  toast(`Saved ${r.name}${[r.amp, r.ir, ...r.pedals].some((x) => x && !x.path && !x.example) ? '. Files from outside your library are kept with it in this browser.' : '.'}`, 'info')
+}
+async function rigDelete() {
+  const id = rigs.work.from
+  if (!id) return
+  if (Date.now() - rigDelArmed > 3000) { rigDelArmed = Date.now(); $('rig-delete').textContent = 'Sure? Delete'; setTimeout(() => syncRigBar(true), 3100); return }
+  rigDelArmed = 0
+  const gone = rigs.book.find((b) => b.id === id)
+  rigs.book = rigs.book.filter((b) => b.id !== id)
+  rigs.work.from = null
+  // files kept for it alone go with it
+  const used = await rigForgetFiles()
+  for (const ref of gone ? [gone.rig.amp, gone.rig.ir, ...gone.rig.pedals] : []) if (ref && !ref.path && !ref.example && !used.has(keptKey(ref))) await forgetFile(keptKey(ref))
+  keepRigs(true)
+  syncRigBar(true)
+  toast(`Deleted ${gone?.rig.name ?? 'the rig'}. What is playing stays as it is.`, 'info')
+}
+async function rigExport() {
+  const r = rigNow()
+  const file = `${r.name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'rig'}.rig.json`
+  const how = await saveText(file, rigFile(r), 'application/json', 'CRBN Rig rig')
+  if (how === 'saved' || how === 'downloaded') toast(`Exported ${r.name}${how === 'downloaded' ? ' to your downloads' : ''}. It names its captures and IR; whoever opens it needs them in their own library.`, 'info')
+  else if (how === 'failed') toast('That rig could not be exported here.')
+}
+async function rigImport(file) {
+  let r
+  try { r = readRigFile(await file.text()) } catch (err) { toast(`${file.name}: ${err?.message ?? err}`); return }
+  if (rigs.book.length >= 200) { toast('Rig keeps 200 rigs: delete one first.'); return }
+  r.name = freeName(rigs.book, r.name)
+  const id = newId()
+  rigs.book.push({ id, rig: r })
+  await rigOpen(r, id)
+}
+
+// The rig bar: the name, Save, the saved rigs, the variants and the rest.
+function syncRigBar(force = false) {
+  const w = rigs.work
+  const saved = w.from ? rigs.book.find((b) => b.id === w.from)?.rig : null
+  const key = JSON.stringify([rigs.book.map((b) => [b.id, b.rig.name]), w.from])
+  if (force || key !== rigBarKey) {
+    rigBarKey = key
+    const pick = $('rig-pick')
+    pick.innerHTML = `<option value="">${rigs.book.length ? 'Open a rig…' : 'No saved rigs yet'}</option>` +
+      [...rigs.book].sort((a, b) => a.rig.name.localeCompare(b.rig.name)).map((b) => `<option value="${b.id}">${esc(b.rig.name)}</option>`).join('')
+    pick.disabled = !rigs.book.length
+    pick.value = ''
+  }
+  const edited = saved ? soundOf(rigNow()) !== soundOf({ ...saved, variant: w.variant }) || saved.name !== tidyName($('rig-name').value, '') : true
+  const save = $('rig-save')
+  save.classList.toggle('dirty', Boolean(saved) && edited)
+  save.title = !saved ? 'Save this rig under its name' : edited ? 'Save your changes to this rig' : 'Saved'
+  if (!rigDelArmed) $('rig-delete').textContent = 'Delete'
+  $('rig-delete').disabled = !saved
+  $('rig-bar').dataset.state = saved ? (edited ? 'edited' : 'saved') : 'new'
+  for (const b of document.querySelectorAll('#variants [data-variant]')) {
+    const i = Number(b.dataset.variant)
+    b.setAttribute('aria-checked', String(i === w.variant))
+    const n = b.querySelector('.vn')
+    if (n && n.textContent !== w.variants[i].name) n.textContent = w.variants[i].name
+  }
+}
+function wireRigs() {
+  if (!rigs.work.variants) rigs.work.variants = freshVariants(boardNow())
+  rigs.work.variants.forEach((v) => { v.pedals = v.pedals.map((e, p) => (pedals.board[p] ? e ?? { ...PEDAL_DEFAULT } : null)) })
+  rigs.ready = true
+  $('rig-name').value = rigs.work.name
+  $('variants').innerHTML = VARIANT_KEYS.map((k, i) => `<button type="button" role="radio" data-variant="${i}" aria-checked="false" aria-keyshortcuts="${k}" title="Variant ${i + 1}: key ${k}. Double-click to rename it."><kbd>${k}</kbd><span class="vn"></span></button>`).join('')
+  $('variants').addEventListener('click', (e) => { const b = e.target.closest('[data-variant]'); if (b && !b.querySelector('input')) rigVariant(Number(b.dataset.variant)) })
+  $('variants').addEventListener('dblclick', (e) => {
+    const b = e.target.closest('[data-variant]')
+    if (!b || b.querySelector('input')) return
+    const i = Number(b.dataset.variant), n = b.querySelector('.vn')
+    const input = document.createElement('input')
+    input.type = 'text'; input.maxLength = 24; input.value = rigs.work.variants[i].name; input.setAttribute('aria-label', `Variant ${VARIANT_KEYS[i]}'s name`)
+    n.replaceWith(input); input.focus(); input.select()
+    const done = (keep) => {
+      if (keep) rigs.work.variants[i].name = tidyName(input.value, rigs.work.variants[i].name).slice(0, 24)
+      const span = document.createElement('span'); span.className = 'vn'; span.textContent = rigs.work.variants[i].name
+      input.replaceWith(span); keepRigs(); syncRigBar()
+    }
+    input.addEventListener('keydown', (k) => { if (k.key === 'Enter') { k.preventDefault(); input.blur() } else if (k.key === 'Escape') { k.preventDefault(); input.dataset.cancel = '1'; input.blur() } k.stopPropagation() })
+    input.addEventListener('blur', () => done(!input.dataset.cancel), { once: true })
+  })
+  $('rig-name').addEventListener('input', () => { rigs.work.name = tidyName($('rig-name').value, 'New rig'); keepRigs(); syncRigBar() })
+  $('rig-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); rigSave() } })
+  $('rig-save').addEventListener('click', rigSave)
+  $('rig-pick').addEventListener('change', () => {
+    const b = rigs.book.find((x) => x.id === $('rig-pick').value)
+    $('rig-pick').value = ''
+    if (b) rigOpen(b.rig, b.id).catch((err) => toast(`${b.rig.name}: ${err?.message ?? err}`))
+  })
+  $('rig-new').addEventListener('click', () => { rigs.work.from = null; rigs.work.name = 'New rig'; $('rig-name').value = 'New rig'; keepRigs(true); syncRigBar(true); $('rig-name').select() })
+  $('rig-delete').addEventListener('click', rigDelete)
+  $('rig-export').addEventListener('click', rigExport)
+  $('rig-import').addEventListener('click', () => $('rig-file').click())
+  $('rig-file').addEventListener('change', (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) rigImport(f) })
+  // Q, W and E pick a variant, wherever typing or a dialog does not want them.
+  addEventListener('keydown', (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return
+    if (e.target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"], dialog, #look-menu, .lm-build')) return
+    const i = { KeyQ: 0, KeyW: 1, KeyE: 2 }[e.code] ?? ['q', 'w', 'e'].indexOf(e.key?.toLowerCase?.())
+    if (i >= 0) { e.preventDefault(); rigVariant(i) }
+  })
+  keepRigs(true)
+  syncRigBar(true)
+}
+
 // ------------------------------------------------------------------------------------------------- files in
 async function takeFile(file, slot, place = -1) {
   const lower = file.name.toLowerCase()
+  if (lower.endsWith('.json')) { await rigImport(file); return }
   if (slot === 'pedal' && !lower.endsWith('.nam')) { toast('A pedal is a .nam capture.'); return }
   slot ??= lower.endsWith('.nam') ? 'capture' : lower.endsWith('.wav') ? 'ir' : null
   if (!slot) { toast('Drop a .nam capture or a .wav cabinet IR.'); return }
@@ -749,7 +1055,7 @@ function wireFiles() {
   // Drop anywhere: a .nam is a capture, a .wav an IR; a drop zone, the amp and the cabinet take their own kind.
   let depth = 0
   const clearOver = () => { for (const d of document.querySelectorAll('.over')) d.classList.remove('over') }
-  const ours = (e) => e.dataTransfer?.types.includes('Files') || e.dataTransfer?.types.includes(LIB_DRAG)
+  const ours = (e) => ['Files', LIB_DRAG, PEDAL_DRAG].some((t) => e.dataTransfer?.types.includes(t))
   addEventListener('dragenter', (e) => { if (ours(e)) { depth++; document.body.classList.add('dragging') } })
   addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.body.classList.remove('dragging'); clearOver() } })
   addEventListener('dragover', (e) => { if (ours(e)) e.preventDefault() })
@@ -757,6 +1063,12 @@ function wireFiles() {
     e.preventDefault(); depth = 0; document.body.classList.remove('dragging'); clearOver()
     const file = e.dataTransfer?.files[0], target = e.target.closest?.('[data-slot]'), slot = target?.dataset.slot
     const place = slot === 'pedal' ? Number(e.target.closest?.('[data-pedal]')?.dataset.pedal ?? -1) : -1
+    // A pedal's grip dropped on another place on the board (R6 step 3): the two swap.
+    if (e.dataTransfer?.types.includes(PEDAL_DRAG)) {
+      const from = Number(e.dataTransfer.getData(PEDAL_DRAG))
+      if (place >= 0 && Number.isInteger(from)) movePedal(from, place)
+      return
+    }
     // A capture dragged from the library (build plan R6): onto the board it is a pedal, onto the amp it plays.
     const libPath = e.dataTransfer?.getData(LIB_DRAG)
     if (libPath) {
@@ -842,7 +1154,7 @@ function meterLoop() {
 const RIG_KEY = 'crbn-rig/rig'
 // v2 (R1): the hardware kit, Salvage's choices and the seed of its crops. Before v2 the default finish was the look's
 // own; a v1 finish of 'look' was never a choice a person made, so it becomes the kit's own.
-const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', library: 'a', pads: 'a', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
+const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', library: 'a', pads: 'a', pedals: 'b', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
 const abc = (v, d = 'b') => (/^[abc]$/.test(v) ? v : d)
 const kitId = (v) => (KIT_LIST.some((k) => k.id === v) || (isOwnId(v) && kits.some((k) => k.id === v)) ? v : DEFAULT_KIT)
 const salvOf = (s) => Object.fromEntries(Object.entries(SALVAGE_DEFAULTS).map(([k, d]) => [k, SALVAGE_CHOICES[k].some((c) => c[0] === s?.[k]) ? s[k] : d]))
@@ -854,7 +1166,7 @@ function loadRig() {
     v: 2,
     finish: FINISHES.some((f) => f.id === finish) ? finish : 'own',
     custom: HEX_RE.test(r.custom ?? '') ? r.custom.toLowerCase() : DEFAULT_CUSTOM,
-    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power), library: abc(r.library, 'a'), pads: abc(r.pads, 'a'),
+    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power), library: abc(r.library, 'a'), pads: abc(r.pads, 'a'), pedals: abc(r.pedals),
     kit: kitId(r.kit), salv: salvOf(r.salv), seed: Number.isInteger(r.seed) && r.seed > 0 ? r.seed : 1,
   }
 }
@@ -867,6 +1179,7 @@ function applyAll() {
   root.dataset.layout = rig.layout; root.dataset.amp = rig.amp; root.dataset.meters = rig.meters; root.dataset.power = rig.power
   if (root.dataset.library !== rig.library) { root.dataset.library = rig.library; libView?.render() }
   if (root.dataset.pads !== rig.pads) { root.dataset.pads = rig.pads; padsView?.render() }
+  if (root.dataset.pedals !== rig.pedals) { root.dataset.pedals = rig.pedals; boardView?.render() }
   const hex = finishHex(rig, look.id)
   for (const [k, v] of Object.entries(finishVars(hex))) root.style.setProperty(k, v)
   if (hardware) {
@@ -1278,7 +1591,7 @@ async function start() {
   ;({ prefs, every } = loadPrefs())
   rig = loadRig()
   if (query.has('look')) { prefs = { ...prefs, look: query.get('look') }; prefs = sanitize(prefs); keepPrefs = false }
-  for (const k of ['layout', 'amp', 'meters', 'power']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
+  for (const k of ['layout', 'amp', 'meters', 'power', 'pedals']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
   if (query.has('library')) { rig.library = abc(query.get('library'), 'a'); keepRig = false }
   if (query.has('pads')) { rig.pads = abc(query.get('pads'), 'a'); keepRig = false }
   // ?kit= shows a hardware kit (Salvage's id is hammer, after the kit it replaced) for a scripted screenshot
@@ -1351,6 +1664,8 @@ async function start() {
   if (i) { try { await useIR(i.name, new Uint8Array(i.bytes), { remember: false, from: i.from ?? null }) } catch { await forgetFile('ir') } }
   // The pedals on the board last time (build plan R6).
   if (!query.has('example')) await pedals.restore()
+  // The rig playing and its variants (R6 step 3), once the board is back.
+  wireRigs()
   // The library's folder from last time: it shows what it indexed then at once, and looks for changes behind it.
   lib.restore().catch((err) => toast(`Your library could not open: ${err?.message ?? err}`))
   // The desktop app's engine starts with the page, so the capture, IR and status are there at once. Since R3, with the

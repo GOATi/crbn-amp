@@ -113,6 +113,34 @@ export function createPedals({ audio, parse, onChange = () => {} }) {
       save()
       onChange('board')
     },
+    /**
+     * Swaps the pedals at places a and b along the board (R6 step 3), either of them perhaps empty. Each place loads its
+     * new capture into a slot of its own and fades into it from what it played (a pedal plays where it stands: a place
+     * keeps its two slots), so nothing stops while the board is rearranged. The caller swaps the places' settings.
+     */
+    async swap(a, b) {
+      if (a === b || !(a >= 0 && a < PEDALS && b >= 0 && b < PEDALS) || (!board[a] && !board[b])) return
+      const fresh = (x) => (x ? { ...x, slot: -1, loading: false, failed: null } : null)
+      const was = [board[a], board[b]]
+      board[a] = fresh(was[1]); board[b] = fresh(was[0])
+      save()
+      onChange('board')
+      for (const q of [a, b]) {
+        const x = board[q]
+        if (!x) {
+          if (audio.started) {
+            ask(q, -1)
+            setTimeout(() => { if (!board[q]) for (const s of slotsOfPedal(q)) audio.clearSlot(s) }, 250)
+          }
+          forgetFile(`pedal${q}`)
+          continue
+        }
+        // a pedal moved here switched off: the place stops hearing what it played before at once
+        if (!x.on && audio.started) ask(q, -1)
+        x.read().then((bytes) => rememberFile(`pedal${q}`, x.name, bytes, x.from ?? null)).catch(() => {})
+      }
+      await Promise.all([a, b].map((q) => (board[q] ? load(q) : null)))
+    },
     /** Loads every pedal's capture (the audio has started). */
     async fill() { for (let p = 0; p < PEDALS; p++) if (board[p] && board[p].slot < 0) await load(p) },
     /** The board from last time. */
@@ -154,69 +182,153 @@ export function createPedals({ audio, parse, onChange = () => {} }) {
 }
 
 const WORD = { on: 'On', off: 'Off', loading: 'Loading', failed: 'Cannot play' }
+/** What a pedal's dragged grip carries (R6 step 3): its place, so a drop on another place swaps the two. */
+export const PEDAL_DRAG = 'application/x-crbn-rig-pedal'
+
+/** A pedal's page knob: Drive and Level in dB (-12 to +12), Tone a tilt in dB (-6 to +6; R6 step 3). */
+export const PEDAL_KNOB = Object.freeze({ Drive: [-12, 12], Level: [-12, 12], Tone: [-6, 6] })
 
 /**
- * The board's drawing: a place for each pedal up to the last one used, and one more to add to, each with the Rig Lab's
- * stompbox (the islands and the stripe) and a holder for the kit's own pedal (the Hardware drawing, hw.js).
+ * The board's drawing, as D-RIG-008 (d) picked and the look menu's "Pedals" row offers (R6 step 3, data-pedals on
+ * <html>): stompboxes (b, the default) on a board, each a place with the Rig Lab's stompbox (the islands and the stripe)
+ * and a holder for the kit's own pedal (the Hardware drawing, hw.js); rows (a), a list of places with a grip, a switch,
+ * the name and the knobs; or chain chips (c), one line from the input to the output with a chip for each pedal, a click
+ * on one opening its controls underneath. Every drawing has a place for each pedal up to the last one used and one more
+ * to add to; a pedal moves along the board by its grip (dragged onto another place, the two swap) or its arrows.
  * @param el  the board's row
  * @param pedals  createPedals's
  * @param knob  makes a page knob of a .knob[data-param] element
  * @param hardware  the kits' drawing (setPedals, engage)
  * @param add  called with a place when its "Add a pedal" button is pressed
  * @param stomp  called with a place when its footswitch is pressed
+ * @param tone  called with a place when its Tone switch is pressed
+ * @param toneOn  whether a place's Tone is in
+ * @param move  called with two places to swap
+ * @param drawing  the drawing picked: 'a', 'b' or 'c'
+ * @param chain  the amp's and the cabinet's names for the chips: { amp, cab }
  */
-export function createBoardView({ el, pedals, knob, hardware, add, stomp = (p) => pedals.toggle(p) }) {
-  let drawn = ''
+export function createBoardView({ el, pedals, knob, hardware, add, stomp = (p) => pedals.toggle(p), tone, toneOn, move, drawing = () => 'b', chain = () => ({}) }) {
+  let drawn = '', open = -1
   el.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-foot], [data-remove], [data-add]')
+    const t = e.target.closest('[data-foot], [data-remove], [data-add], [data-tone], [data-move], [data-open]')
     if (!t) return
     if (t.dataset.foot) stomp(Number(t.dataset.foot))
-    else if (t.dataset.remove) pedals.remove(Number(t.dataset.remove))
+    else if (t.dataset.remove) { const p = Number(t.dataset.remove); if (open === p) open = -1; pedals.remove(p) }
+    else if (t.dataset.tone) tone(Number(t.dataset.tone))
+    else if (t.dataset.move) {
+      const [p, d] = t.dataset.move.split(':').map(Number)
+      const q = p + d
+      if (q < 0 || q >= pedals.size) return
+      if (open === p) open = q
+      move(p, q)
+      requestAnimationFrame(() => el.querySelector(`[data-move="${q}:${d}"]`)?.focus())
+    } else if (t.dataset.open) { const p = Number(t.dataset.open); open = open === p ? -1 : p; render() }
     else add(Number(t.dataset.add))
   })
+  el.addEventListener('dragstart', (e) => {
+    const g = e.target.closest?.('[data-grip]')
+    if (!g) return
+    e.dataTransfer.setData(PEDAL_DRAG, g.dataset.grip)
+    e.dataTransfer.effectAllowed = 'move'
+  })
 
-  const knobHTML = (p, which, label) => `<div class="knob" data-param="pedal${which}${p + 1}" data-min="-12" data-max="12" data-step="0.1" data-unit="dB" data-label="${label}" data-aria="Pedal ${p + 1}: ${label.toLowerCase()}"></div>`
+  const knobHTML = (p, which) => {
+    const [min, max] = PEDAL_KNOB[which]
+    return `<div class="knob" data-param="pedal${which}${p + 1}" data-min="${min}" data-max="${max}" data-step="0.1" data-unit="dB" data-label="${which}" data-aria="Pedal ${p + 1}: ${which.toLowerCase()}"></div>`
+  }
+  const knobsHTML = (p) => `${knobHTML(p, 'Drive')}${knobHTML(p, 'Tone')}${knobHTML(p, 'Level')}`
+  const toneHTML = (p, b) => `<button class="tsw" type="button" data-tone="${p}" data-switch="pedalToneOn${p + 1}" aria-pressed="${toneOn(p)}" aria-label="${esc(b.name)}: tone" title="Tone in, or bypassed: the capture as it was captured"><i aria-hidden="true"></i>Tone</button>`
+  const gripHTML = (p, b) => `<span class="pgrip" draggable="true" data-grip="${p}" title="Drag onto another place to swap them" aria-hidden="true"><svg viewBox="0 0 10 16"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/><circle cx="3" cy="8" r="1.3"/><circle cx="7" cy="8" r="1.3"/><circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/></svg></span>`
+  const movesHTML = (p, b) => `<span class="pmove"><button type="button" data-move="${p}:-1" aria-label="Move ${esc(b.name)} earlier in the chain" title="Earlier in the chain"${p === 0 ? ' disabled' : ''}>&lsaquo;</button><button type="button" data-move="${p}:1" aria-label="Move ${esc(b.name)} later in the chain" title="Later in the chain"${p === pedals.size - 1 ? ' disabled' : ''}>&rsaquo;</button></span>`
+  const removeHTML = (p, b) => `<button class="prm" type="button" data-remove="${p}" aria-label="Take ${esc(b.name)} off the board" title="Take it off the board">&times;</button>`
+  const addHTML = (p) => `<button class="padd" type="button" data-add="${p}"><b aria-hidden="true">+</b>Add a pedal</button>`
+
+  const keyOf = () => `${drawing()}|${open}|${pedals.board.map((b) => b?.key ?? '').join('|')}`
   function render() {
-    const board = pedals.board
+    const board = pedals.board, d = drawing()
     const last = board.reduce((m, b, p) => (b ? p : m), -1)
     const upto = Math.min(pedals.size - 1, last + 1)
-    drawn = board.map((b) => b?.key ?? '').join('|')
+    if (open >= 0 && !board[open]) open = -1
+    drawn = keyOf()
+    el.dataset.drawing = d
     let html = ''
-    for (let p = 0; p <= upto; p++) {
-      const b = board[p]
-      if (!b) {
-        html += `<div class="pspot empty" data-pedal="${p}" data-slot="pedal"><button class="padd" type="button" data-add="${p}"><b aria-hidden="true">+</b>Add a pedal</button><small>or drag a capture here from your library</small></div>`
-        continue
+    if (d === 'c') {
+      // chain chips: input, the pedals, a chip to add one, the amp, the cabinet, the output
+      const arr = '<span class="arr" aria-hidden="true">&rarr;</span>', names = chain()
+      html += `<div class="pchain" role="list"><span class="pchip io" role="listitem">Input</span>${arr}`
+      for (let p = 0; p <= upto; p++) {
+        const b = board[p]
+        if (!b) { html += `<span class="pchip add" role="listitem" data-pedal="${p}" data-slot="pedal">${addHTML(p)}</span>${arr}`; continue }
+        html += `<span class="pchip ped" role="listitem" data-pedal="${p}" data-slot="pedal"><button type="button" class="ccb" data-open="${p}" draggable="true" data-grip="${p}" aria-expanded="${open === p}" title="${esc(b.name)}: its controls"><i class="led" aria-hidden="true"></i><span class="pn">${esc(b.name)}</span><small class="st"></small></button></span>${arr}`
       }
-      html += `<div class="pspot" data-pedal="${p}" data-slot="pedal" title="${esc(b.name)}">` +
-        `<div class="stomp"><div class="sk">${knobHTML(p, 'Drive', 'Drive')}${knobHTML(p, 'Level', 'Level')}</div><i class="led" aria-hidden="true"></i>` +
-        `<span class="sn">${esc(b.name)}</span><button class="fs" type="button" data-foot="${p}" aria-pressed="false" aria-label="${esc(b.name)}"></button><span class="st"></span></div>` +
-        `<div class="rig-hw" data-hw-pedal="${p}"></div>` +
-        `<button class="prm" type="button" data-remove="${p}" aria-label="Take ${esc(b.name)} off the board" title="Take it off the board">&times;</button></div>`
+      html += `<span class="pchip amp" role="listitem" data-chip="amp">Amp · <span>${esc(names.amp || 'no capture')}</span></span>${arr}<span class="pchip" role="listitem" data-chip="cab">Cab · <span>${esc(names.cab || 'none')}</span></span>${arr}<span class="pchip io" role="listitem">Output</span></div>`
+      if (open >= 0) {
+        const b = board[open], p = open
+        html += `<div class="cpanel pspot" data-pedal="${p}" data-slot="pedal" role="group" aria-label="${esc(b.name)}">` +
+          `<div class="cp-head"><button class="fsw" type="button" data-foot="${p}" aria-pressed="false"><i aria-hidden="true"></i><span class="st"></span></button><span class="pn">${esc(b.name)}</span>${movesHTML(p, b)}${removeHTML(p, b)}</div>` +
+          `<div class="sk">${knobsHTML(p)}${toneHTML(p, b)}</div></div>`
+      }
+    } else if (d === 'a') {
+      // rows: a list of places
+      for (let p = 0; p <= upto; p++) {
+        const b = board[p]
+        if (!b) { html += `<div class="prow pspot empty" data-pedal="${p}" data-slot="pedal">${addHTML(p)}<small>or drag a capture here from your library</small></div>`; continue }
+        html += `<div class="prow pspot" data-pedal="${p}" data-slot="pedal" title="${esc(b.name)}">${gripHTML(p, b)}` +
+          `<button class="fsw" type="button" data-foot="${p}" aria-pressed="false" aria-label="${esc(b.name)}"><i aria-hidden="true"></i></button>` +
+          `<span class="pn">${esc(b.name)}</span><span class="st"></span><div class="sk">${knobsHTML(p)}${toneHTML(p, b)}</div>${movesHTML(p, b)}${removeHTML(p, b)}</div>`
+      }
+    } else {
+      for (let p = 0; p <= upto; p++) {
+        const b = board[p]
+        if (!b) {
+          html += `<div class="pspot empty" data-pedal="${p}" data-slot="pedal">${addHTML(p)}<small>or drag a capture here from your library</small></div>`
+          continue
+        }
+        html += `<div class="pspot" data-pedal="${p}" data-slot="pedal" title="${esc(b.name)}">` +
+          `<div class="stomp"><div class="sk">${knobsHTML(p)}</div><div class="sl"><i class="led" aria-hidden="true"></i>${toneHTML(p, b)}</div>` +
+          `<span class="sn">${esc(b.name)}</span><button class="fs" type="button" data-foot="${p}" aria-pressed="false" aria-label="${esc(b.name)}"></button><span class="st"></span></div>` +
+          `<div class="rig-hw" data-hw-pedal="${p}"></div>` +
+          `<div class="ptools">${gripHTML(p, b)}${movesHTML(p, b)}</div>${removeHTML(p, b)}</div>`
+      }
     }
     el.innerHTML = html
     for (const k of el.querySelectorAll('.knob[data-param]')) knob(k)
     hardware?.setPedals([...el.querySelectorAll('[data-hw-pedal]')].map((h) => { const p = Number(h.dataset.hwPedal); return { el: h, p, name: board[p].name } }))
+    for (const s of el.querySelectorAll('.pspot[data-pedal]')) delete s.dataset.state
     sync()
   }
 
-  // The pedals' states, in place.
+  // The pedals' states, in place; a chip's amp and cabinet names.
   function sync() {
-    if (drawn !== pedals.board.map((b) => b?.key ?? '').join('|')) { render(); return }
-    for (const spot of el.querySelectorAll('.pspot[data-pedal]:not(.empty)')) {
-      const p = Number(spot.dataset.pedal), b = pedals.board[p], state = pedals.stateOf(p)
-      if (spot.dataset.state === state) continue
-      spot.dataset.state = state
-      const on = b.on
-      const word = WORD[state] ?? ''
-      spot.querySelector('.st').textContent = word
-      spot.querySelector('[data-hw-pedal]').dataset.word = word
-      const fs = spot.querySelector('.fs')
-      fs.setAttribute('aria-pressed', String(on))
-      fs.setAttribute('aria-label', `${b.name}: ${on ? 'on' : 'off'}`)
-      spot.title = state === 'failed' ? `${b.name}: ${b.failed}` : `${b.name} · ${word}`
-      hardware?.engage(p, on, word)
+    if (drawn !== keyOf()) { render(); return }
+    if (el.dataset.drawing === 'c') {
+      const names = chain()
+      const a = el.querySelector('[data-chip="amp"] span'), c = el.querySelector('[data-chip="cab"] span')
+      if (a && a.textContent !== (names.amp || 'no capture')) a.textContent = names.amp || 'no capture'
+      if (c && c.textContent !== (names.cab || 'none')) c.textContent = names.cab || 'none'
+    }
+    for (const p of pedals.board.keys()) {
+      const b = pedals.board[p]
+      if (!b) continue
+      const state = pedals.stateOf(p), word = WORD[state] ?? ''
+      let changed = false
+      for (const spot of el.querySelectorAll(`[data-pedal="${p}"]:not(.empty):not(.add)`)) {
+        if (spot.dataset.state === state) continue
+        spot.dataset.state = state
+        changed = true
+        for (const st of spot.querySelectorAll('.st')) st.textContent = word
+        const hw = spot.querySelector('[data-hw-pedal]')
+        if (hw) hw.dataset.word = word
+        for (const fs of spot.querySelectorAll('[data-foot]')) {
+          fs.setAttribute('aria-pressed', String(b.on))
+          fs.setAttribute('aria-label', `${b.name}: ${b.on ? 'on' : 'off'}`)
+        }
+        const chip = spot.querySelector('.ccb')
+        if (chip) chip.title = `${b.name} · ${word}: its controls`
+        spot.title = state === 'failed' ? `${b.name}: ${b.failed}` : `${b.name} · ${word}`
+      }
+      if (changed) hardware?.engage(p, b.on, word)
     }
   }
-  return { render, sync }
+  return { render, sync, get open() { return open } }
 }

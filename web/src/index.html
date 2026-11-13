@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b" data-library="a" data-pads="a">
+<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b" data-library="a" data-pads="a" data-pedals="b">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,7 +26,7 @@ try {
   if (p && /^(capsule|holo|redline|daylight)$/.test(p.look)) h.dataset.look = p.look
   if (p && p.density === 'compact') h.dataset.density = 'compact'
   var r = JSON.parse(localStorage.getItem('crbn-rig/rig') || '{}')
-  ;['layout', 'amp', 'meters', 'library', 'pads'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
+  ;['layout', 'amp', 'meters', 'library', 'pads', 'pedals'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
   if (/^[a-z]+$/.test(r.salvWords || '')) h.dataset.salvWords = r.salvWords
 } catch (e) {}
 </script>
@@ -150,6 +150,22 @@ try {
       <p><b id="banner-title"></b> <span id="banner-body"></span></p>
       <button class="btn small" id="banner-on" type="button" aria-keyshortcuts="Space">Turn back on <kbd>Space</kbd></button>
     </div>
+
+    <!-- The rig (build plan R6 step 3, P3-UX U5): its name, saved by name and opened again, exported and imported as a
+         small JSON file of names and references; its variants on Q, W and E. rigs.js and app.js fill it. -->
+    <section class="rig-bar" id="rig-bar" aria-labelledby="rig-bar-title" data-state="new">
+      <h2 class="sec" id="rig-bar-title">Rig</h2>
+      <input class="rig-name" id="rig-name" type="text" maxlength="60" spellcheck="false" autocomplete="off" aria-label="This rig's name">
+      <button class="btn small" id="rig-save" type="button">Save</button>
+      <select class="rig-pick" id="rig-pick" aria-label="Open a saved rig"></select>
+      <div class="variants" id="variants" role="radiogroup" aria-label="Variants, on keys Q, W and E: the pedals set three ways"></div>
+      <span class="sp"></span>
+      <button class="btn small ghost" id="rig-new" type="button" title="Keep playing this, as a new rig">New</button>
+      <button class="btn small ghost" id="rig-export" type="button" title="Save this rig as a small file of names: share it, or keep it">Export</button>
+      <button class="btn small ghost" id="rig-import" type="button" title="Open a rig file">Import</button>
+      <button class="btn small ghost" id="rig-delete" type="button" disabled>Delete</button>
+      <input type="file" id="rig-file" accept=".json,application/json" hidden>
+    </section>
 
     <!-- Pedals before the amp (build plan R6, P3-UX U5; drawn as D-RIG-008 (d) picked: stompboxes on a board above the
          amp). Up to four captures in series, each stomped on and off with its footswitch; pedals.js draws and fills it. -->
@@ -331,6 +347,8 @@ try {
       <button type="button" role="radio" data-value="b">LED</button><button type="button" role="radio" data-value="a">Bars</button><button type="button" role="radio" data-value="c">VU</button></div></div>
     <div class="lm-row"><span id="lm-library-l">Library</span><div class="segmented" data-rig="library" role="radiogroup" aria-labelledby="lm-library-l">
       <button type="button" role="radio" data-value="a">List</button><button type="button" role="radio" data-value="b">Cards</button><button type="button" role="radio" data-value="c">Shelves</button></div></div>
+    <div class="lm-row"><span id="lm-pedals-l">Pedals</span><div class="segmented" data-rig="pedals" role="radiogroup" aria-labelledby="lm-pedals-l">
+      <button type="button" role="radio" data-value="b">Stompboxes</button><button type="button" role="radio" data-value="a">Rows</button><button type="button" role="radio" data-value="c">Chain chips</button></div></div>
     <div class="lm-row"><span id="lm-pads-l">Favourites</span><div class="segmented" data-rig="pads" role="radiogroup" aria-labelledby="lm-pads-l">
       <button type="button" role="radio" data-value="a">Footswitches</button><button type="button" role="radio" data-value="b">Keycaps</button><button type="button" role="radio" data-value="c">Setlist</button></div></div>
     <div class="lm-row"><span id="lm-power-l">Power</span><div class="segmented" data-rig="power" role="radiogroup" aria-labelledby="lm-power-l">

@@ -67,7 +67,10 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
 
   return {
     kind: 'web',
-    get started() { return ctx !== null },
+    // Started once the worklet's node exists, not when the context does: between the two, a capture or pedal loaded
+    // (a drop right after Play) would have asked a node that was not there yet, and failed (found in R6 step 3). Until
+    // then they wait, and the start fills them.
+    get started() { return node !== null },
     get sampleRate() { return ctx?.sampleRate ?? null },
     get source() { return demoSource ? 'demo' : micSource ? 'guitar' : null },
     get running() { return Boolean(ctx && ctx.state === 'running' && (micSource || demoSource)) },

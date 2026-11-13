@@ -530,6 +530,99 @@ dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 .pspot > .rig-hw .pname { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .pspot > .rig-hw::after { content: attr(data-word); display: block; margin-top: 6px; text-align: center; font: 600 calc(9.5px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; color: var(--text-dim); }
 
+/* R6 step 3: each pedal's Tone and its switch (on, or bypassed: the capture as captured), its grip and arrows to move it
+   along the board, and the board's other two drawings, rows (a) and chain chips (c), from the Rig Lab. */
+.stomp { width: 150px; }
+.stomp .knob svg { width: 40px; height: 40px; }
+.stomp .sl { display: flex; align-items: center; gap: 10px; }
+.tsw { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 5px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--field); color: var(--text-dim); font: 600 calc(9.5px * var(--d-scale)) / 1.4 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; cursor: pointer; }
+.tsw i { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-faint); }
+.tsw[aria-pressed='true'] { color: var(--text); border-color: color-mix(in oklab, var(--accent) 55%, var(--line-2)); }
+.tsw[aria-pressed='true'] i { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.tsw[aria-pressed='false']::after { content: ' off'; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-faint); }
+.tsw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ptools { position: absolute; top: -8px; left: -6px; z-index: 6; display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity var(--d1); }
+.pspot:is(:hover, :focus-within) .ptools { opacity: 1; }
+@media (hover: none) { .ptools { opacity: 1; } }
+.pgrip { display: inline-grid; place-items: center; width: 18px; height: 24px; border-radius: 6px; color: var(--text-faint); cursor: grab; background: var(--panel); border: 1px solid var(--line-2); }
+.pgrip svg { width: 8px; height: 13px; fill: currentColor; }
+.pgrip:active { cursor: grabbing; }
+.pmove { display: inline-flex; gap: 2px; }
+.pmove button { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text-dim); font: 600 15px/1 var(--font-ui); cursor: pointer; padding: 0; }
+.pmove button:disabled { opacity: .35; cursor: default; }
+.pmove button:not(:disabled):hover { color: var(--text); }
+/* the kit's pedal: the Tone's switch made small beside the lamp */
+.rig-hw .pedal .pled { justify-content: center; }
+.rig-hw .ptone .cc { flex-direction: row; align-items: center; gap: 3px; min-width: 0; }
+.rig-hw .ptone .sw { transform: scale(.62); margin: -9px -6px; }
+.rig-hw .ptone .lb { font-size: 8px; }
+.rig-hw .ptone .st { display: none; }
+.rig-hw .pknobs .cc { min-width: 38px; }
+
+/* rows (a): a list of places, each a grip, a switch, the name and its state, the knobs and the Tone, the arrows */
+#board-row[data-drawing='a'] { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 6px; }
+.prow { flex-direction: row; align-items: center; gap: 10px; padding: 6px 10px; border-radius: var(--r-sm); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); min-height: 52px; }
+.prow.empty { width: auto; min-height: 44px; display: flex; flex-direction: row; justify-content: center; gap: 10px; padding: 4px 10px; border-radius: var(--r-sm); }
+.prow.empty .padd { display: inline-flex; gap: 6px; align-items: center; }
+.prow.empty .padd b { font-size: 18px; }
+.prow .pgrip { border: 0; background: none; }
+.prow .pn { flex: 1 1 120px; min-width: 0; font: 600 var(--fs-s) var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prow .st { width: 70px; }
+.prow .sk { display: flex; align-items: center; gap: 2px; }
+.prow .knob svg { width: 34px; height: 34px; }
+.prow .prm { position: static; opacity: 1; width: 22px; height: 22px; }
+.fsw { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--text-dim); }
+.fsw i { width: 30px; height: 17px; border-radius: 999px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line-2); position: relative; transition: background var(--d1); }
+.fsw i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: var(--text-faint); transition: transform var(--d1), background var(--d1); }
+.fsw[aria-pressed='true'] i { background: color-mix(in oklab, var(--accent) 30%, var(--field)); }
+.fsw[aria-pressed='true'] i::after { transform: translateX(13px); background: var(--accent); }
+.fsw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 999px; }
+
+/* chain chips (c): one line from the input to the output; a pedal's chip opens its controls underneath */
+#board-row[data-drawing='c'] { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 8px; }
+.pchain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pchain .arr { color: var(--text-faint); font-size: 12px; }
+.pchip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: var(--r-chip); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line-2); font-size: var(--fs-xs); white-space: nowrap; max-width: 260px; }
+.pchip > span { overflow: hidden; text-overflow: ellipsis; }
+.pchip.io { color: var(--text-dim); }
+.pchip.amp { background: color-mix(in oklab, var(--accent) 16%, var(--panel-2)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 50%, transparent); font-weight: 600; }
+.pchip.add { background: transparent; padding: 0; box-shadow: inset 0 0 0 1px var(--line-2); }
+.pchip.add .padd { display: inline-flex; gap: 4px; align-items: center; padding: 4px 11px; font-size: var(--fs-xs); border-radius: var(--r-chip); }
+.pchip.add .padd b { font-size: 14px; }
+.pchip.ped { padding: 0; }
+.ccb { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border: 0; background: none; color: var(--text); font: 500 var(--fs-xs) var(--font-ui); cursor: pointer; border-radius: var(--r-chip); max-width: 260px; }
+.ccb .pn { overflow: hidden; text-overflow: ellipsis; }
+.ccb small { color: var(--text-faint); font-size: calc(10.5px * var(--d-scale)); }
+.ccb .led { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-faint); flex: none; }
+.pchip.ped[data-state='on'] .led { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.ccb[aria-expanded='true'] { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.ccb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pchip.ped[data-state='failed'] small { color: var(--bad); }
+.cpanel { display: grid; gap: 6px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); }
+.cpanel .cp-head { display: flex; align-items: center; gap: 10px; }
+.cpanel .pn { flex: 1; min-width: 0; font: 600 var(--fs-s) var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cpanel .sk { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.cpanel .knob svg { width: 38px; height: 38px; }
+.cpanel .prm { position: static; opacity: 1; width: 22px; height: 22px; }
+
+/* the rig bar (R6 step 3): the rig's name, Save, the saved rigs, the variants on Q, W and E */
+.rig-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; }
+.rig-bar .sp { flex: 1; }
+.rig-name { width: 13em; min-width: 8em; font: 600 var(--fs-s) var(--font-ui); color: var(--text); background: var(--field); border: 1px solid var(--line); border-radius: var(--r-btn); padding: 3px 8px; }
+.rig-name:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rig-pick { max-width: 14em; font: 500 var(--fs-xs) var(--font-ui); color: var(--text-dim); background: var(--field); border: 1px solid var(--line); border-radius: var(--r-btn); padding: 3px 6px; }
+#rig-save.dirty::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--accent); vertical-align: 1px; }
+.rig-bar[data-state='saved'] #rig-save { color: var(--text-dim); }
+.variants { display: flex; background: var(--field); border: 1px solid var(--line); border-radius: var(--r-btn); padding: 2px; gap: 2px; }
+.variants button { display: inline-flex; align-items: center; gap: 6px; font: 500 var(--fs-xs) var(--font-ui); color: var(--text-dim); background: transparent; border: 0; border-radius: var(--r-btn); padding: 3px 9px 3px 4px; cursor: pointer; white-space: nowrap; }
+.variants button:hover { color: var(--text); }
+.variants button[aria-checked='true'] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.variants button[aria-checked='true'] kbd { color: inherit; border-color: color-mix(in oklab, var(--accent-ink) 40%, transparent); background: transparent; }
+.variants input { width: 7em; font: 600 var(--fs-xs) var(--font-ui); padding: 1px 4px; border: 1px solid var(--line-2); border-radius: 4px; background: var(--panel); color: var(--text); }
+:root[data-look='holo'] .variants button[aria-checked='true'] { background: rgba(79, 227, 255, .1); color: #dff8ff; box-shadow: inset 0 0 0 1px rgba(79, 227, 255, .5); }
+:root[data-look='redline'] .variants { background: transparent; border-color: var(--line-2); }
+:root[data-look='redline'] .variants button[aria-checked='true'] { background: transparent; color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
+
 /* favourites on standby (build plan R5, P3-UX U4): ten pads on keys 1 to 0, drawn as footswitches (A, the default),
    keycaps (B) or a setlist (C) (D-RIG-008 (d); the Rig Lab's drawings). A pad says what it is doing in words: Playing,
    Switching, Loading, Cannot play. */
