@@ -15,7 +15,7 @@
 //    same profile: it was playing the guitar when it closed, so it plays it at once (R3), and the library is back. The riff and the guitar play quietly (Output at -40 and -30 dB) through the default devices.
 // It will not start beside a running CRBN Rig (one copy runs at a time). Exit code 0 when every check passes.
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { HEAD_BYTES, TAIL_BYTES, WAV_HEAD_BYTES, entryOf, namInfo, wavInfo } from '../../web/src/library.js'
 import { libraryFixture } from '../../web/test/library-fixture.mjs'
@@ -82,20 +82,29 @@ for (const [model, rate] of [['wavenet.nam', 48000], ['wavenet.nam', 44100], ['l
 // ---- 2. the app -------------------------------------------------------------------------------------------------
 if (!process.argv.includes('--no-app')) {
   const port = 9400 + Math.floor(Math.random() * 400)
+  // The suite look's file (D-CRBN-025): a throwaway one here, never the person's %APPDATA%\CRBN\suite-look.json.
+  const suiteFile = join(out, 'suite-look.json')
+  rmSync(suiteFile, { force: true })
+  const readSuite = () => { try { return JSON.parse(readFileSync(suiteFile, 'utf8')) } catch { return null } }
+  // as another CRBN app writes it (crbn-looks suite.rs): whole, through a temporary file and a rename
+  const writeSuite = (v) => { writeFileSync(`${suiteFile}.other.tmp`, JSON.stringify(v, null, 2) + '\n'); renameSync(`${suiteFile}.other.tmp`, suiteFile) }
   const app = spawn(exe, [], {
     stdio: 'ignore',
-    env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(out, 'profile'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}` },
+    env: { ...process.env, CRBN_SUITE_LOOK: suiteFile, WEBVIEW2_USER_DATA_FOLDER: join(out, 'profile'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}` },
   })
   let ws, id = 0
   const pending = new Map(), errors = []
-  const send = (method, params = {}) => new Promise((ok, fail) => { const i = ++id; pending.set(i, { ok, fail }); ws.send(JSON.stringify({ id: i, method, params })) })
+  // Set when the app's DevTools connection closes: every call waiting on it fails with the reason, so the check says
+  // so rather than Node leaving with the wait unsettled (a first run of SYNC:RIG-025 ended that way at the library).
+  let gone = null
+  const send = (method, params = {}) => new Promise((ok, fail) => { if (gone) { fail(new Error(gone)); return } const i = ++id; pending.set(i, { ok, fail }); ws.send(JSON.stringify({ id: i, method, params })) })
   const js = async (expression) => {
     const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text)
     return r.result.value
   }
   const until = async (expression, ms, what) => {
-    for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await js(expression).catch(() => false)) return true
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) { if (gone) throw new Error(`${gone}, waiting for ${what}`); if (await js(expression).catch(() => false)) return true }
     // what the page shows, to say why
     const said = await js("JSON.stringify({ ready: document.documentElement.dataset.ready ?? null, state: document.readyState, toast: document.getElementById('toast')?.textContent ?? '' })").catch((e) => String(e?.message ?? e))
     throw new Error(`timed out waiting for ${what}: ${said}${errors.length ? `; ${errors.slice(0, 2).join(' | ')}` : ''}`)
@@ -112,6 +121,11 @@ if (!process.argv.includes('--no-app')) {
     if (!target) throw new Error('the app did not open its page (no DevTools target on https://crbn-rig.example/)')
     ws = new WebSocket(target.webSocketDebuggerUrl)
     await new Promise((ok, fail) => { ws.addEventListener('open', ok); ws.addEventListener('error', fail) })
+    ws.addEventListener('close', () => {
+      gone = `the app’s DevTools connection closed (the app ${app.exitCode === null ? 'still running' : `exited with code ${app.exitCode}`})`
+      for (const p of pending.values()) p.fail(new Error(gone))
+      pending.clear()
+    })
     ws.addEventListener('message', (e) => {
       const m = JSON.parse(e.data)
       if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.fail(new Error(JSON.stringify(m.error))) : p.ok(m.result) }
@@ -235,6 +249,28 @@ if (!process.argv.includes('--no-app')) {
       check('a real Space puts the amp in standby, and back', spaced === 'standby' && unspaced === 'on', `${spaced} -> ${unspaced}`)
     }
 
+    // "Use this look in every CRBN app" (D-CRBN-025, build plan R6 step 1): the app reads and writes the suite file for
+    // the page (RigSuiteLook.cpp), the look only, and the page follows another app's change to it within about a second.
+    {
+      const own = await js('document.documentElement.dataset.look')
+      const before = readSuite()
+      await js("(() => { const s = document.getElementById('lm-suite'); s.checked = true; s.dispatchEvent(new Event('change', { bubbles: true })); return true })()")
+      let on = null
+      for (const end = Date.now() + 3000; Date.now() < end && !on?.every; await sleep(100)) on = readSuite()
+      const keys = Object.keys(on?.prefs ?? {}).sort().join()
+      check('the suite switch writes the suite file: on, from Rig, the look only', before === null && on?.version === 1 && on.every === true && on.from === 'rig' && on.prefs.look === own && keys === 'accent,density,display,look,mono,motion,speed,ui', `${JSON.stringify(on)}`)
+      const other = own === 'holo' ? 'daylight' : 'holo'
+      writeSuite({ version: 1, every: true, from: 'console', prefs: { ...on.prefs, look: other, density: 'compact' } })
+      const t0 = Date.now()
+      await until(`document.documentElement.dataset.look === '${other}' && document.documentElement.dataset.density === 'compact'`, 5000, 'the look another app shared')
+      const ms = Date.now() - t0
+      check('another app’s look reaches the app within about a second', ms < 2500, `${other}, compact, in ${ms} ms`)
+      writeSuite({ version: 1, every: false, from: 'console', prefs: { ...on.prefs, look: other } })
+      await until(`document.documentElement.dataset.look === '${own}' && !document.getElementById('lm-suite').checked`, 5000, 'Rig’s own look back')
+      const after = readSuite()
+      check('turned off in another app, Rig goes back to its own look and leaves the file alone', after?.every === false && after.from === 'console', `${own}; the file from ${after?.from}`)
+    }
+
     // The library (build plan R4, RigLibrary.cpp): a generated 5,000-file folder on this disk, with NAM Core's examples,
     // picked through the app's own folder dialog (its Folder box typed into, then OK, as a person would), indexed by the
     // app natively, every entry equal to library.js's reading of the same file, searched in time, played, starred, and
@@ -351,11 +387,13 @@ if (!process.argv.includes('--no-app')) {
     check('closing the window ends the app cleanly', code === 0, `exit code ${code}`)
   }
 
+  // Another app turns the suite look on while Rig is closed: Rig opens in it.
+  writeSuite({ version: 1, every: true, from: 'console', prefs: { look: 'redline', motion: null, speed: 1, display: null, ui: null, mono: null, accent: 'look', density: 'comfortable' } })
   // Opened again on the same profile: it was playing the guitar when it closed, so it plays the guitar now (the owner's
   // word in R3, with the squeal guard on), where a first run waits for Play my guitar.
   const again = spawn(exe, [], {
     stdio: 'ignore',
-    env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(out, 'profile'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port + 1}` },
+    env: { ...process.env, CRBN_SUITE_LOOK: suiteFile, WEBVIEW2_USER_DATA_FOLDER: join(out, 'profile'), WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port + 1}` },
   })
   let ws2
   try {
@@ -377,6 +415,8 @@ if (!process.argv.includes('--no-app')) {
       if (text.startsWith('Live')) break
     }
     check('opened again after playing, it plays the guitar at once', text.startsWith('Live'), text || 'no status')
+    const shared = await js2("[document.documentElement.dataset.look, document.getElementById('lm-suite').checked].join()")
+    check('opened again, it draws the suite look another app turned on', shared === 'redline,true', shared)
     // The library's folder opens again by itself, with the favourite starred last time.
     let favs = ''
     for (const end = Date.now() + 30000; Date.now() < end; await sleep(200)) {

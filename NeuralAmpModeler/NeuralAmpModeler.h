@@ -12,6 +12,7 @@
 #include "IPlug_include_in_plug_hdr.h"
 #include "RigDesktop.h"
 #include "RigLibrary.h"
+#include "RigSuiteLook.h"
 #include "RigWebView.h"
 
 const int kNumPresets = 1;
@@ -42,6 +43,7 @@ private:
   rig::Desktop mEngine;
   rig::WebViewHost mView;
   rig::Library mLibrary; // the library's folder, read for the page (build plan R4)
+  rig::SuiteLook mSuite; // "Use this look in every CRBN app": %APPDATA%\CRBN\suite-look.json (D-CRBN-025, R6)
   HWND mWindow = nullptr;
   HWND mFailure = nullptr; // the words shown when the page cannot be (no WebView2 runtime, missing files)
   bool mPageUp = false; // the page has said hello since it last loaded

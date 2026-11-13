@@ -697,6 +697,32 @@ As P3-UX's U5. Stompboxes (B) by default, rows (A) and chain chips (C) in the lo
   captures themselves).
 - **Tests:** a two-pedal chain renders equal to its stages run one after another; a swap while playing is click-free.
 
+### R6, step 1 as built: the suite look on the desktop (2026-11-13, SYNC:RIG-025, D-CRBN-025)
+
+R5 added a row to the look menu, and D-CRBN-025 binds an app's look menu to the suite's file when its lane next
+changes it. Rig's desktop now shares "Use this look in every CRBN app" with every CRBN desktop app; before, the switch
+lived in the page's own cookie inside the app's WebView2 profile and reached nothing.
+
+- **The host** (`NeuralAmpModeler/RigSuiteLook.cpp`, after crbn-launcher `looks/egui/src/suite.rs`): reads
+  `%APPDATA%\CRBN\suite-look.json` at start, looks at its modified time and size about once a second from OnIdle, and
+  writes it whole through a temporary file and a rename. A file over 16 KB, or one that is not version 1 with a true or
+  false `every` and a `prefs` object, is no file. `CRBN_SUITE_LOOK` names another file (the desktop check's
+  throwaway one); `off` turns it off, and the switch then holds in Rig alone.
+- **The messages:** `suiteGet` (the page asks before it first draws, answered even before the audio's hello),
+  `suiteSet` (the switch and the look), and `suiteLook` pushed when another app changed the file. The ids are look.js's
+  own strings, echoed as sent.
+- **The page** (`web/src/look.js`): in the app the shared state is the file, in a browser the cookie, behind the same
+  calls. The menu's note says "every CRBN app on this computer" on the desktop. A look Rig lacks is written back by its
+  own name, as suite.rs does. The file's last state is kept in the profile (`crbn-rig/suite`) for index.html's first
+  paint, which cannot wait for the app. A switch turned on in the old cookie is carried into the file once, when there
+  is no file yet.
+- **Checks:** desktop 39 (4 new: the switch writes the file, the look only; another app's look arrives, 542 ms; another
+  app turning it off brings Rig's own look back and leaves the file alone; opened again, Rig draws the look another
+  app turned on). Web 65 (1 new: in a browser the cookie, the look only). The desktop check also now says when the
+  app's DevTools connection closes, rather than Node leaving with the wait unsettled, which one run this session did
+  at the library's folder dialog (no crash recorded; the rerun passed).
+- **Not done:** steps 2 and 3 (captures in series, then rigs and variants).
+
 ### R7. MIDI (U6)
 
 As P3-UX's U6. **Ask first:** MIDI in the browser (a second Hub permission ask for Web MIDI in the tool view, as

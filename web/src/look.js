@@ -3,9 +3,12 @@
 // defaults as CRBN Livewire keeps them (crbn-photo-live src/theme/prefs.ts; crbn-launcher looks/egui src/prefs.rs):
 //   { look, motion, speed, display, ui, mono, accent, density }   null (and the accent "look") is the look's own.
 //
-// "Use this look in every CRBN app" (D-CRBN-023) is shared as crbn-launcher D-CRBN-024 proposes for the web versions:
-// the suite file's JSON, { version: 1, every, from, prefs }, in a `crbn-look` cookie on .carbonlinear.com, which every
-// CRBN web version there can read. Turned on, a change goes to the cookie; turned off, Rig goes back to its own.
+// "Use this look in every CRBN app" (D-CRBN-023) is shared as crbn-launcher D-CRBN-024 and D-CRBN-025 settle it: the
+// suite file's JSON, { version: 1, every, from, prefs }. In the desktop app it is the file itself,
+// %APPDATA%\CRBN\suite-look.json, which every CRBN desktop app reads and writes; the app reads and writes it for the
+// page (RigSuiteLook.cpp) and says when another app changed it. In a browser it is a `crbn-look` cookie on
+// .carbonlinear.com, which every CRBN web version there can read. Turned on, a change goes to the file or the cookie;
+// turned off, Rig goes back to its own. The look only, never Rig's finish or drawings.
 export const PRODUCT = 'rig'
 const OWN = 'crbn-rig/prefs'
 const OLD = 'crbn-rig/look' // the page's first key: the look's id alone
@@ -46,15 +49,17 @@ export function sanitize(p) {
 
 // ------------------------------------------------------------------------------------------------- where they are kept
 const onCarbonLinear = () => /(^|\.)carbonlinear\.com$/i.test(location.hostname)
-/** True where the suite switch reaches the other CRBN web versions (a page on carbonlinear.com). */
-export const sharesAcrossApps = onCarbonLinear
+const webview = () => (typeof globalThis.chrome?.webview?.postMessage === 'function' ? globalThis.chrome.webview : null)
+/** Where the suite switch reaches the other CRBN apps: 'desktop' (every CRBN desktop app on this computer, through
+ *  the suite file), 'web' (every CRBN web version on carbonlinear.com, through the cookie), or null (this browser). */
+export const suiteReach = () => (webview() ? 'desktop' : onCarbonLinear() ? 'web' : null)
 
+const validShared = (v) => (v && v.version === 1 && typeof v.every === 'boolean' && v.prefs && typeof v.prefs === 'object' && !Array.isArray(v.prefs) ? v : null)
 function readCookie() {
   try {
     const c = document.cookie.split('; ').find((x) => x.startsWith(COOKIE + '='))
     if (!c) return null
-    const v = JSON.parse(decodeURIComponent(c.slice(COOKIE.length + 1)))
-    return v && v.version === 1 && typeof v.every === 'boolean' && v.prefs && typeof v.prefs === 'object' ? v : null
+    return validShared(JSON.parse(decodeURIComponent(c.slice(COOKIE.length + 1))))
   } catch { return null }
 }
 function writeCookie(every, prefs) {
@@ -62,6 +67,52 @@ function writeCookie(every, prefs) {
   const domain = onCarbonLinear() ? '; Domain=.carbonlinear.com' : ''
   const secure = location.protocol === 'https:' ? '; Secure' : ''
   try { document.cookie = `${COOKIE}=${value}; Path=/; Max-Age=31536000; SameSite=Lax${secure}${domain}` } catch { /* cookies blocked */ }
+}
+
+// The desktop's suite file, as the app last said (null: no file). connectSuite asks for it before the page draws, and
+// it is kept in this profile too (SEEN) for index.html's first paint, which cannot wait for the app.
+const SEEN = 'crbn-rig/suite'
+let fileShared = null, suiteId = 0
+const suiteWatchers = new Set()
+const seeFile = (shared) => { fileShared = shared; try { localStorage.setItem(SEEN, JSON.stringify(shared)) } catch { /* not remembered */ } }
+/** In the desktop app, asks the app for the suite file and listens for another app's changes to it; elsewhere,
+ *  nothing. Before the page's first loadPrefs. */
+export async function connectSuite() {
+  const view = webview()
+  if (!view) return
+  const id = `suite-${++suiteId}`
+  const first = new Promise((ok) => {
+    const t = setTimeout(() => ok(null), 2000) // an app that never answers: the switch holds in Rig alone
+    view.addEventListener('message', (e) => {
+      const m = e.data
+      if (!m || m.type !== 'suiteLook') return
+      const shared = validShared(m.file)
+      if (m.id === id) { seeFile(shared); clearTimeout(t); ok(m); return }
+      if (m.id != null || JSON.stringify(shared) === JSON.stringify(fileShared)) return
+      seeFile(shared)
+      for (const f of suiteWatchers) f()
+    })
+  })
+  view.postMessage({ type: 'suiteGet', id })
+  const answer = await first
+  // The switch as Rig's desktop kept it before the file (in the page's own cookie): carried into the file once, when
+  // there is no file yet, so a person who had turned it on finds it still on.
+  const before = readCookie()
+  if (answer && !fileShared && before?.every) writeShared(true, before.prefs)
+}
+/** Calls `f` when another app changes the shared look (the desktop app tells the page; a browser looks again on focus). */
+export function onSharedChange(f) { suiteWatchers.add(f) }
+
+const readShared = () => (webview() ? fileShared : readCookie())
+function writeShared(every, prefs) {
+  // A look Rig lacks (another app's), still shown as Rig's default, is written back by its own name, as suite.rs does,
+  // so Rig's saving the fonts or accent does not take another app's look away.
+  const was = readShared()?.prefs?.look
+  if (every && typeof was === 'string' && !data.looks.some((l) => l.id === was) && prefs.look === data.defaultLook) prefs = { ...prefs, look: was }
+  const view = webview()
+  if (!view) { writeCookie(every, prefs); return }
+  seeFile({ version: 1, every, from: PRODUCT, prefs })
+  view.postMessage({ type: 'suiteSet', id: `suite-${++suiteId}`, every, prefs })
 }
 function readOwn() {
   try {
@@ -74,23 +125,23 @@ function readOwn() {
 
 /** { prefs, every }: the suite's look when its switch is on, else Rig's own. */
 export function loadPrefs() {
-  const shared = readCookie()
+  const shared = readShared()
   return shared?.every ? { prefs: sanitize(shared.prefs), every: true } : { prefs: sanitize(readOwn()), every: false }
 }
 /** Rig's own choices (what the page goes back to when the suite switch is turned off). */
 export const ownPrefs = () => sanitize(readOwn())
 
-/** Keeps a change: in the suite's cookie while the switch is on, else as Rig's own. */
+/** Keeps a change: in the suite file or cookie while the switch is on, else as Rig's own. */
 export function savePrefs(prefs, every) {
-  if (every) { writeCookie(true, prefs); return }
+  if (every) { writeShared(true, prefs); return }
   try { localStorage.setItem(OWN, JSON.stringify(prefs)) } catch { /* private mode: not remembered */ }
 }
 /** Turns the suite switch on (this look for every CRBN app) or off (each app its own). */
-export function setEvery(on, prefs) { writeCookie(on, prefs) }
+export function setEvery(on, prefs) { writeShared(on, prefs) }
 
 /** The shared look, if another app changed it since `since` (a JSON string), else null. */
 export function sharedChange(since) {
-  const shared = readCookie()
+  const shared = readShared()
   if (!shared?.every) return null
   const p = sanitize(shared.prefs)
   return JSON.stringify(p) === since ? null : p

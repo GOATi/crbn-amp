@@ -117,6 +117,17 @@ try {
   $d('#lm-salv [data-salv="mesh"][data-val="perf"]').click()
   $d('#lm-kits-new [data-kit="crbn"]').click()
 
+  // "Use this look in every CRBN app" in a browser (D-CRBN-025): the crbn-look cookie, the look only (the desktop app
+  // keeps the suite file instead; packaging/windows/check.mjs).
+  {
+    const sw = $d('#lm-suite'), flip = (on) => { sw.checked = on; sw.dispatchEvent(new win.Event('change', { bubbles: true })) }
+    const cookie = () => { const c = doc.cookie.split('; ').find((x) => x.startsWith('crbn-look=')); return c ? JSON.parse(decodeURIComponent(c.slice(10))) : null }
+    flip(true); const on = cookie()
+    flip(false); const off = cookie()
+    check('in a browser the suite switch keeps the crbn-look cookie, the look only (D-CRBN-025)', on?.every === true && on.from === 'rig' && Object.keys(on.prefs).sort().join() === 'accent,density,display,look,mono,motion,speed,ui' && off?.every === false, `${JSON.stringify(on)} / ${off?.every}`)
+    doc.cookie = 'crbn-look=; Path=/; Max-Age=0'
+  }
+
   // 1c. The Rig builder (R1b; D-RIG-009 (c), D-RIG-010 (f)): a player's kit, its RIG1 code, their own art, a reload.
   // In a block, so its names cannot clash with the module's (RIG-015's pitfall).
   {

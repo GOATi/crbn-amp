@@ -20,7 +20,8 @@ try {
   // Inside the desktop app (D-RIG-017) the page is crbn-rig.exe's window: data-host shows the app's words, not the site's.
   if (window.chrome && window.chrome.webview) document.documentElement.dataset.host = 'desktop'
   var h = document.documentElement, c = document.cookie.split('; ').filter(function (x) { return x.indexOf('crbn-look=') === 0 })[0]
-  var s = c ? JSON.parse(decodeURIComponent(c.slice(10))) : null
+  // the suite look: in the desktop app its file as the app last said (look.js keeps it), in a browser the cookie
+  var s = h.dataset.host === 'desktop' ? JSON.parse(localStorage.getItem('crbn-rig/suite') || 'null') : c ? JSON.parse(decodeURIComponent(c.slice(10))) : null
   var p = s && s.every ? s.prefs : JSON.parse(localStorage.getItem('crbn-rig/prefs') || 'null') || { look: localStorage.getItem('crbn-rig/look') }
   if (p && /^(capsule|holo|redline|daylight)$/.test(p.look)) h.dataset.look = p.look
   if (p && p.density === 'compact') h.dataset.density = 'compact'

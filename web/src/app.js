@@ -13,7 +13,7 @@ import { DEFAULT_KIT, KIT_LIST, KIT_PARTS, SALVAGE_CHOICES, SALVAGE_DEFAULTS, ar
 import { ART_NAME_MAX, ART_TYPES, MAX_KITS, NAME_MAX, artURL, artURLNow, importArt, isOwnId, loadKits, makeKit, readCode, saveKits, sameKit, shareCode, tidyArt } from './kits.js'
 import { createLibrary } from './library.js'
 import { createLibraryView } from './library-view.js'
-import { applyPrefs, fontOf, loadLooks, loadPrefs, lookList, looks, ownPrefs, sanitize, savePrefs, setEvery, sharesAcrossApps } from './look.js'
+import { applyPrefs, connectSuite, fontOf, loadLooks, loadPrefs, lookList, looks, onSharedChange, ownPrefs, sanitize, savePrefs, setEvery, suiteReach } from './look.js'
 import { PADS, captureKey, createPadsView, createStandby } from './pads.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
@@ -871,13 +871,16 @@ function buildMenu() {
   addEventListener('pointerdown', (e) => {
     if (!$('look-menu').hidden && !e.target.closest('#look-menu, #look-open')) openMenu(false)
   })
-  // Another CRBN app may have changed the suite look while this page was in the background.
-  addEventListener('focus', () => {
+  // Another CRBN app may have changed the suite look: in a browser, looked at again when this page comes back to the
+  // front; in the desktop app, as soon as the app sees the suite file change (within about a second).
+  const followShared = () => {
     const now = loadPrefs()
     if (now.every !== every || (now.every && JSON.stringify(now.prefs) !== JSON.stringify(prefs))) {
       every = now.every; prefs = now.every ? now.prefs : ownPrefs(); applyAll()
     }
-  })
+  }
+  addEventListener('focus', followShared)
+  onSharedChange(followShared)
   wireWheel()
 }
 function openMenu(open) {
@@ -914,8 +917,9 @@ function syncMenu(look, hex, accent) {
     sel.options[0].textContent = `The look’s own (${fontOf(role, look.fonts[role]).label})`
   }
   $('lm-suite').checked = every
-  $('lm-suite-note').textContent = sharesAcrossApps()
-    ? (every ? 'On: your look, fonts, accent and density follow you into every CRBN app on carbonlinear.com. Rig’s finish and drawing stay Rig’s.' : 'Off: CRBN Rig keeps a look of its own.')
+  const reach = suiteReach()
+  $('lm-suite-note').textContent = reach
+    ? (every ? `On: your look, fonts, accent and density follow you into every CRBN app ${reach === 'desktop' ? 'on this computer' : 'on carbonlinear.com'}. Rig’s finish and drawing stay Rig’s.` : 'Off: CRBN Rig keeps a look of its own.')
     : 'Here this keeps the look in this browser only; on carbonlinear.com it reaches every CRBN app.'
   const note = $('lm-finish-note')
   note.hidden = !accent
@@ -1191,6 +1195,7 @@ function toast(text, kind = 'error') {
 
 async function start() {
   await loadLooks()
+  await connectSuite() // the desktop app's suite file (D-CRBN-025), before the first look is drawn
   // ?look=, ?layout=, ?amp=, ?meters= and ?finish= show a look, drawing or finish for a scripted screenshot without
   // keeping it; ?example shows the example capture loaded (no audio starts).
   const query = new URLSearchParams(location.search)

@@ -303,6 +303,9 @@ void NeuralAmpModeler::OnIdle()
   }
   if (!mPageUp)
     return;
+  // Another CRBN app turned the suite look on or off, or changed it while on: tell the page (look.js).
+  if (mSuite.Poll(now))
+    Post(Dump({{"type", "suiteLook"}, {"file", mSuite.Current()}}));
   // The driver's choices change in the Audio settings dialog, whose OK writes settings.ini after the reset: look
   // again now and then, and tell the page when anything changed.
   static uint64_t lookedAt = 0;
@@ -466,6 +469,11 @@ void NeuralAmpModeler::OnPageMessage(const std::string& text)
     return it != m.end() && it->is_string() ? it->get<std::string>() : std::string();
   };
   const std::string type = str("type");
+  // A reply's id as the page sent it (look.js names its own, "suite-1"; the audio's are numbers).
+  const auto idOf = [&]() -> nlohmann::json {
+    const auto it = m.find("id");
+    return it != m.end() && (it->is_string() || it->is_number()) ? *it : nlohmann::json();
+  };
 
   if (type == "hello")
   {
@@ -561,6 +569,22 @@ void NeuralAmpModeler::OnPageMessage(const std::string& text)
     mLibrary.Read(num("id"), str("folder"), str("path"));
   else if (type == "libWatch")
     mLibrary.Watch(str("folder"));
+  else if (type == "suiteGet")
+  {
+    // The page asks before it draws (look.js connectSuite), maybe before its audio says hello: answer it directly.
+    mSuite.Poll(GetTickCount64());
+    mView.Post(Dump({{"type", "suiteLook"}, {"id", idOf()}, {"file", mSuite.Current()}, {"path", rig::Narrow(mSuite.Path())}}));
+  }
+  else if (type == "suiteSet")
+  {
+    // The look only, never a layout or drawing (D-CRBN-025): the page sends its sanitized prefs.
+    const auto prefs = m.find("prefs");
+    std::string error;
+    const bool ok = mSuite.Set(flag("every"), prefs != m.end() && prefs->is_object() ? *prefs : nlohmann::json::object(), error);
+    if (!ok)
+      OutputDebugStringA(("CRBN Rig: the suite look: " + error + "\n").c_str());
+    mView.Post(Dump({{"type", "suiteSet"}, {"id", idOf()}, {"ok", ok}, {"error", error}}));
+  }
 #if defined(APP_API)
   else if (type == "audioSettings" && mWindow != nullptr)
     PostMessageW(mWindow, WM_COMMAND, MAKEWPARAM(ID_PREFERENCES, 0), 0); // after this message returns, not inside it
