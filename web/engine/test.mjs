@@ -17,6 +17,11 @@
 // with no gap in the crossfade; a capture loaded and warmed while another plays, which must not change one sample of
 // what is heard; a switch to a capture still cold, which waits for its warm; and weights handed over as floats (the
 // page's way) against the same capture read from its text.
+//
+// Then the pedals (build plan R6), in both builds: two pedals in series before the amp, equal to the chain built by
+// hand stage by stage (rig_slot_render, each capture alone); a pedal stomped on and off while a note rings, a crossfade
+// against the dry signal in both switch modes; a pedal swapped for another, a crossfade or a dip, each against its
+// reference; and a capture asked to play in two places at once, refused.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -373,6 +378,159 @@ console.table(guardRows)
       worst = Math.max(worst, maxDiff(viaText, viaFloats))
     }
     row('weights as floats against the same capture as text (five kinds)', worst === 0, worst === 0 ? 'identical' : `differ by ${worst.toExponential(1)}`)
+  }
+  console.table(rows)
+}
+
+// --- pedals in series (build plan R6) ----------------------------------------------------------------------------
+// Pedals before the amp: NAM Core's small WaveNet and a standard one, then the standard WaveNet A1 as the amp. The references build the chain by hand, stage by stage: each pedal's capture alone and raw (rig_slot_render), its Drive
+// and Level applied, its switch's fade mixed with the engine's own curves, and the result played into the amp alone.
+// The amp then hears exactly what the chain gave it, so the chain must equal it to float rounding (the references
+// round each stage to 32 bits; the engine keeps 64 between stages). WaveNets only: after silence, a WaveNet's state is
+// the same however long the silence was, so a pedal that idled differs from one that played silence by nothing.
+{
+  const B = 128, PRE = 100, SW = PRE + 250, MS = 30, L = Math.round((MS / 1000) * RATE)
+  const files = { p1: 'wavenet.nam', p2: 'my_model.nam', amp: 'wavenet_a1_standard.nam' }
+  const pack = Object.fromEntries(Object.entries(files).map(([k, f]) => [k, packCapture(readFileSync(join(models, f)))]))
+  const note = pluck(110, 2.5, { t60: 6, peak: 0.5 })
+  const input = new Float32Array(PRE * B + note.length)
+  input.set(note, PRE * B)
+  const base = { guardOn: 0, autoOff: 0, gateOn: 0, eqOn: 1, switchMs: MS, warmRate: 64 }
+  const AMP = 1, PA = 12, PB = 13, PC = 14
+  const dB = (v) => 10 ** (v / 20)
+  const rows = []
+  const row = (name, ok, detail) => { rows.push({ case: name, detail, result: ok ? 'ok' : 'FAIL' }); if (!ok) failures++ }
+  const worstDB = (a, b, from = 0, to = a.length) => {
+    let m = 0, peak = 0
+    for (let i = from; i < to; i++) { m = Math.max(m, Math.abs(a[i] - b[i])); peak = Math.max(peak, Math.abs(b[i])) }
+    return m === 0 ? -Infinity : 20 * Math.log10(m / peak)
+  }
+  // The chain: these slots, these settings, and block by block what the timeline sets ({ block: { param: value } }).
+  async function chain(slots, timeline, params = {}, src = input) {
+    const e = await createEngine(wasm, RATE)
+    for (const [k, v] of Object.entries({ ...base, ...params })) e.setParam(k, v)
+    for (const [s, p] of Object.entries(slots)) { const r = e.loadSlot(Number(s), p); if (!r.ok) throw new Error(r.error) }
+    const out = new Float32Array(src.length)
+    for (let b = 0, at = 0; at < src.length; b++, at += B) {
+      for (const [k, v] of Object.entries(timeline[b] ?? {})) e.setParam(k, v)
+      e.process(src.subarray(at, at + B), out.subarray(at, at + B))
+    }
+    return { out, slots: e.slots() }
+  }
+  // One capture alone and raw, warmed first as the engine warms a slot nothing hears.
+  async function alone(packed, src) {
+    const e = await createEngine(wasm, RATE)
+    e.setParam('warmRate', 64)
+    const r = e.loadSlot(0, packed)
+    if (!r.ok) throw new Error(r.error)
+    const z = new Float32Array(B), o = new Float32Array(B)
+    for (let i = 0; i < 64 && !e.slots().ready.includes(0); i++) e.process(z, o)
+    const out = new Float32Array(src.length)
+    if (!e.renderSlot(0, src, out)) throw new Error('the slot would not play alone')
+    return out
+  }
+  const ampAlone = async (src, params = {}) => (await chain({ [AMP]: pack.amp }, { 0: { play: AMP } }, params, src)).out
+  const scaled = (a, g) => a.map((v) => v * g)
+  const silentBefore = (a, at) => { const q = a.slice(); q.fill(0, 0, at); return q }
+  const nativeChain = (params, timeline, slotFiles) => {
+    const inFile = join(out, 'pedal-in.f32'), outFile = join(out, 'pedal-out.f32'), statusFile = join(out, 'pedal-status.json')
+    writeFileSync(inFile, Buffer.from(input.buffer, input.byteOffset, input.byteLength))
+    const args = ['-', inFile, outFile, String(RATE), String(B),
+      ...Object.entries({ ...base, ...params }).flatMap(([k, v]) => ['--param', `${PARAM[k]}=${v}`]),
+      ...Object.entries(slotFiles).flatMap(([s, f]) => ['--slot', `${s}=${join(models, files[f])}`]),
+      ...Object.entries(timeline).flatMap(([b, set]) => Object.entries(set).map(([k, v]) => ['--at', `${b}:${PARAM[k]}=${v}`]).flat())]
+    args.push('--status', statusFile)
+    const r = spawnSync(exe, args, { encoding: 'utf8' })
+    if (r.status !== 0) throw new Error(`the native harness exited ${r.status} ${(r.stderr || '').trim()}`)
+    const b = readFileSync(outFile)
+    return { out: new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)), status: JSON.parse(readFileSync(statusFile, 'utf8')) }
+  }
+  const withNative = (run, params, timeline, slotFiles, detail, from = 0) => {
+    if (!native) return [true, detail]
+    const n = nativeChain(params, timeline, slotFiles)
+    let d = 0
+    for (let i = from; i < run.out.length; i++) d = Math.max(d, Math.abs(run.out[i] - n.out[i]))
+    const same = d < 1e-3 && n.status.pedalSwitchAt === run.slots.pedalSwitchAt
+    return [same, `${detail}; native ${same ? `same (${d.toExponential(1)})` : `DIFFERS (${d.toExponential(1)}, at ${n.status.pedalSwitchAt})`}`]
+  }
+
+  // Two pedals and the amp, equal to its stages one by one from the note on. Before it, the chain and the reference may
+  // differ by a capture's first breath after its warm (about 3e-6 from a standard WaveNet, -110 dBFS), heard at a
+  // different moment in each (the reference's pedals play from the first sample, the chain's fade in a block later);
+  // the amp magnifies it, so before the note it is held under -60 dBFS. Then one pedal driven 6 dB harder and 4 dB
+  // quieter out. Three gain stages magnify small differences a great deal: driving both pedals and the amp magnifies
+  // the references' 32-bit rounding about 85 dB, and a standard WaveNet as the second pedal magnifies the 7e-7 by which
+  // MSVC's and the wasm's standard WaveNet differ (the first table) to 3.6e-3 at the amp. So each property is checked
+  // where differences stay small: the series is the small WaveNet twice (two captures in two slots), which both builds
+  // play identically.
+  for (const [name, slots, timeline, params, refOf] of [
+    ['two pedals in series, then the amp', { [AMP]: 'amp', [PA]: 'p1', [PC]: 'p1' }, { 0: { play: AMP, pedal1: PA, pedal2: PC } }, {},
+      async () => alone(pack.p1, await alone(pack.p1, input))],
+    ["a pedal's Drive (+6 dB) and Level (-4 dB)", { [AMP]: 'amp', [PA]: 'p1' }, { 0: { play: AMP, pedal1: PA } }, { pedalDrive1: 6, pedalLevel1: -4 },
+      async () => scaled(await alone(pack.p1, scaled(input, dB(6))), dB(-4))],
+  ]) {
+    const run = await chain(Object.fromEntries(Object.entries(slots).map(([s, k]) => [s, pack[k]])), timeline, params)
+    const ref = await ampAlone(await refOf())
+    const err = worstDB(run.out, ref, PRE * B)
+    let early = 0
+    for (let i = 0; i < PRE * B; i++) early = Math.max(early, Math.abs(run.out[i] - ref[i]))
+    const earlyDB = 20 * Math.log10(Math.max(early, 1e-30))
+    const p = run.slots.pedals
+    const heard = Object.keys(timeline[0]).filter((k) => k.startsWith('pedal')).every((k) => p[Number(k.slice(5)) - 1].playing === timeline[0][k])
+    const [ok, detail] = withNative(run, params, timeline, slots,
+      `${err === -Infinity ? "identical to" : `${err.toFixed(0)} dB from`} the stages run one after another, from the note on (${early === 0 ? "identical" : `${earlyDB.toFixed(0)} dBFS`} before it); pedals hear ${p.map((x) => x.playing).join(', ')}`, PRE * B)
+    row(name, ok && err < -80 && earlyDB < -60 && heard, detail)
+  }
+
+  // A pedal stomped on, and off, while a note rings: a crossfade against the dry signal in both switch modes (it costs
+  // one capture, so a browser does not dip), equal to the reference, and the amp alone until the stomp.
+  for (const [on, label] of [[true, 'on'], [false, 'off']]) {
+    for (const mode of [0, 1]) {
+      const timeline = on ? { 0: { play: AMP }, [SW]: { pedal1: PA } } : { 0: { play: AMP, pedal1: PA }, [SW]: { pedal1: -1 } }
+      const run = await chain({ [AMP]: pack.amp, [PA]: pack.p1 }, timeline, { switchMode: mode })
+      const S = run.slots.pedalSwitchAt
+      const pedal = await alone(pack.p1, on ? silentBefore(input, S) : input)
+      const y = new Float32Array(input.length)
+      for (let n = 0; n < y.length; n++) {
+        const [a, b] = on ? [input[n], pedal[n]] : [pedal[n], input[n]] // going out, coming in
+        if (n < S) y[n] = a
+        else if (n >= S + L) y[n] = b
+        else { const t = (n - S) / L; y[n] = Math.cos((t * Math.PI) / 2) * a + Math.sin((t * Math.PI) / 2) * b }
+      }
+      const ref = await ampAlone(y, { switchMode: mode })
+      const err = worstDB(run.out, ref), before = worstDB(run.out, ref, 0, S)
+      const [ok, detail] = withNative(run, { switchMode: mode }, timeline, { [AMP]: 'amp', [PA]: 'p1' },
+        `starts at block ${S / B}; ${err.toFixed(0)} dB from a crossfade made by hand (${before === -Infinity ? 'identical' : `${before.toFixed(0)} dB`} before it)`)
+      row(`a pedal stomped ${label} while a note rings (${mode ? 'a browser' : 'the desktop'})`, ok && S === SW * B && err < -80, detail)
+    }
+  }
+
+  // One pedal swapped for another in its place while a note rings: a crossfade on the desktop, a dip in a browser (two
+  // captures in one stage), each equal to the reference.
+  for (const [mode, label] of [[0, 'crossfade'], [1, 'dip']]) {
+    const timeline = { 0: { play: AMP, pedal1: PA }, [SW]: { pedal1: PB } }
+    const run = await chain({ [AMP]: pack.amp, [PA]: pack.p1, [PB]: pack.p2 }, timeline, { switchMode: mode })
+    const S = run.slots.pedalSwitchAt, half = L >> 1
+    const a = await alone(pack.p1, input), b = await alone(pack.p2, silentBefore(input, mode ? S + half : S))
+    const y = new Float32Array(input.length)
+    for (let n = 0; n < y.length; n++) {
+      if (n < S) y[n] = a[n]
+      else if (n >= S + L) y[n] = b[n]
+      else if (!mode) { const t = (n - S) / L; y[n] = Math.cos((t * Math.PI) / 2) * a[n] + Math.sin((t * Math.PI) / 2) * b[n] }
+      else if (n < S + half) y[n] = 0.5 * (1 + Math.cos((Math.PI * (n - S)) / half)) * a[n]
+      else y[n] = 0.5 * (1 - Math.cos((Math.PI * (n - S - half)) / (L - half))) * b[n]
+    }
+    const ref = await ampAlone(y, { switchMode: mode })
+    const err = worstDB(run.out, ref)
+    const [ok, detail] = withNative(run, { switchMode: mode }, timeline, { [AMP]: 'amp', [PA]: 'p1', [PB]: 'p2' },
+      `starts at block ${S / B}; ${err.toFixed(0)} dB from a ${label} made by hand`)
+    row(`a pedal swapped for another while a note rings (a ${label})`, ok && S === SW * B && err < -80, detail)
+  }
+
+  // A capture plays in one place at a time: a pedal asked for the amp's slot stays as it was.
+  {
+    const run = await chain({ [AMP]: pack.amp }, { 0: { play: AMP }, 5: { pedal1: AMP } }, {}, input.subarray(0, 40 * B))
+    row('a pedal asked for the slot the amp hears', run.slots.pedals[0].playing === -1 && run.slots.playing === AMP, `pedal 1 hears ${run.slots.pedals[0].playing}, the amp ${run.slots.playing}`)
   }
   console.table(rows)
 }

@@ -9,7 +9,7 @@
 //
 // The pads are drawn as D-RIG-008 (d) picked, from the Rig Lab's drawings: footswitches (A) by default, keycaps (B) and
 // a setlist (C) under "Favourites" in the look menu (data-pads on <html>).
-import { SLOTS } from './engine.js'
+import { AMP_SLOTS as SLOTS } from './engine.js'
 import { gearWord } from './library.js'
 
 export const PADS = 10

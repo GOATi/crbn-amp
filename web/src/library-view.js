@@ -37,7 +37,7 @@ function sub(e) {
  * @param {{ lib: ReturnType<import('./library.js').createLibrary>, play: (e) => Promise<void>, playing: () => { capture: string|null, ir: string|null },
  *           toast: (text: string, kind?: string) => void, pickFiles: () => void }} o
  */
-export function createLibraryView({ lib, play, playing, toast, pickFiles }) {
+export function createLibraryView({ lib, play, playing, toast, pickFiles, dragType = null }) {
   const $ = (id) => document.getElementById(id)
   const body = $('lib-body'), chips = $('lib-chips'), q = $('lib-q'), sortSel = $('lib-sort')
   let saved = {}
@@ -56,12 +56,14 @@ export function createLibraryView({ lib, play, playing, toast, pickFiles }) {
     return `<button class="lib-star" type="button" data-star="${esc(e.p)}" aria-pressed="${on}" aria-label="${on ? 'Starred' : 'Star'}: ${esc(e.n)}" title="${on ? 'In your favourites: click to take it out' : 'Add to your favourites'}">${svg('star')}</button>`
   }
   const icon = (e) => svg(GROUP_ICON[groupOf(e)] ?? (e.k === 'ir' ? 'cab' : 'amp'))
+  // A capture can be dragged onto the board as a pedal, or onto the amp (build plan R6).
+  const drag = (e) => (dragType && e.k === 'nam' ? ' draggable="true"' : '')
   const row = (e) => `<li class="lib-row${isPlaying(e) ? ' playing' : ''}" data-p="${esc(e.p)}">${star(e)}` +
-    `<button class="lib-go" type="button" data-go="${esc(e.p)}" title="${esc(e.p)}"><span class="lib-gl">${icon(e)}</span>` +
+    `<button class="lib-go" type="button" data-go="${esc(e.p)}" title="${esc(e.p)}"${drag(e)}><span class="lib-gl">${icon(e)}</span>` +
     `<span class="lib-ln"><b>${esc(e.n)}</b><small>${esc(sub(e))}${tag(e)}</small></span>` +
     `<span class="lib-chip">${esc(gearWord(e))}</span><span class="lib-chip tone">${esc(toneWord(e))}</span></button></li>`
   const card = (e) => `<li class="lib-card${isPlaying(e) ? ' playing' : ''}" data-p="${esc(e.p)}">` +
-    `<button class="lib-go" type="button" data-go="${esc(e.p)}" title="${esc(e.p)}"><span class="lib-gl">${icon(e)}</span><b>${esc(e.n)}</b>` +
+    `<button class="lib-go" type="button" data-go="${esc(e.p)}" title="${esc(e.p)}"${drag(e)}><span class="lib-gl">${icon(e)}</span><b>${esc(e.n)}</b>` +
     `<span class="lib-m">${esc([gearWord(e), toneWord(e)].filter(Boolean).join(' · ') || sub(e))}</span>${tag(e)}</button>${star(e)}</li>`
   const more = (left) => `<li class="lib-more"><button class="btn small ghost" type="button" data-more>Show ${n(Math.min(PAGE, left))} more of ${n(left)}</button></li>`
 
@@ -214,6 +216,13 @@ export function createLibraryView({ lib, play, playing, toast, pickFiles }) {
     if (!e) return
     try { await play(e) } catch (err) { toast(`${e.n}: ${err?.message ?? err}`) }
   }
+  body.addEventListener('dragstart', (ev) => {
+    const go = ev.target.closest?.('[data-go][draggable="true"]')
+    if (!go || !dragType) return
+    ev.dataTransfer.setData(dragType, go.dataset.go)
+    ev.dataTransfer.setData('text/plain', go.dataset.go.slice(go.dataset.go.lastIndexOf('/') + 1))
+    ev.dataTransfer.effectAllowed = 'copy'
+  })
   body.addEventListener('click', (ev) => {
     const t = ev.target.closest('button')
     if (!t) return

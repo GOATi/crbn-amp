@@ -55,6 +55,11 @@ struct Meters
   int playing = -1;
   int ready = 0;
   bool switching = false;
+  // The pedals (build plan R6): six bits a pedal, rig_engine.cpp's kStatusPedals (the slot each hears plus one, and
+  // whether it fades); and the audio thread's load, the time the engine and IR took over the audio they made (1: all of
+  // it), smoothed over about a tenth of a second.
+  int pedals = 0;
+  float load = 0.0f;
 };
 
 enum class Source : int
@@ -138,7 +143,8 @@ private:
 
   std::atomic<int> mSource{static_cast<int>(Source::kNone)};
   std::atomic<float> mPeakIn{0.0f}, mPeakRaw{0.0f}, mPeakOut{0.0f};
-  std::atomic<int> mMuted{0}, mTrips{0}, mPlaying{-1}, mReady{0};
+  std::atomic<int> mMuted{0}, mTrips{0}, mPlaying{-1}, mReady{0}, mPedals{0};
+  std::atomic<float> mLoad{0.0f};
   std::atomic<bool> mSwitching{false};
   std::atomic<double> mMutedHz{0.0}, mMutedSeconds{0.0};
 

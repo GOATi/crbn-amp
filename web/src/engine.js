@@ -5,22 +5,41 @@
 /** Parameter ids, as rig_engine.cpp numbers them. `standby` and `clearTrip` (any write lifts the guard's or
  *  auto-off's mute) are the power switch's (build plan R3), sent as the person acts, never kept as settings. The slots'
  *  (build plan R5): `play` (any write asks to hear that slot, or none for -1, as soon as it is warm), `switchMode` (0 a
- *  crossfade, 1 a dip), `switchMs` (the whole switch) and `warmRate` (frames of silence warmed per frame heard). */
+ *  crossfade, 1 a dip), `switchMs` (the whole switch) and `warmRate` (frames of silence warmed per frame heard). The
+ *  pedals' (build plan R6): `pedal1` to `pedal4` (any write asks that pedal to hear a slot, or none for -1, as soon as
+ *  it is warm), and each pedal's `pedalDrive` (into its capture) and `pedalLevel` (out of it), in dB. */
 export const PARAM = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: 2, eqOn: 3, bass: 4, middle: 5, treble: 6, outputDB: 7,
   outputMode: 8, calibrateInput: 9, inputCalibrationDBu: 10, slim: 11,
   standby: 12, guardOn: 13, autoOff: 14, clearTrip: 15,
   play: 16, switchMode: 17, switchMs: 18, warmRate: 19,
+  pedal1: 20, pedal2: 21, pedal3: 22, pedal4: 23,
+  pedalDrive1: 24, pedalDrive2: 25, pedalDrive3: 26, pedalDrive4: 27,
+  pedalLevel1: 28, pedalLevel2: 29, pedalLevel3: 30, pedalLevel4: 31,
 })
 
-/** How many captures the engine holds (rig_engine.cpp's kSlots): ten pads and two for whatever plays off them. */
-export const SLOTS = 12
+/** How many captures the engine holds (rig_engine.cpp's kSlots): the amp's twelve (ten pads and two for whatever plays
+ *  off them), then two for each pedal. */
+export const SLOTS = 20
+/** The amp's slots, 0 to AMP_SLOTS - 1 (pads.js keeps them). */
+export const AMP_SLOTS = 12
+/** How many pedals the engine runs in series before the amp (rig_engine.cpp's kPedals); pedal p (from 0) keeps slots
+ *  AMP_SLOTS + 2p and the one after. */
+export const PEDALS = 4
+
+/** Six bits a pedal (rig_engine.cpp's kStatusPedals): [{ playing (a slot, or -1), switching }], pedal 1 first. */
+export function pedalsOf(bits) {
+  const out = []
+  for (let p = 0; p < PEDALS; p++) { const b = Math.floor(bits / 2 ** (6 * p)) & 63; out.push({ playing: (b & 31) - 1, switching: (b & 32) !== 0 }) }
+  return out
+}
 
 /** The settings a person keeps, at their defaults: the desktop's (NeuralAmpModeler's constructor), then the squeal
- *  guard and auto-off, both on out of the box (D-RIG-008 (e)). */
+ *  guard and auto-off, both on out of the box (D-RIG-008 (e)), then each pedal's Drive and Level (build plan R6). */
 export const DEFAULTS = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: -80, eqOn: 1, bass: 5, middle: 5, treble: 5, outputDB: 0,
   outputMode: 1, calibrateInput: 0, inputCalibrationDBu: 12, slim: 0, guardOn: 1, autoOff: 1,
+  pedalDrive1: 0, pedalDrive2: 0, pedalDrive3: 0, pedalDrive4: 0, pedalLevel1: 0, pedalLevel2: 0, pedalLevel3: 0, pedalLevel4: 0,
 })
 
 /** Why the engine muted its output (rig_guard.h's Why). */
@@ -182,6 +201,21 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
     slotInfo(slot) { return describe((k) => x.rig_slot_info(slot, INFO[k])) },
     /** Asks to hear a slot (or none, -1) as soon as it is warm. */
     play(slot) { x.rig_set_param(PARAM.play, slot) },
+    /** Asks pedal p (from 0) to hear a slot, or none (-1: it passes the signal through), as soon as it is warm. */
+    pedal(p, slot) { x.rig_set_param(PARAM.pedal1 + p, slot) },
+    /** The harness's look at one capture alone (test.mjs, R6): `input` through a warm slot that nothing hears, raw, into
+     *  `output`. False when the slot holds no warm capture, or is heard. */
+    renderSlot(slot, input, output) {
+      for (let at = 0; at < input.length; at += maxBlock) {
+        const n = Math.min(maxBlock, input.length - at)
+        blockViews()
+        inView.set(input.subarray(at, at + n))
+        if (x.rig_slot_render(slot, n) !== 0) return false
+        blockViews()
+        output.set(outView.subarray(0, n), at)
+      }
+      return true
+    },
     /** The input peak (after the input gain) since the last call. */
     takeInputPeak() { return x.rig_take_input_peak() },
     /** The output's fade and what muted it: { muted: 0 none | 1 squeal guard | 2 auto-off on silence | 3 on hum, hz,
@@ -191,9 +225,10 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
     },
     /** The slots (build plan R5): { playing (the slot heard, a switch's target from its first frame, or -1), held and
      *  ready (lists of slots holding a capture, and a warm one), wanted (a slot asked for and not yet warm, or -2),
-     *  switchAt (frames since start when the last switch began), switching }. */
+     *  switchAt (frames since start when the last switch began), switching, pedals: [{ playing, switching }] (R6), and
+     *  pedalSwitchAt (when a pedal's last switch began) }. */
     slots() {
-      return { playing: x.rig_status(6), held: bits(x.rig_status(7)), ready: bits(x.rig_status(8)), wanted: x.rig_status(9), switchAt: x.rig_status(10), switching: x.rig_status(11) === 1 }
+      return { playing: x.rig_status(6), held: bits(x.rig_status(7)), ready: bits(x.rig_status(8)), wanted: x.rig_status(9), switchAt: x.rig_status(10), switching: x.rig_status(11) === 1, pedals: pedalsOf(x.rig_status(12)), pedalSwitchAt: x.rig_status(13) }
     },
     /** The engine's linear memory, in bytes. */
     memoryBytes() { return memory.buffer.byteLength },

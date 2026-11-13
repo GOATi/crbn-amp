@@ -773,6 +773,72 @@ lived in the page's own cookie inside the app's WebView2 profile and reached not
   at the library's folder dialog (no crash recorded; the rerun passed).
 - **Not done:** steps 2 and 3 (captures in series, then rigs and variants).
 
+### R6, step 2 as built: pedals in series (2026-11-14, SYNC:RIG-029)
+
+Taken before step 3 on the owner's word (SYNC:RIG-029): the store's Salvage picture should show a pedal beside the amp,
+as the Hardware Lab drew it, and a picture shows only what the app does, so the pedals came first. Not published yet.
+
+- **The engine** (`web/engine/rig_engine.cpp`, both builds): up to four **pedal stages** in series before the amp, each a
+  `Stage` that hears one slot or none, switched exactly as the amp is (R5's switch, now one per stage). `pedal1` to
+  `pedal4` ask a pedal for a slot (-1: it passes the signal through); `pedalDrive1..4` scale its capture's input and
+  `pedalLevel1..4` its sound, in dB. A pedal's capture plays raw: no normalizing, since what a pedal puts out is what
+  the amp hears. The amp's input calibration stays at the input, before the pedals.
+  - **Slots:** twenty. The amp keeps 0 to 11 (pads.js), and pedal p keeps 12 + 2p and the one after: a new capture loads
+    into the one not heard, and the pedal fades into it once it is warm. A capture plays in one place at a time: a
+    stage asked for a slot another stage hears stays as it was.
+  - **A dip only between two captures.** A pedal stomped on or off fades against the dry signal, which costs nothing,
+    so a browser crossfades it too; a pedal swapped for another (two captures in one stage) dips in a browser, as the
+    amp does. The amp's own switch from no capture now crossfades in a browser as well.
+  - Status: `kStatusPedals` packs six bits a pedal (the slot it hears plus one, and whether it fades);
+    `kStatusPedalSwitchAt` when a pedal's last switch began. `rig_slot_render` (harness only) plays one slot alone and
+    raw, for the test's references.
+- **The desktop** (`RigDesktop.cpp`, `NeuralAmpModeler.cpp`): the meters carry `pedals` and `load`, the audio thread's
+  time over the audio it made (std::chrono around Process, smoothed over about a tenth of a second).
+- **The page:**
+  - `web/src/pedals.js`: the board (up to four places, in chain order), its loads, stomps and removals, and the
+    board's drawing. Drive and Level are ordinary settings (`DEFAULTS` in engine.js), kept and sent like the amp's
+    knobs; a new pedal starts at 0 dB on both. The board is remembered: each pedal's file in IndexedDB (`pedal0` to
+    `pedal3`, as the last capture is) and whether it is on (`crbn-rig/pedals`).
+  - **Drawn** as D-RIG-008 (d) picked, stompboxes on a board above the amp: on the Hardware drawing each kit's own pedal
+    (`hw.js pedalHTML`, its knobs now **Drive and Level**, the two that do something: a capture has no knobs of its own,
+    so the lab's Level, Drive and Tone would have been two dead knobs), on the islands and the stripe the Rig Lab's
+    stompbox. Each says what it is doing in words under its footswitch: On, Off, Loading, Cannot play. Rows (A) and chain
+    chips (C) are not built yet: step 3 adds them to the look menu.
+  - **In:** a capture dragged from the library onto a place on the board (library rows and cards are draggable now), a
+    `.nam` file dropped there, or "Add a pedal" (a file). A place with a pedal is swapped, fading from one to the
+    other. A library capture dropped on the amp plays there. A click in the library still plays the amp, as before.
+  - **Salvage:** the pedals' holders come after the amp's and the cabinet's in hw.js's order of pieces, so a pedal
+    coming or going never moves the amp's or the cabinet's cut (a web check). Each pedal wears round its footswitch
+    (D-RIG-024's `.fs` zone, as planned).
+  - **The load:** "CPU n%" beside the board while audio plays. If it stays above 98% for 1.5 s within 8 s of a pedal
+    going on, that pedal goes off again and the page says why, in words (not exercised by a check: a browser cannot be
+    made slow to order).
+- **Measured** (Box-C, headless Edge, the real AudioWorklet, the riff): NAM Core's standard WaveNet as the amp, 27%;
+  with a standard WaveNet pedal, 41%; with an A2 pedal after it, 72% (averages over about a second; R5 measured two
+  standard captures at 45% on average, 90% at the 90th percentile, so a slower machine may meet the limit with two
+  standard pedals). The desktop: 3% with a small pedal.
+- **Tests:**
+  - `web/engine/test.mjs`: 49 cases (9 new), both builds. Two pedals in series, then the amp, bit-identical from the
+    note on to the chain built stage by stage by hand (`rig_slot_render`); a pedal's Drive (+6 dB) and Level (-4 dB),
+    -94 dB from the same; a pedal stomped on and off while a note rings, in both switch modes, -107 and -99 dB from a
+    crossfade made by hand, the amp alone untouched before it; a pedal swapped for another, crossfade and dip, -95 and
+    -89 dB; a pedal asked for the amp's slot, refused. Native against wasm: within 1.4e-5 to 1.1e-4.
+  - Found: three gain stages magnify small differences a great deal. Driving two pedals and a high-gain amp magnified
+    the references' 32-bit rounding about 85 dB, and a standard WaveNet as the second pedal magnified the 7e-7 by
+    which MSVC's and the wasm's standard WaveNet differ to 3.6e-3 at the amp. So the series case uses captures both
+    builds play identically, and each property is checked where differences stay small. A capture also gives a first
+    breath of about 3e-6 (-110 dBFS) right after its warm, which the reference and the chain hear at different moments:
+    the series case is judged from the note on, and before it held under -60 dBFS.
+  - `web/check.mjs`: 74 checks (8 new). A library capture dragged onto the board is a pedal, heard while the riff
+    plays; with Salvage it never moves the amp's cut; the kit's footswitch stomps it off and on, its light and word
+    with it; its Drive is a kept setting; the load shows; the board is back after a reload; taken off, it is gone and
+    forgotten; a pedal stomped on through the real AudioWorklet equals the engine run directly (0 difference).
+  - `packaging/windows/check.mjs`: 41 checks (2 new). A library capture onto the board, heard in the native engine's
+    first pedal stage while the riff plays, stomped off and on; on the second opening, the board is back, its pedal
+    heard.
+- **Not done (step 3):** rigs (saved, exported and imported as a small JSON file of names and file references) and
+  variants on Q, W and E; moving a pedal along the board; the rows and chain-chip drawings in the look menu.
+
 ### R7. MIDI (U6)
 
 As P3-UX's U6. **Ask first:** MIDI in the browser (a second Hub permission ask for Web MIDI in the tool view, as

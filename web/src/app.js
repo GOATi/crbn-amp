@@ -15,6 +15,7 @@ import { createLibrary } from './library.js'
 import { createLibraryView } from './library-view.js'
 import { applyPrefs, connectSuite, fontOf, loadLooks, loadPrefs, lookList, looks, onSharedChange, ownPrefs, sanitize, savePrefs, setEvery, suiteReach } from './look.js'
 import { PADS, captureKey, createPadsView, createStandby } from './pads.js'
+import { createBoardView, createPedals } from './pedals.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
 const $ = (id) => document.getElementById(id)
@@ -121,6 +122,7 @@ let hardware = null
 const specs = {}
 function specOf(name) {
   if (specs[name]) return specs[name]
+  if (/^pedal(?:Drive|Level)[1-4]$/.test(name)) return (specs[name] = { min: -12, max: 12, step: 0.1, unit: 'dB', def: 0, text: (v) => fmt(v, 'dB', 0.1) })
   const el = document.querySelector(`.knob[data-param="${name}"]`)
   if (!el) return null
   const min = +el.dataset.min, max = +el.dataset.max, step = +el.dataset.step, unit = el.dataset.unit ?? ''
@@ -295,6 +297,7 @@ async function ensureAudio() {
     try { await hear() } catch (err) { toast(`${capture.name}: ${err?.message ?? err}`); await clearCapture() }
   }
   slots.fill()
+  pedals.fill()
   if (ir.bytes) {
     try { await prepareIR(); showIR() } catch (err) { toast(`${ir.name}: ${desktop ? err?.message : 'not a WAV the browser can read.'}`); await clearIR() }
   }
@@ -409,6 +412,9 @@ function parseCapture(bytes) {
 // The engine's slots, as this page keeps them, and the pads (build plan R5).
 const slots = createStandby({ audio, parse: parseCapture, onChange: (why) => { padsView?.sync(); if (why !== 'pads') syncHeard() } })
 let padsView = null, heardState = null
+// The pedals before the amp (build plan R6): pedals.js keeps the board, the engine's pedal stages play it.
+const pedals = createPedals({ audio, parse: parseCapture, onChange: (why) => { if (why === 'board') boardView?.render(); else boardView?.sync() } })
+let boardView = null
 
 async function useCapture(name, bytes, { remember = true, example = false, from = null } = {}) {
   const meta = parseCapture(bytes)
@@ -648,9 +654,10 @@ function wirePads() {
   padsView.render()
 }
 
+const LIB_DRAG = 'application/x-crbn-rig-library'
 function makeLibrary() {
   lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') { syncRigStars(); syncPads() } } })
-  libView = createLibraryView({ lib, play: playEntry, playing: playingPaths, toast, pickFiles: () => $('lib-dir').click() })
+  libView = createLibraryView({ lib, play: playEntry, playing: playingPaths, toast, pickFiles: () => $('lib-dir').click(), dragType: LIB_DRAG })
   $('lib-dir').addEventListener('change', (e) => { const f = e.target.files; if (f?.length) lib.openFiles(f).catch((err) => toast(String(err?.message ?? err))); e.target.value = '' })
   for (const slot of ['capture', 'ir']) {
     $(`${slot}-star`).addEventListener('click', () => { const f = slot === 'ir' ? ir : capture; if (f.from && f.from.key === lib.key) lib.toggleFav(f.from.p) })
@@ -665,15 +672,70 @@ function makeLibrary() {
   libView.render()
 }
 
+// ------------------------------------------------------------------------------------------------- pedals
+// The board (build plan R6, P3-UX U5): a capture dragged from the library or dropped as a file onto a place on the board
+// becomes that pedal (a place with a pedal is swapped, fading from one to the other); "Add a pedal" opens a file. Each
+// new pedal starts with its Drive and Level at 0 dB. The load beside the board is the audio thread's: past what the
+// device can run, the pedal last turned on is turned off again, and the page says why.
+let pedalAt = -1, loadShown = null, loadAt = 0, overSince = 0, lastOn = null
+const pedalName = (name) => String(name).replace(/\.nam$/i, '')
+async function addPedal(p, source) {
+  if (p < 0) { toast('The board holds four pedals: take one off first.'); return }
+  for (const w of ['Drive', 'Level']) setSetting(`pedal${w}${p + 1}`, 0)
+  lastOn = { p, at: performance.now() }
+  try { await pedals.put(p, source) } catch (err) { toast(`${source.name}: ${err?.message ?? err}`) }
+}
+const fileSource = (file, bytes) => ({ key: captureKey({ name: file.name, size: bytes.length }), name: pedalName(file.name), read: async () => bytes })
+function libSource(e) {
+  const from = { key: lib.key, p: e.p }, p = e.p
+  return { key: captureKey({ from }), name: e.n || pedalName(p.slice(p.lastIndexOf('/') + 1)), gear: e.gear, from, read: () => lib.read(p) }
+}
+function stompPedal(p, on) {
+  pedals.toggle(p, on)
+  if (pedals.board[p]?.on) lastOn = { p, at: performance.now() }
+}
+function showLoad(load) {
+  if (!Number.isFinite(load)) return
+  loadShown = loadShown === null ? load : loadShown + (load - loadShown) * 0.15
+  const now = performance.now()
+  // Past what the device can run in real time for a second and a half, soon after a pedal went on: that pedal goes off.
+  if (loadShown > 0.98 && lastOn && now - lastOn.at < 8000 && pedals.board[lastOn.p]?.on) {
+    overSince ||= now
+    if (now - overSince > 1500) {
+      const b = pedals.board[lastOn.p]
+      pedals.toggle(lastOn.p, false)
+      toast(`${b.name} is off: with it on, the amp and pedals needed ${Math.round(loadShown * 100)}% of the audio's time${desktop ? '' : ' in this browser'}, more than it has, so the sound would break up. Turn another pedal off first, or choose a lighter capture${desktop ? '' : ', or use the desktop app'}.`)
+      lastOn = null; overSince = 0
+    }
+  } else overSince = 0
+  if (now - loadAt < 250) return
+  loadAt = now
+  const out = $('load')
+  out.hidden = !audio.running
+  out.textContent = `CPU ${Math.round(loadShown * 100)}%`
+  out.classList.toggle('hot', loadShown > 0.8)
+}
+function wireBoard() {
+  boardView = createBoardView({ el: $('board-row'), pedals, knob: makeKnob, hardware, add: (p) => { pedalAt = p; $('pedal-file').click() }, stomp: (p) => stompPedal(p) })
+  $('pedal-file').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) addPedal(pedalAt >= 0 ? pedalAt : pedals.free, fileSource(file, new Uint8Array(await file.arrayBuffer())))
+  })
+  boardView.render()
+}
+
 // ------------------------------------------------------------------------------------------------- files in
-async function takeFile(file, slot) {
+async function takeFile(file, slot, place = -1) {
   const lower = file.name.toLowerCase()
+  if (slot === 'pedal' && !lower.endsWith('.nam')) { toast('A pedal is a .nam capture.'); return }
   slot ??= lower.endsWith('.nam') ? 'capture' : lower.endsWith('.wav') ? 'ir' : null
   if (!slot) { toast('Drop a .nam capture or a .wav cabinet IR.'); return }
   if (file.size > 64 * 1024 * 1024) { toast(`${file.name} is larger than a capture or an IR should be.`); return }
   const bytes = new Uint8Array(await file.arrayBuffer())
   try {
-    if (slot === 'capture') await useCapture(file.name, bytes)
+    if (slot === 'pedal') await addPedal(place >= 0 ? place : pedals.free, fileSource(file, bytes))
+    else if (slot === 'capture') await useCapture(file.name, bytes)
     else await useIR(file.name, bytes)
   } catch (err) {
     toast(`${file.name}: ${err?.message ?? err}`)
@@ -687,16 +749,28 @@ function wireFiles() {
   // Drop anywhere: a .nam is a capture, a .wav an IR; a drop zone, the amp and the cabinet take their own kind.
   let depth = 0
   const clearOver = () => { for (const d of document.querySelectorAll('.over')) d.classList.remove('over') }
-  addEventListener('dragenter', (e) => { if (e.dataTransfer?.types.includes('Files')) { depth++; document.body.classList.add('dragging') } })
+  const ours = (e) => e.dataTransfer?.types.includes('Files') || e.dataTransfer?.types.includes(LIB_DRAG)
+  addEventListener('dragenter', (e) => { if (ours(e)) { depth++; document.body.classList.add('dragging') } })
   addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; document.body.classList.remove('dragging'); clearOver() } })
-  addEventListener('dragover', (e) => { if (e.dataTransfer?.types.includes('Files')) e.preventDefault() })
+  addEventListener('dragover', (e) => { if (ours(e)) e.preventDefault() })
   addEventListener('drop', (e) => {
     e.preventDefault(); depth = 0; document.body.classList.remove('dragging'); clearOver()
-    const file = e.dataTransfer?.files[0], slot = e.target.closest?.('[data-slot]')?.dataset.slot
+    const file = e.dataTransfer?.files[0], target = e.target.closest?.('[data-slot]'), slot = target?.dataset.slot
+    const place = slot === 'pedal' ? Number(e.target.closest?.('[data-pedal]')?.dataset.pedal ?? -1) : -1
+    // A capture dragged from the library (build plan R6): onto the board it is a pedal, onto the amp it plays.
+    const libPath = e.dataTransfer?.getData(LIB_DRAG)
+    if (libPath) {
+      const entry = lib?.entries.find((x) => x.p === libPath)
+      if (!entry) return
+      if (slot === 'pedal' && entry.k === 'nam') addPedal(place >= 0 ? place : pedals.free, libSource(entry))
+      else if (slot === 'pedal') toast('A pedal is a .nam capture.')
+      else if (slot) playEntry(entry).catch((err) => toast(`${entry.n}: ${err?.message ?? err}`))
+      return
+    }
     const item = [...(e.dataTransfer?.items ?? [])].find((i) => i.kind === 'file')
     // A folder becomes the library (read during the drop: its items are gone after it); a file plays.
     const folder = item && lib ? lib.openDropped(item) : Promise.resolve(false)
-    folder.then((was) => { if (!was && file) takeFile(file, slot) }, (err) => toast(`That folder could not be read: ${err?.message ?? err}`))
+    folder.then((was) => { if (!was && file) takeFile(file, slot, place) }, (err) => toast(`That folder could not be read: ${err?.message ?? err}`))
   })
   for (const zone of document.querySelectorAll('[data-slot]')) {
     zone.addEventListener('dragover', () => zone.classList.add('over'))
@@ -750,6 +824,8 @@ function meterLoop() {
   // What the engine muted the output for: a new trip shows its banner. After the person turns the output back on,
   // reports still on their way from before are not news; a trip counted since is.
   slots.status(m.slots)
+  pedals.status(m.slots)
+  showLoad(m.load)
   const st = m.status
   if (st) {
     lastStatus = st
@@ -1220,7 +1296,7 @@ async function start() {
   for (const el of document.querySelectorAll('.knob[data-param]')) makeKnob(el)
   hardware = createHardware({
     ampHolder: $('hw-amp'), cabHolder: $('hw-cab'), spec: specOf, change: changeSetting,
-    toggle: (role, on) => (role === 'power' ? setPower(on) : setStandby(!on)),
+    toggle: (role, on, p) => (role === 'power' ? setPower(on) : role === 'foot' ? stompPedal(p, on) : setStandby(!on)),
   })
   applyAll()
   wirePowerKey()
@@ -1236,6 +1312,7 @@ async function start() {
 
   makeLibrary()
   wirePads()
+  wireBoard()
   wireFiles()
   $('play-guitar').addEventListener('click', playGuitar)
   $('play-demo').addEventListener('click', toggleDemo)
@@ -1272,6 +1349,8 @@ async function start() {
   if (c) { try { await useCapture(c.name, new Uint8Array(c.bytes), { remember: false, from: c.from ?? null }) } catch { await forgetFile('capture') } }
   const i = await recallFile('ir')
   if (i) { try { await useIR(i.name, new Uint8Array(i.bytes), { remember: false, from: i.from ?? null }) } catch { await forgetFile('ir') } }
+  // The pedals on the board last time (build plan R6).
+  if (!query.has('example')) await pedals.restore()
   // The library's folder from last time: it shows what it indexed then at once, and looks for changes behind it.
   lib.restore().catch((err) => toast(`Your library could not open: ${err?.message ?? err}`))
   // The desktop app's engine starts with the page, so the capture, IR and status are there at once. Since R3, with the

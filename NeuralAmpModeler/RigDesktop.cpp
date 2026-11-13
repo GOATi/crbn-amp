@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cfenv>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 
@@ -225,6 +226,8 @@ Meters Desktop::TakeMeters()
   m.playing = mPlaying.load(std::memory_order_relaxed);
   m.ready = mReady.load(std::memory_order_relaxed);
   m.switching = mSwitching.load(std::memory_order_relaxed);
+  m.pedals = mPedals.load(std::memory_order_relaxed);
+  m.load = mLoad.load(std::memory_order_relaxed);
   return m;
 }
 
@@ -243,6 +246,7 @@ void Desktop::ApplyChanges()
 
 void Desktop::Process(double** inputs, int nInputs, double** outputs, int nOutputs, int nFrames)
 {
+  const auto started = std::chrono::steady_clock::now();
   std::fenv_t fe;
   std::feholdexcept(&fe);
   disable_denormals();
@@ -311,6 +315,15 @@ void Desktop::Process(double** inputs, int nInputs, double** outputs, int nOutpu
   mPlaying.store(static_cast<int>(rig_status(6)), std::memory_order_relaxed);
   mReady.store(static_cast<int>(rig_status(8)), std::memory_order_relaxed);
   mSwitching.store(rig_status(11) > 0.5, std::memory_order_relaxed);
+  mPedals.store(static_cast<int>(rig_status(12)), std::memory_order_relaxed);
   std::feupdateenv(&fe);
+  // The load: this block's time over the audio it made, smoothed (build plan R6: the page shows it beside the pedals).
+  if (nFrames > 0)
+  {
+    const double took = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+    const double share = took * mSampleRate / nFrames;
+    const float was = mLoad.load(std::memory_order_relaxed);
+    mLoad.store(static_cast<float>(was + (share - was) * std::min(1.0, 0.05 * nFrames / 128.0)), std::memory_order_relaxed);
+  }
 }
 } // namespace rig

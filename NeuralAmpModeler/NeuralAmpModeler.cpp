@@ -8,7 +8,7 @@
 //                the library (build plan R4, RigLibrary.h): {type:'libPick', id, start}  {type:'libList', id, folder}
 //                {type:'libMeta', id, folder, paths}  {type:'libRead', id, folder, path}  {type:'libWatch', folder}
 //   app -> page  {type:'ready' | 'status', sampleRate, running, driver, input, output, buffer, latencyMs, ...}
-//                {type:'meter', input, raw, output, muted, hz, trips, seconds, playing, ready, switching}
+//                {type:'meter', input, raw, output, muted, hz, trips, seconds, playing, ready, switching, pedals, load}
 //                {type:'slot', id, ok, info | error}
 //                {type:'ir', id, ok, ...}
 //                {type:'demo', id, ok, error}
@@ -19,7 +19,9 @@
 // frequency; `trips` counts them, so the page sees each one. Standby, the guard and auto-off are engine parameters.
 // The engine holds up to twelve captures in slots (build plan R5): `slot` builds and warms one here, off the audio
 // thread, and the page asks for a slot with the engine's `play` parameter; `playing` is the slot heard, `ready` a bit
-// per slot holding a warm capture, `switching` whether a crossfade is under way.
+// per slot holding a warm capture, `switching` whether a crossfade is under way. Pedals (build plan R6) are slots too,
+// asked for with the engine's `pedal1` to `pedal4` parameters; `pedals` is six bits a pedal (rig_engine.cpp's
+// kStatusPedals), and `load` the audio thread's share of real time.
 // `samples` are float32 little-endian in base64: an IR's first channel, or the riff, at its own rate, decoded by the
 // page as the web version decodes them.
 #include <algorithm>
@@ -319,12 +321,12 @@ void NeuralAmpModeler::OnIdle()
   {
     mMetersAt = now;
     const rig::Meters m = mEngine.TakeMeters();
-    char json[320];
+    char json[400];
     std::snprintf(json, sizeof json,
                   "{\"type\":\"meter\",\"input\":%.6g,\"raw\":%.6g,\"output\":%.6g,\"muted\":%d,\"hz\":%.6g,\"trips\":%d,"
-                  "\"seconds\":%.6g,\"playing\":%d,\"ready\":%d,\"switching\":%s}",
+                  "\"seconds\":%.6g,\"playing\":%d,\"ready\":%d,\"switching\":%s,\"pedals\":%d,\"load\":%.4g}",
                   m.input, m.raw, m.output, m.muted, m.hz, m.trips, m.seconds, m.playing, m.ready,
-                  m.switching ? "true" : "false");
+                  m.switching ? "true" : "false", m.pedals, m.load);
     Post(json);
   }
 }

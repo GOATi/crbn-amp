@@ -337,6 +337,22 @@ if (!process.argv.includes('--no-app')) {
       await js("document.body.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft', bubbles: true })); true")
       await until(`${padState(0)} === 'playing'`, 8000, 'the left arrow')
       check('the pads: a real 2 switches to pad 2 while the riff plays, in the native engine, and the left arrow back', true, `${pads}; Playing ${keyMs} ms after the key arrived (the engine's report rides on the meters, about every 33 ms)`)
+
+      // The pedals (build plan R6): a capture dragged from the library onto the board, built and warmed by the app and
+      // heard in the native engine's first pedal stage while the riff plays; its footswitch stomps it off and on, and the
+      // board shows the audio thread's load. It stays on the board for the second opening.
+      const pedalState = "document.querySelector('#board-row .pspot[data-pedal=\"0\"]')?.dataset.state"
+      await js("(() => { const dt = new DataTransfer(); dt.setData('application/x-crbn-rig-library', 'NAM Core/wavenet.nam'); document.querySelector('#board-row .pspot.empty').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); return true })()")
+      await until(`${pedalState} === 'on'`, 15000, 'the pedal heard in the native engine')
+      const outWith = await measure()
+      await js("document.querySelector('#board-row .hw.pedal [data-role=\"foot\"]').click(); true")
+      await until(`${pedalState} === 'off'`, 8000, 'the pedal stomped off')
+      const outWithout = await measure()
+      await js("document.querySelector('#board-row .hw.pedal [data-role=\"foot\"]').click(); true")
+      await until(`${pedalState} === 'on'`, 8000, 'the pedal stomped on again')
+      const load = await js("document.getElementById('load').textContent")
+      check('a pedal from the library plays in the native engine’s first pedal stage; its footswitch stomps it off and on', /^CPU \d+%$/.test(load) && outWith.output > 1e-4 && outWithout.output > 1e-4 && Math.abs(20 * Math.log10(outWith.output / outWithout.output)) > 0.1,
+        `${await js("document.querySelector('#board-row .pname')?.textContent")}; output ${outWith.output.toExponential(2)} on, ${outWithout.output.toExponential(2)} off; ${load}`)
       await js("document.getElementById('play-demo').click(); true")
 
       writeFileSync(join(libDir, 'Copied in.nam'), template)
@@ -431,6 +447,13 @@ if (!process.argv.includes('--no-app')) {
       if (/^Test Model (playing|ready) \/ Test LSTM (playing|ready)$/.test(padsBack)) break
     }
     check('opened again, the pads are back, loaded and warm', /^Test Model (playing|ready) \/ Test LSTM (playing|ready)$/.test(padsBack), padsBack)
+    // and the board, its pedal heard again in the native engine (R6)
+    let boardBack = ''
+    for (const end = Date.now() + 15000; Date.now() < end; await sleep(200)) {
+      boardBack = (await js2("(() => { const s = document.querySelector('#board-row .pspot[data-pedal=\"0\"]'); return s ? `${s.querySelector('.pname')?.textContent} ${s.dataset.state}` : '' })()")) ?? ''
+      if (boardBack === 'Test Model on') break
+    }
+    check('opened again, the board is back, its pedal heard', boardBack === 'Test Model on', boardBack || 'no board')
     await js2("document.getElementById('stop').click(); true")
   } catch (err) {
     check('the second opening ran to the end', false, err?.message ?? err)

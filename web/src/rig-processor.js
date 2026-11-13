@@ -3,8 +3,8 @@
 // written to every output channel. The page talks to it through the port:
 //   in:  { type: 'param', name, value }   { type: 'slot', id, slot, text, weights }   { type: 'clearSlot', id, slot }
 //   out: { type: 'ready', sampleRate }   { type: 'slot', id, ok, info | error, busy }
-//        { type: 'meter', input, raw, status, slots }   (status: what muted the output and why; slots: which is heard,
-//        which are warm; engine.js)
+//        { type: 'meter', input, raw, status, slots, load }   (status: what muted the output and why; slots: which is
+//        heard, which are warm, and the pedals (build plan R6); engine.js; load: the engine's share of real time)
 //        { type: 'log', line }   { type: 'error', error }
 // Standby, the squeal guard and auto-off are the engine's (build plan R3), set as params like the rest; so is `play`,
 // the slot to hear (build plan R5). A slot's capture comes as engine.js's packCapture made it on the page (its JSON
@@ -12,6 +12,9 @@
 import { createEngine } from './engine.js'
 
 const METER_EVERY = 12 // render quanta between meter messages (about 30 a second at 48 kHz)
+// The clock for the load: performance.now where the worklet has it, else Date.now, whose whole milliseconds still
+// average out over many quanta (a quantum's chance of a tick is its length).
+const now = typeof globalThis.performance?.now === 'function' ? () => globalThis.performance.now() : () => Date.now()
 
 class RigProcessor extends AudioWorkletProcessor {
   constructor(options) {
@@ -22,6 +25,7 @@ class RigProcessor extends AudioWorkletProcessor {
     this.wet = new Float32Array(128)
     this.rawPeak = 0
     this.quanta = 0
+    this.busy = 0 // milliseconds the engine took since the last meter message
     this.port.onmessage = (e) => (this.engine ? this.handle(e.data) : this.queue.push(e.data))
     createEngine(options.processorOptions.wasm, sampleRate, (line) => this.port.postMessage({ type: 'log', line }))
       .then((engine) => {
@@ -57,12 +61,16 @@ class RigProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < n; i++) { const a = Math.abs(mono[i]); if (a > raw) raw = a }
     this.rawPeak = raw
 
+    const t0 = now()
     this.engine.process(mono, this.wet)
+    this.busy += now() - t0
     for (const ch of out) ch.set(this.wet)
 
     if (++this.quanta >= METER_EVERY) {
+      const load = this.busy / ((this.quanta * n * 1000) / sampleRate)
       this.quanta = 0
-      this.port.postMessage({ type: 'meter', input: this.engine.takeInputPeak(), raw: this.rawPeak, status: this.engine.status(), slots: this.engine.slots() })
+      this.busy = 0
+      this.port.postMessage({ type: 'meter', input: this.engine.takeInputPeak(), raw: this.rawPeak, status: this.engine.status(), slots: this.engine.slots(), load })
       this.rawPeak = 0
     }
     return true

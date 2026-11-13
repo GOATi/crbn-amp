@@ -173,9 +173,9 @@ int main(int argc, char** argv)
     FILE* s = std::fopen(statusPath, "wb");
     if (s == nullptr)
       return 1;
-    std::fprintf(s, "{\"muted\":%.17g,\"hz\":%.17g,\"trips\":%.17g,\"seconds\":%.17g,\"at\":%.17g,\"gain\":%.17g,\"playing\":%.17g,\"switchAt\":%.17g}\n",
+    std::fprintf(s, "{\"muted\":%.17g,\"hz\":%.17g,\"trips\":%.17g,\"seconds\":%.17g,\"at\":%.17g,\"gain\":%.17g,\"playing\":%.17g,\"switchAt\":%.17g,\"pedals\":%.17g,\"pedalSwitchAt\":%.17g}\n",
                  rig_status(0), rig_status(1), rig_status(2), rig_status(3), rig_status(4), rig_status(5), rig_status(6),
-                 rig_status(10));
+                 rig_status(10), rig_status(12), rig_status(13));
     std::fclose(s);
   }
   return 0;

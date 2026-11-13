@@ -489,6 +489,47 @@ dialog p { color: var(--text-dim); }
 dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 .notices { padding-left: 18px; color: var(--text-dim); }
 
+/* the pedals before the amp (build plan R6, P3-UX U5): stompboxes on a board above the amp, as D-RIG-008 (d) picked; the
+   kit's own pedal on the Hardware drawing (hw.js), the Rig Lab's stompbox on the islands and the stripe. Each says what
+   it is doing in words under its footswitch: On, Off, Loading, Cannot play. */
+.board { display: grid; gap: 8px; margin-bottom: 12px; border-radius: var(--r-sm); transition: outline-color var(--d1); }
+.board.over { outline: 2px dashed var(--accent); outline-offset: 4px; }
+.board-head { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.board-head .sp { flex: 1; }
+.board-meta { font-size: calc(11px * var(--d-scale)); color: var(--text-faint); white-space: nowrap; }
+.load { font: 500 var(--fs-xs) var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; padding: 2px 7px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line-2); }
+.load.hot { color: var(--text); box-shadow: inset 0 0 0 1.5px var(--warn, var(--bad)); }
+.board-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; min-width: 0; }
+.pspot { position: relative; flex: none; display: flex; flex-direction: column; }
+.pspot > .rig-hw { display: none; }
+:root[data-amp='b'] .pspot > .stomp { display: none; }
+:root[data-amp='b'] .pspot > .rig-hw { display: flex; flex-direction: column; }
+.pspot.empty { width: 122px; min-height: 176px; display: grid; place-content: center; justify-items: center; gap: 6px; padding: 10px; border-radius: var(--r-sm); border: 1.5px dashed var(--line-2); color: var(--text-faint); text-align: center; }
+:root[data-amp='b'] .pspot.empty { width: 154px; min-height: 226px; border-radius: 10px; }
+.pspot.empty small { font-size: var(--fs-xs); line-height: 1.3; }
+.padd { display: grid; justify-items: center; gap: 2px; border: 0; background: none; color: var(--text-dim); font: 600 var(--fs-s) var(--font-ui); cursor: pointer; padding: 6px 8px; border-radius: var(--r-sm); }
+.padd b { font: 400 26px/1 var(--font-ui); }
+.padd:hover, .padd:focus-visible { color: var(--text); background: var(--sel); }
+.pspot .prm { position: absolute; top: -8px; right: -8px; z-index: 6; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); color: var(--text-dim); font: 600 15px/1 var(--font-ui); cursor: pointer; opacity: 0; transition: opacity var(--d1); }
+.pspot:is(:hover, :focus-within) .prm, .prm:focus-visible { opacity: 1; }
+@media (hover: none) { .pspot .prm { opacity: 1; } }
+.stomp { width: 122px; min-height: 176px; display: grid; justify-items: center; align-content: start; gap: 6px; padding: 10px 8px 8px; border-radius: var(--r-sm); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); }
+.stomp .sk { display: flex; gap: 2px; }
+.stomp .knob { min-width: 0; }
+.stomp .knob svg { width: 42px; height: 42px; }
+.stomp .led { width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+.pspot[data-state='on'] .stomp .led { background: var(--accent); box-shadow: 0 0 8px 1px color-mix(in oklab, var(--accent) 70%, transparent); }
+.stomp .sn { max-width: 100%; font: 600 var(--fs-xs)/1.2 var(--font-ui); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stomp .fs { width: 32px; height: 32px; margin-top: auto; border-radius: 50%; border: 0; cursor: pointer; background: radial-gradient(circle at 40% 35%, #fafafa, #9b9ba0 55%, #55555b); box-shadow: 0 0 0 3px var(--line-2), 0 2px 3px rgba(0, 0, 0, .4); }
+.stomp .fs:active { transform: scale(.94); }
+.stomp .fs:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pspot .st { font: 600 calc(9.5px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; color: var(--text-dim); }
+.pspot[data-state='off'] .st { color: var(--text-faint); }
+.pspot[data-state='failed'] .st { color: var(--bad); }
+/* the kit's pedal: its name fits its face, and its state word sits under it */
+.pspot > .rig-hw .pname { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.pspot > .rig-hw::after { content: attr(data-word); display: block; margin-top: 6px; text-align: center; font: 600 calc(9.5px * var(--d-scale)) / 1 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; color: var(--text-dim); }
+
 /* favourites on standby (build plan R5, P3-UX U4): ten pads on keys 1 to 0, drawn as footswitches (A, the default),
    keycaps (B) or a setlist (C) (D-RIG-008 (d); the Rig Lab's drawings). A pad says what it is doing in words: Playing,
    Switching, Loading, Cannot play. */

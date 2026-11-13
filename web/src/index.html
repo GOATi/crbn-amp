@@ -151,6 +151,19 @@ try {
       <button class="btn small" id="banner-on" type="button" aria-keyshortcuts="Space">Turn back on <kbd>Space</kbd></button>
     </div>
 
+    <!-- Pedals before the amp (build plan R6, P3-UX U5; drawn as D-RIG-008 (d) picked: stompboxes on a board above the
+         amp). Up to four captures in series, each stomped on and off with its footswitch; pedals.js draws and fills it. -->
+    <section class="board" id="board" aria-labelledby="board-title" data-slot="pedal">
+      <header class="board-head">
+        <h2 class="sec" id="board-title">Pedals</h2>
+        <span class="board-meta">Before the amp, left to right</span>
+        <span class="sp"></span>
+        <output class="load" id="load" title="How much of the audio thread's time the engine needs: the amp and each pedal on add to it" hidden></output>
+      </header>
+      <div class="board-row" id="board-row" role="group" aria-label="Pedals, in the order the signal meets them"></div>
+      <input type="file" accept=".nam" hidden id="pedal-file">
+    </section>
+
     <div class="chain">
       <!-- Power C, the big button (shown when picked in the look menu). -->
       <button class="pw-big" type="button" data-pw-main data-power-only="c" aria-pressed="true" aria-keyshortcuts="Space">

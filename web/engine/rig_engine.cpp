@@ -20,6 +20,13 @@
 // once (rig_stage_slot). A slot left behind by a switch is warmed again before it can be heard, so nothing of what it
 // played last comes back. Held captures cost memory, not time: only the one heard (two during a crossfade) plays.
 //
+// Pedals (build plan R6, P3-UX U5): up to kPedals captures in series before the amp, each a stage that hears one slot or
+// none (the signal passes through), switched as the amp is: a pedal stomped on or off, or swapped for another, fades over
+// kSwitchMs. A dip happens only where two captures would otherwise play at once in a browser; a pedal turned on or off
+// fades against the dry signal, which costs nothing. Each pedal has its own Drive (the level into its capture) and Level
+// (out of it), in dB; its capture plays raw (no normalizing: what a pedal puts out is what the amp hears). The amp's
+// input calibration stays at the input, before the pedals.
+//
 // Threading: everything here runs on the audio rendering thread, one block at a time; in a browser a capture is built
 // on that thread too (rig_slot_load), as the page sends it. The desktop app (build plan R2, D-RIG-017) also compiles
 // this file, natively, and its page talks to it from the UI thread while the driver's thread plays: for that, a native
@@ -62,7 +69,11 @@ constexpr int kMaxBlock = 1024;
 constexpr int kModelBlock = 128;
 constexpr double kDCBlockerFrequency = 5.0;
 constexpr double kFadeSeconds = 0.02; // Standby's and the guard's fade (D-RIG-016 (c))
-constexpr int kSlots = 12; // ten pads, and two for whatever plays off them (the page's choice; R5)
+// Ten pads and two for whatever plays off them (the page's choice; R5), then two for each pedal (R6): the page keeps
+// slots 0 to 11 for the amp and the rest for the pedals, though the engine lets any stage hear any slot not in another.
+constexpr int kSlots = 20;
+constexpr int kPedals = 4;
+constexpr int kAmp = kPedals; // the stages: the pedals in the order the signal meets them, then the amp
 constexpr int kNone = -1; // no capture: the dry signal, as the desktop always played it
 constexpr int kNoRequest = -2;
 constexpr double kHalfPi = 1.5707963267948966;
@@ -91,7 +102,10 @@ enum Param : int
   kSwitchMs, // how long a switch takes, all of it (a dip spends half going out and half coming in)
   kWarmRate, // frames of silence warmed per frame heard (twice that while a switch waits; four times, and at least 1,
              // while nothing is heard)
-  kNumParams
+  kPedal1, // any write asks pedal 1 to hear this slot, or none (-1: it passes the signal through); pedals 2 to 4 follow
+  kPedalDrive1 = kPedal1 + kPedals, // each pedal's level into its capture, in dB
+  kPedalLevel1 = kPedalDrive1 + kPedals, // and out of it
+  kNumParams = kPedalLevel1 + kPedals
 };
 
 // What rig_info reports about the loaded capture.
@@ -124,8 +138,10 @@ enum Status : int
   kStatusHeld, // a bit per slot holding a capture
   kStatusReady, // a bit per slot holding a warm capture
   kStatusWanted, // a slot asked for and not yet warm (-2: none)
-  kStatusSwitchAt, // when the last switch began, in frames since rig_init
-  kStatusSwitching, // 1 while a switch fades
+  kStatusSwitchAt, // when the amp's last switch began, in frames since rig_init
+  kStatusSwitching, // 1 while the amp's switch fades
+  kStatusPedals, // six bits a pedal, pedal 1 lowest: the slot it hears plus one (0: none) in five, and 1 while it fades
+  kStatusPedalSwitchAt, // when a pedal's last switch began, in frames since rig_init
 };
 
 double DBToAmp(const double db) { return std::pow(10.0, db / 20.0); }
@@ -151,13 +167,10 @@ struct Slot
   }
 };
 
-struct Engine
+// A place in the chain that hears one slot or none: a pedal, or the amp (R6). A switch fades from the slot it heard to
+// the one asked for, as the amp's always did (R5).
+struct Stage
 {
-  double sampleRate = 48000.0;
-  double params[kNumParams] = {0.0, 1.0, -80.0, 1.0, 5.0, 5.0, 5.0, 0.0, 1.0, 0.0, 12.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                               -1.0, 0.0, 30.0, 0.25};
-
-  Slot slots[kSlots];
   int playing = kNone; // the slot heard; during a switch, the one coming in
   int from = kNone; // during a switch, the one going out (kNone: the dry signal)
   bool switching = false;
@@ -166,6 +179,19 @@ struct Engine
   int switchLen = 0; // its length, in frames
   int want = kNoRequest; // a slot asked for, waiting until it is warm
   uint64_t switchStarted = 0;
+  bool Has(const int s) const { return s >= 0 && (s == playing || (switching && s == from)); }
+};
+
+struct Engine
+{
+  double sampleRate = 48000.0;
+  // The pedals' parameters start at 0: a request reads nothing stored, and 0 dB is each pedal's Drive and Level.
+  double params[kNumParams] = {0.0, 1.0, -80.0, 1.0, 5.0, 5.0, 5.0, 0.0, 1.0, 0.0, 12.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+                               -1.0, 0.0, 30.0, 0.25};
+
+  Slot slots[kSlots];
+  Stage stages[kPedals + 1];
+  Stage& amp = stages[kAmp];
 
   dsp::noise_gate::Trigger gateTrigger;
   dsp::noise_gate::Gain gateGain;
@@ -176,8 +202,9 @@ struct Engine
   float inBlock[kMaxBlock] = {};
   float outBlock[kMaxBlock] = {};
   // The DSP runs in NAM_SAMPLE / DSP_SAMPLE (double, as on the desktop). `aside` holds the outgoing capture's sound
-  // during a crossfade; `scaled` a capture's input when its input calibration differs from the one coming in.
-  std::vector<NAM_SAMPLE> in, out, aside, scaled;
+  // during a crossfade; `scaled` a capture's input when it is scaled (an input calibration that differs from the one
+  // coming in, or a pedal's Drive); `pedalA` and `pedalB` the pedals' sound, one stage after another.
+  std::vector<NAM_SAMPLE> in, out, aside, scaled, pedalA, pedalB;
   NAM_SAMPLE* inPtr[1] = {nullptr};
   NAM_SAMPLE* outPtr[1] = {nullptr};
 
@@ -199,6 +226,8 @@ struct Engine
     out.assign(kMaxBlock, 0.0);
     aside.assign(kMaxBlock, 0.0);
     scaled.assign(kMaxBlock, 0.0);
+    pedalA.assign(kMaxBlock, 0.0);
+    pedalB.assign(kMaxBlock, 0.0);
     inPtr[0] = in.data();
     outPtr[0] = out.data();
     gateTrigger.AddListener(&gateGain);
@@ -225,8 +254,11 @@ struct Engine
         s.model->PlaySilence(s.model->WarmFrames());
         s.Warmed();
       }
-    switching = false;
-    from = kNone;
+    for (Stage& st : stages)
+    {
+      st.switching = false;
+      st.from = kNone;
+    }
   }
 
   void ApplyToneStack()
@@ -236,7 +268,30 @@ struct Engine
     toneStack.SetParam("treble", params[kTreble]);
   }
 
-  bool Busy(const int s) const { return s == playing || (switching && s == from); }
+  bool HasCapture(const int s) const { return s >= 0 && slots[s].model != nullptr; }
+  // A slot heard, or fading, in any stage: it may not be loaded, cleared or warmed.
+  bool Busy(const int s) const
+  {
+    for (const Stage& st : stages)
+      if (st.Has(s))
+        return true;
+    return false;
+  }
+  // A capture plays in one place at a time: its histories are one signal's.
+  bool HeldElsewhere(const int s, const Stage& here) const
+  {
+    for (const Stage& st : stages)
+      if (&st != &here && st.Has(s))
+        return true;
+    return false;
+  }
+  bool AnySwitching() const
+  {
+    for (const Stage& st : stages)
+      if (st.switching)
+        return true;
+    return false;
+  }
 
   // The input calibration a capture asks for, as a gain: 1 unless calibrating and it knows its input level.
   double InputCal(const int s) const
@@ -269,10 +324,11 @@ struct Engine
         sm->SetSlimmableSize(params[kSlim]);
   }
 
-  // Plays n frames of src through slot s (the dry signal for none) into dst, at its own output gain.
-  void Run(const int s, NAM_SAMPLE* src, NAM_SAMPLE* dst, const double inScale, const int n)
+  // Plays n frames of src through slot s (the dry signal for none) into dst, its input scaled by inScale and its sound
+  // by outScale (the amp's own output gain, or a pedal's Level); the dry signal is neither.
+  void Run(const int s, NAM_SAMPLE* src, NAM_SAMPLE* dst, const double inScale, const double outScale, const int n)
   {
-    if (s < 0 || !slots[s].model)
+    if (!HasCapture(s))
     {
       std::copy(src, src + n, dst);
       return;
@@ -290,42 +346,105 @@ struct Engine
       NAM_SAMPLE* op[1] = {dst + at};
       slots[s].model->process(ip, op, std::min(kModelBlock, n - at));
     }
-    const double g = OutputNorm(s), offset = slots[s].offset;
+    const double offset = slots[s].offset;
     for (int i = 0; i < n; i++)
-      dst[i] = g * (dst[i] - offset);
+      dst[i] = outScale * (dst[i] - offset);
   }
 
-  // A switch asked for starts at the start of a block, once its capture is warm.
-  void TakeRequest()
+  // A switch asked for starts at the start of a block, once its capture is warm. It is a dip only where two captures
+  // would play at once (a browser's switch mode, and a capture on both sides); against the dry signal it is a crossfade.
+  void TakeRequest(Stage& st, const bool isAmp)
   {
-    if (switching || want == kNoRequest)
+    if (st.switching || st.want == kNoRequest)
       return;
-    const int to = want;
-    if (to == playing)
+    const int to = st.want;
+    if (to == st.playing || (to != kNone && HeldElsewhere(to, st)))
     {
-      want = kNoRequest;
+      st.want = kNoRequest;
       return;
     }
     if (to != kNone && !slots[to].Ready())
       return;
-    want = kNoRequest;
-    from = playing;
-    playing = to;
-    ApplySlim(playing);
-    switching = true;
-    dip = params[kSwitchMode] > 0.5;
-    switchAt = 0;
-    switchLen = std::max(2, static_cast<int>(std::lround(std::clamp(params[kSwitchMs], 1.0, 500.0) / 1000.0 * sampleRate)));
-    switchStarted = frames;
+    st.want = kNoRequest;
+    st.from = st.playing;
+    st.playing = to;
+    if (isAmp)
+      ApplySlim(to);
+    st.switching = true;
+    st.dip = params[kSwitchMode] > 0.5 && HasCapture(st.from) && HasCapture(to);
+    st.switchAt = 0;
+    st.switchLen = std::max(2, static_cast<int>(std::lround(std::clamp(params[kSwitchMs], 1.0, 500.0) / 1000.0 * sampleRate)));
+    st.switchStarted = frames;
   }
 
   // The capture left behind is warmed again before it can be heard, so nothing of what it played last comes back.
-  void EndSwitch()
+  void EndSwitch(Stage& st)
   {
-    if (from >= 0 && slots[from].model)
-      slots[from].warmLeft = slots[from].model->WarmFrames();
-    from = kNone;
-    switching = false;
+    if (HasCapture(st.from))
+      slots[st.from].warmLeft = slots[st.from].model->WarmFrames();
+    st.from = kNone;
+    st.switching = false;
+  }
+
+  // Plays a stage: the slot it hears, or a switch's fade from one to the other. `inOf(s)` and `outOf(s)` scale a slot's
+  // input and sound (Run).
+  template <typename In, typename Out>
+  void RunStage(Stage& st, NAM_SAMPLE* x, NAM_SAMPLE* dst, const int nFrames, In inOf, Out outOf)
+  {
+    if (!st.switching)
+      Run(st.playing, x, dst, inOf(st.playing), outOf(st.playing), nFrames);
+    else if (!st.dip)
+    {
+      // A crossfade: both play, the one going out on a cosine and the one coming in on a sine (equal power: two
+      // different captures of one guitar are only partly alike, so neither dips in the middle).
+      Run(st.from, x, aside.data(), inOf(st.from), outOf(st.from), nFrames);
+      Run(st.playing, x, dst, inOf(st.playing), outOf(st.playing), nFrames);
+      for (int i = 0; i < nFrames; i++)
+      {
+        const int at = st.switchAt + i;
+        if (at >= st.switchLen)
+          break;
+        const double t = static_cast<double>(at) / st.switchLen;
+        dst[i] = std::cos(t * kHalfPi) * aside[i] + std::sin(t * kHalfPi) * dst[i];
+      }
+      st.switchAt += nFrames;
+      if (st.switchAt >= st.switchLen)
+        EndSwitch(st);
+    }
+    else
+    {
+      // A dip: the one going out fades alone, then the one coming in fades in alone, from silence (it heard none of the
+      // first half), each on a raised cosine; one capture plays at a time.
+      const int half = st.switchLen / 2, rest = st.switchLen - half;
+      int i = 0;
+      while (i < nFrames)
+      {
+        if (st.switchAt < half)
+        {
+          const int k = std::min(nFrames - i, half - st.switchAt);
+          Run(st.from, x + i, dst + i, inOf(st.from), outOf(st.from), k);
+          for (int j = 0; j < k; j++)
+            dst[i + j] *= 0.5 * (1.0 + std::cos(2.0 * kHalfPi * (st.switchAt + j) / half));
+          st.switchAt += k;
+          i += k;
+        }
+        else
+        {
+          const int k = nFrames - i;
+          Run(st.playing, x + i, dst + i, inOf(st.playing), outOf(st.playing), k);
+          for (int j = 0; j < k; j++)
+          {
+            const int at = st.switchAt - half + j;
+            if (at < rest)
+              dst[i + j] *= 0.5 * (1.0 - std::cos(2.0 * kHalfPi * at / rest));
+          }
+          st.switchAt += k;
+          i += k;
+        }
+      }
+      if (st.switchAt >= st.switchLen)
+        EndSwitch(st);
+    }
   }
 
   // Captures not heard play silence until they are warm: the one asked for first, then the rest in slot order. Each
@@ -335,7 +454,7 @@ struct Engine
   double warmCredit = 0.0;
   void Warm(const int n)
   {
-    if (switching)
+    if (AnySwitching())
       return;
     bool cold = false;
     for (const Slot& s : slots)
@@ -345,17 +464,23 @@ struct Engine
       warmCredit = 0.0;
       return;
     }
-    // Faster while nothing can be heard to stumble (no capture, or the output faded out: standby, or muted), and twice
-    // as fast while a switch waits for this warm (a click in the library, a pad not yet ready).
+    // Faster while nothing can be heard to stumble (no capture in any stage, or the output faded out: standby, or
+    // muted), and twice as fast while a switch waits for this warm (a click in the library, a pad not yet ready, a pedal).
+    bool heard = false, waiting = false;
+    for (const Stage& st : stages)
+    {
+      heard = heard || st.playing != kNone;
+      waiting = waiting || (HasCapture(st.want) && !slots[st.want].Ready());
+    }
     double rate = std::clamp(params[kWarmRate], 0.0, 64.0);
-    if (playing == kNone || fade <= 0.0)
+    if (!heard || fade <= 0.0)
       rate = std::max(4.0 * rate, 1.0);
-    else if (want >= 0 && slots[want].model && !slots[want].Ready())
+    else if (waiting)
       rate *= 2.0;
     warmCredit = std::min(warmCredit + rate * n, 64.0 * kMaxBlock);
     const auto warmOne = [&](const int s) {
       Slot& sl = slots[s];
-      while (warmCredit >= kModelBlock && sl.model && sl.warmLeft > 0 && s != playing)
+      while (warmCredit >= kModelBlock && sl.model && sl.warmLeft > 0 && !Busy(s))
       {
         const int k = std::min(kModelBlock, sl.warmLeft);
         sl.model->PlaySilence(k);
@@ -365,16 +490,21 @@ struct Engine
           sl.Warmed();
       }
     };
-    if (want >= 0)
-      warmOne(want);
+    // the amp's request first, then the pedals' in chain order, then the rest in slot order
+    if (amp.want >= 0)
+      warmOne(amp.want);
+    for (int k = 0; k < kPedals; k++)
+      if (stages[k].want >= 0)
+        warmOne(stages[k].want);
     for (int s = 0; s < kSlots && warmCredit >= kModelBlock; s++)
       warmOne(s);
   }
 
   void Process(const int nFrames)
   {
-    TakeRequest();
-    const double calIn = InputCal(playing);
+    for (int k = 0; k <= kAmp; k++)
+      TakeRequest(stages[k], k == kAmp);
+    const double calIn = InputCal(amp.playing);
     const double inGain = DBToAmp(params[kInputDB]) * calIn;
     float peak = inputPeak;
     for (int i = 0; i < nFrames; i++)
@@ -396,60 +526,22 @@ struct Engine
     }
 
     NAM_SAMPLE* x = trigger[0];
-    if (!switching)
-      Run(playing, x, out.data(), 1.0, nFrames);
-    else if (!dip)
+    // The pedals, in series (R6): a pedal hearing nothing and not fading passes the signal on untouched.
+    NAM_SAMPLE* bufs[2] = {pedalA.data(), pedalB.data()};
+    int next = 0;
+    for (int k = 0; k < kPedals; k++)
     {
-      // A crossfade: both play, the one going out on a cosine and the one coming in on a sine (equal power: two
-      // different captures of one guitar are only partly alike, so neither dips in the middle).
-      Run(from, x, aside.data(), InputCal(from) / calIn, nFrames);
-      Run(playing, x, out.data(), 1.0, nFrames);
-      for (int i = 0; i < nFrames; i++)
-      {
-        const int at = switchAt + i;
-        if (at >= switchLen)
-          break;
-        const double t = static_cast<double>(at) / switchLen;
-        out[i] = std::cos(t * kHalfPi) * aside[i] + std::sin(t * kHalfPi) * out[i];
-      }
-      switchAt += nFrames;
-      if (switchAt >= switchLen)
-        EndSwitch();
+      Stage& st = stages[k];
+      if (!st.switching && !HasCapture(st.playing))
+        continue;
+      const double drive = DBToAmp(params[kPedalDrive1 + k]), level = DBToAmp(params[kPedalLevel1 + k]);
+      RunStage(st, x, bufs[next], nFrames, [&](int) { return drive; }, [&](int) { return level; });
+      x = bufs[next];
+      next ^= 1;
     }
-    else
-    {
-      // A dip: the one going out fades alone, then the one coming in fades in alone, from silence (it heard none of the
-      // first half), each on a raised cosine; one capture plays at a time.
-      const int half = switchLen / 2, rest = switchLen - half;
-      int i = 0;
-      while (i < nFrames)
-      {
-        if (switchAt < half)
-        {
-          const int k = std::min(nFrames - i, half - switchAt);
-          Run(from, x + i, out.data() + i, InputCal(from) / calIn, k);
-          for (int j = 0; j < k; j++)
-            out[i + j] *= 0.5 * (1.0 + std::cos(2.0 * kHalfPi * (switchAt + j) / half));
-          switchAt += k;
-          i += k;
-        }
-        else
-        {
-          const int k = nFrames - i;
-          Run(playing, x + i, out.data() + i, 1.0, k);
-          for (int j = 0; j < k; j++)
-          {
-            const int at = switchAt - half + j;
-            if (at < rest)
-              out[i + j] *= 0.5 * (1.0 - std::cos(2.0 * kHalfPi * at / rest));
-          }
-          switchAt += k;
-          i += k;
-        }
-      }
-      if (switchAt >= switchLen)
-        EndSwitch();
-    }
+    // The amp: a capture's input calibration was applied at the input for the one heard; one going out keeps its own.
+    RunStage(amp, x, out.data(), nFrames, [&](const int s) { return s == amp.playing ? 1.0 : InputCal(s) / calIn; },
+             [&](const int s) { return OutputNorm(s); });
 
     NAM_SAMPLE** stage = gateOn ? gateGain.Process(outPtr, 1, nFrames) : outPtr;
     if (params[kEQOn] > 0.5)
@@ -507,8 +599,17 @@ struct Engine
     slots[s].offset = 0.0;
     if (warmLeft <= 0)
       slots[s].Warmed(); // the caller warmed it
-    if (s == playing)
+    if (s == amp.playing)
       ApplySlim(s);
+  }
+
+  // Six bits a pedal (kStatusPedals).
+  double PedalBits() const
+  {
+    int bits = 0;
+    for (int k = 0; k < kPedals; k++)
+      bits |= (((stages[k].playing + 1) & 31) | (stages[k].switching ? 32 : 0)) << (6 * k);
+    return static_cast<double>(bits);
   }
 };
 
@@ -631,7 +732,10 @@ void TakePending()
     if (gPending[s].load(std::memory_order_acquire) == nullptr)
       continue;
     // A slot heard and not fading is replaced at once, as one capture always was; one fading waits for its fade.
-    if (e.switching && (s == e.from || s == e.playing))
+    bool fading = false;
+    for (const Stage& st : e.stages)
+      fading = fading || (st.switching && (s == st.from || s == st.playing));
+    if (fading)
       continue;
     ResamplingNAM* next = gPending[s].exchange(nullptr, std::memory_order_acq_rel);
     ResamplingNAM* old = e.slots[s].model.release();
@@ -640,8 +744,9 @@ void TakePending()
     else
     {
       e.slots[s].warmLeft = 0;
-      if (s == e.playing)
-        e.playing = kNone;
+      for (Stage& st : e.stages)
+        if (s == st.playing)
+          st.playing = kNone;
     }
     if (old != nullptr)
       delete gRetired[s].exchange(old, std::memory_order_acq_rel); // nullptr unless rig_collect fell behind
@@ -684,13 +789,13 @@ RIG_EXPORT void rig_set_param(int id, double value)
   if (id == kBass || id == kMiddle || id == kTreble)
     e.ApplyToneStack();
   if (id == kSlim)
-    e.ApplySlim(e.playing);
+    e.ApplySlim(e.amp.playing);
   if (id == kClearTrip)
     e.ClearTrip();
-  if (id == kPlay)
+  if (id == kPlay || (id >= kPedal1 && id < kPedal1 + kPedals))
   {
     const int s = static_cast<int>(std::lround(value));
-    e.want = s >= 0 && s < kSlots ? s : kNone;
+    e.stages[id == kPlay ? kAmp : id - kPedal1].want = s >= 0 && s < kSlots ? s : kNone;
   }
   // Turned off, or in standby: they forget what they were hearing, and start afresh when they listen again.
   if ((id == kGuardOn && value < 0.5) || (id == kStandby && value > 0.5))
@@ -763,13 +868,33 @@ RIG_EXPORT int rig_load_model(int bytes)
     return 1;
   m->PlaySilence(m->WarmFrames());
   Engine& e = *gEngine;
-  if (e.switching)
-    e.EndSwitch();
-  if (e.playing >= 0 && e.playing != 0 && e.slots[e.playing].model)
-    e.slots[e.playing].warmLeft = e.slots[e.playing].model->WarmFrames();
-  e.playing = 0;
-  e.want = kNoRequest;
+  if (e.amp.switching)
+    e.EndSwitch(e.amp);
+  if (e.amp.playing >= 0 && e.amp.playing != 0 && e.slots[e.amp.playing].model)
+    e.slots[e.amp.playing].warmLeft = e.slots[e.amp.playing].model->WarmFrames();
+  e.amp.playing = 0;
+  e.amp.want = kNoRequest;
   e.Place(0, std::move(m), 0);
+  return 0;
+}
+
+// The harness's look at one capture alone (web/engine/test.mjs's pedal cases, R6): plays rig_input through a slot, raw
+// (no gain, gate, EQ, DC blocker or fade), into rig_output, so a chain can be built stage by stage for a reference.
+// 0: played. 1: no warm capture there. 2: the slot is heard or fading.
+RIG_EXPORT int rig_slot_render(int slot, int nFrames)
+{
+  if (!ValidSlot(slot) || nFrames <= 0 || nFrames > kMaxBlock)
+    return 1;
+  Engine& e = *gEngine;
+  if (e.Busy(slot))
+    return 2;
+  if (!e.slots[slot].Ready())
+    return 1;
+  for (int i = 0; i < nFrames; i++)
+    e.in[i] = static_cast<double>(e.inBlock[i]);
+  e.Run(slot, e.in.data(), e.out.data(), 1.0, 1.0, nFrames);
+  for (int i = 0; i < nFrames; i++)
+    e.outBlock[i] = static_cast<float>(e.out[i]);
   return 0;
 }
 
@@ -781,10 +906,10 @@ RIG_EXPORT void rig_clear_model()
   if (gEngine == nullptr)
     return;
   Engine& e = *gEngine;
-  if (e.switching)
-    e.EndSwitch();
-  e.playing = kNone;
-  e.want = kNoRequest;
+  if (e.amp.switching)
+    e.EndSwitch(e.amp);
+  e.amp.playing = kNone;
+  e.amp.want = kNoRequest;
   e.slots[0] = Slot{};
 }
 
@@ -794,7 +919,7 @@ RIG_EXPORT double rig_info(int which)
   if (gEngine == nullptr)
     return 0.0;
   static const Slot kEmpty{};
-  return InfoOf(gEngine->playing >= 0 ? gEngine->slots[gEngine->playing] : kEmpty, which);
+  return InfoOf(gEngine->amp.playing >= 0 ? gEngine->slots[gEngine->amp.playing] : kEmpty, which);
 }
 
 // The output's fade and what muted it, and the slots (the Status values).
@@ -818,12 +943,20 @@ RIG_EXPORT double rig_status(int which)
     case kStatusSeconds: return e.muted.seconds;
     case kStatusTripAt: return e.tripAt;
     case kStatusGain: return e.fade;
-    case kStatusPlaying: return static_cast<double>(e.playing);
+    case kStatusPlaying: return static_cast<double>(e.amp.playing);
     case kStatusHeld: return mask(false);
     case kStatusReady: return mask(true);
-    case kStatusWanted: return static_cast<double>(e.want);
-    case kStatusSwitchAt: return static_cast<double>(e.switchStarted);
-    case kStatusSwitching: return e.switching ? 1.0 : 0.0;
+    case kStatusWanted: return static_cast<double>(e.amp.want);
+    case kStatusSwitchAt: return static_cast<double>(e.amp.switchStarted);
+    case kStatusSwitching: return e.amp.switching ? 1.0 : 0.0;
+    case kStatusPedals: return e.PedalBits();
+    case kStatusPedalSwitchAt:
+    {
+      uint64_t at = 0;
+      for (int k = 0; k < kPedals; k++)
+        at = std::max(at, e.stages[k].switchStarted);
+      return static_cast<double>(at);
+    }
     default: return 0.0;
   }
 }

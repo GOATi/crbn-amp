@@ -187,9 +187,11 @@ const f1 = n => Math.round(n * 10) / 10
 const kitOf = hw => hw.dataset.kit === 'builder' ? BUILDER : KIT[hw.dataset.kit]
 const SIZES = { '': 40, tw: 36, md: 32, sm: 26 }
 const AMP_KNOBS = [['Input', .5], ['Gate', .3], ['Bass', .55], ['Middle', .62], ['Treble', .6], ['Output', .5]]
-const PED_KNOBS = [['Level', .6], ['Drive', .55], ['Tone', .5]]
+// A pedal's two real controls (build plan R6): a capture has no knobs of its own, so Drive is the level into it and
+// Level the level out of it, in dB (the page's pedalDrive and pedalLevel settings).
+const PED_KNOBS = [['Drive', .5], ['Level', .5]]
 // Pedals show only their end numbers: 0 where all the way down is a real setting, 1 elsewhere (D-RIG-010).
-const PED_MIN = { Level: 0, Drive: 1, Tone: 1 }, PED_SCALE = { tweed12: 'ends' }
+const PED_MIN = { Level: 0, Drive: 0 }, PED_SCALE = { tweed12: 'ends' }
 
 // ---------------------------------------------------------------- knobs
 const CK = 'M-6,-45 C-2,-47.5 2,-47.5 6,-45 L22.2,-17 A28,28 0 1,1 -22.2,-17 Z'
@@ -356,14 +358,15 @@ function ampHTML (kit) {
     : `<div class="logo-box"><span class="logo">${isNew ? 'CRBN RIG' : kit.logo}</span><span class="sub">${kit.capture}</span></div>`
   return `<div class="hw amp ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="amp" data-standby="false" style="--ch:${kit.art && kit.art.sw ? 40 : Math.max(swH(kit.tg), swH(kit.pwr), swH(sb))}px"><div class="cabinet"><div class="face">${isNew ? layersHTML(kit) : ''}${kit.id === 'rack' ? '<i class="ear l"><i class="hd-sh"></i><i class="hd-ft t"></i><i class="hd-ft b"></i><i class="hd-bar"></i></i><i class="ear r"><i class="hd-sh"></i><i class="hd-ft t"></i><i class="hd-ft b"></i><i class="hd-bar"></i></i>' : ''}<div class="ui"><div class="knobs">${knobs}</div><div class="tgs">${tgs}</div><div class="pwr">${pwr}</div></div><div class="gz">${gz}</div></div></div></div>`
 }
-function pedalHTML (kit, name) {
+function pedalHTML (kit, name, p = 0) {
   const isNew = kit.fam === 'new', size = kit.id === 'hammer' || kit.id === 'tweed' ? 'md' : 'sm'
+  name = String(name).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
   const knobs = PED_KNOBS.map(([lb, v]) => knobCell(kit, lb, v, size, PED_SCALE[kit.scale] ? { scale: PED_SCALE[kit.scale], min: PED_MIN[lb] } : {})).join('')
   const led = `<span class="lp ${kit.led === 'jewel-sm' ? 'lp-jewel sm' : isNew ? 'lp-ring' : 'lp-led'}" aria-hidden="true">${LP_IN}</span>`
-  const aria = `aria-pressed="true" aria-label="${name}: engaged"`
-  if (kit.foot === 'pad') return `<div class="hw pedal classic k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal"><div class="pface"><div class="pled">${led}<span class="lb">Check</span></div><div class="pknobs">${knobs}</div><button class="fs fs-pad" type="button" data-role="foot" ${aria}><span class="strip">${name}<small>RG-1</small></span></button></div></div>`
+  const aria = `aria-pressed="true" aria-label="${name}: on"`
+  if (kit.foot === 'pad') return `<div class="hw pedal classic k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal" data-pedal="${p}"><div class="pface"><div class="pled">${led}<span class="lb">Check</span></div><div class="pknobs">${knobs}</div><button class="fs fs-pad" type="button" data-role="foot" ${aria}><span class="strip">${name}<small>RG-1</small></span></button></div></div>`
   const foot = kit.foot === 'ring' ? `<button class="fs fs-ring" type="button" data-role="foot" ${aria}></button>` : `<button class="fs fs-3pdt" type="button" data-role="foot" ${aria}><i class="nut">${FS_NUT}</i><i class="cap">${FS_CAP}</i></button>`
-  return `<div class="hw pedal ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal"><div class="pface">${isNew ? layersHTML(kit) : ''}<div class="pled">${led}</div><div class="pplate"><div class="pknobs">${knobs}</div></div><div class="pname">${name}</div>${isNew ? '<div class="gz"></div>' : ''}${foot}</div></div>`
+  return `<div class="hw pedal ${isNew ? 'new' : 'classic'} k-${kit.id} on" data-kit="${kit.id}" data-kind="pedal" data-pedal="${p}"><div class="pface">${isNew ? layersHTML(kit) : ''}<div class="pled">${led}</div><div class="pplate"><div class="pknobs">${knobs}</div></div><div class="pname">${name}</div>${isNew ? '<div class="gz"></div>' : ''}${foot}</div></div>`
 }
 function cabHTML (kit) {
   const isNew = kit.fam === 'new'
@@ -1634,20 +1637,23 @@ export const DEFAULT_KIT = 'crbn'
  */
 export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) {
   if (!document.getElementById('hw-defs')) document.body.insertAdjacentHTML('afterbegin', DEFS.replace('<svg ', '<svg id="hw-defs" '))
-  const state = { kit: null, key: null, power: true, standby: false, pilot: '', values: {}, capture: ['', ''], ir: ['', ''], slim: false }
-  const holders = [ampHolder, cabHolder]
+  const state = { kit: null, kitObj: null, key: null, power: true, standby: false, pilot: '', values: {}, capture: ['', ''], ir: ['', ''], slim: false, pedals: [], engaged: {} }
+  // The amp's and the cabinet's holders, then the pedals' (build plan R6), in that order: a Salvage piece's seed is its
+  // place in this order, so pedals coming and going never move the amp's or the cabinet's cut.
+  let pedalHolders = []
+  let holders = [ampHolder, cabHolder]
   for (const h of holders) HOLDERS.add(h)
   const both = sel => [...$$(sel, ampHolder), ...$$(sel, cabHolder)]
+  const everywhere = sel => holders.flatMap(h => $$(sel, h))
 
-  function forget () {
-    for (const h of holders) {
-      for (const el of $$(SALV_SEL, h)) SALV.unobserve(el)
-      for (const hw of $$('.hw.new', h)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) }
-      h.innerHTML = ''
-    }
+  function forgetHolder (h) {
+    for (const el of $$(SALV_SEL, h)) SALV.unobserve(el)
+    for (const hw of $$('.hw.new', h)) { if (hw.__face) { ro.unobserve(hw.__face); io.unobserve(hw.__face) } if (hw.__surf) SURFACES.delete(hw.__surf) }
+    h.innerHTML = ''
   }
-  function hydrate () {
-    for (const h of holders) for (const hw of $$('.hw', h)) {
+  function forget () { for (const h of holders) forgetHolder(h) }
+  function hydrate (fresh = holders) {
+    for (const h of fresh) for (const hw of $$('.hw', h)) {
       hw.__vals = {}
       for (const el of $$('[data-label]', hw)) hw.__vals[el.dataset.label] = +el.dataset.v
       if (hw.classList.contains('new')) {
@@ -1657,9 +1663,58 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
         ro.observe(face); io.observe(face)
       }
     }
+    reseed()
+    collectLive()
+  }
+  function reseed () {
     let i = 0
     for (const h of holders) for (const el of $$(SALV_SEL, h)) { el.__seed = (Math.imul(SALV_SEED, 2654435761) + Math.imul(++i, 40503)) >>> 0 || 1; SALV.observe(el) }
-    collectLive()
+  }
+
+  // ---- the pedals (build plan R6): each drawn in the holder the page made for it, its knobs bound to its Drive and
+  // Level, its footswitch to stomping it on and off
+  function drawPedals () {
+    const kit = state.kitObj
+    if (!kit) return
+    pedalHolders.forEach((h, i) => {
+      const { p, name } = state.pedals[i]
+      forgetHolder(h)
+      h.innerHTML = pedalHTML(kit, name, p)
+      for (const kn of $$('.kn', h)) {
+        const param = `pedal${kn.dataset.label}${p + 1}`
+        kn.dataset.param = param
+        kn.setAttribute('aria-label', `${name}: ${kn.dataset.label.toLowerCase()}`)
+        const cc = kn.closest('.cc')
+        cc.dataset.param = param
+        cc.insertAdjacentHTML('beforeend', '<span class="st kv" aria-hidden="true"></span>')
+      }
+    })
+    hydrate(pedalHolders)
+    applyFinish()
+    for (const [q, v] of Object.entries(state.values)) if (q.startsWith('pedal')) reflect(q, v)
+    for (const { p } of state.pedals) engage(p, state.engaged[p] ?? true)
+    if (kit.id === 'hammer') { loadSheets(); for (const h of pedalHolders) for (const el of $$(SALV_SEL, h)) scheduleSalvage(el) }
+    wake(); startLoop()
+  }
+  /** The pedals to draw: [{ el, p, name }], in chain order; each el a holder the page made (a .rig-hw). */
+  function setPedals (list) {
+    for (const h of pedalHolders) if (!list.some(x => x.el === h)) { forgetHolder(h); HOLDERS.delete(h) }
+    pedalHolders = list.map(x => x.el)
+    holders = [ampHolder, cabHolder, ...pedalHolders]
+    state.pedals = list.map(x => ({ p: x.p, name: x.name }))
+    for (const h of pedalHolders) { HOLDERS.add(h); wire(h) }
+    drawPedals()
+  }
+  /** Pedal p stomped on or off: its light, and its footswitch's state; `word` is what the page says it is doing. */
+  function engage (p, on, word) {
+    state.engaged[p] = on
+    for (const hw of everywhere(`.hw.pedal[data-pedal="${p}"]`)) {
+      hw.classList.toggle('on', on && state.power)
+      hw.dataset.engaged = String(on)
+      const fs = $('[data-role="foot"]', hw)
+      if (fs) { fs.setAttribute('aria-pressed', String(on)); fs.setAttribute('aria-label', `${state.pedals.find(x => x.p === p)?.name ?? 'Pedal'}: ${word ? word.toLowerCase() : on ? 'on' : 'off'}`) }
+    }
+    if (!moving()) stillSoon()
   }
 
   /** Draws a kit: one of the twenty by its id, or a player's own from the builder as an object of its parts and art. */
@@ -1670,7 +1725,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     if (state.key === key && ampHolder.firstElementChild) return
     forget()
     if (own) Object.assign(BUILDER, kit)
-    state.kit = kit.id; state.key = key
+    state.kit = kit.id; state.key = key; state.kitObj = kit
     ampHolder.innerHTML = ampHTML(kit)
     cabHolder.innerHTML = cabHTML(kit)
     AMP_HW = ampHolder.firstElementChild
@@ -1692,7 +1747,8 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     }
     for (const sw of both('.sw')) if (SWITCH[sw.dataset.role]) sw.dataset.param = SWITCH[sw.dataset.role]
     if (kit.id === 'hammer') loadSheets()
-    hydrate()
+    hydrate([ampHolder, cabHolder])
+    drawPedals()
     applyFinish()
     for (const [p, v] of Object.entries(state.values)) reflect(p, v)
     setPower(state.power); setStandby(state.standby)
@@ -1721,7 +1777,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
     const sp = spec(p)
     if (sp) {
       const t = clamp01((v - sp.min) / (sp.max - sp.min))
-      for (const el of $$(`.kn[data-param="${p}"], .fd[data-param="${p}"]`, ampHolder)) {
+      for (const el of everywhere(`.kn[data-param="${p}"], .fd[data-param="${p}"]`)) {
         el.dataset.v = t
         el.setAttribute('aria-valuemin', sp.min); el.setAttribute('aria-valuemax', sp.max)
         el.setAttribute('aria-valuenow', v); el.setAttribute('aria-valuetext', sp.text(v))
@@ -1746,7 +1802,7 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
 
   function setPower (on) {
     state.power = on
-    for (const h of holders) for (const hw of $$('.hw', h)) hw.classList.toggle('on', on)
+    for (const h of holders) for (const hw of $$('.hw', h)) hw.classList.toggle('on', on && (hw.dataset.kind !== 'pedal' || state.engaged[hw.dataset.pedal] !== false))
     for (const sw of $$('.sw[data-role="power"]', ampHolder)) { sw.setAttribute('aria-pressed', String(on)); const st = sw.parentElement.querySelector('.st'); if (st) st.textContent = STATE_WORD.power[on ? 1 : 0] }
     for (const p of $$('[data-pilot]', ampHolder)) p.textContent = on ? 'On' : 'Off'
     if (!moving()) stillSoon()
@@ -1826,20 +1882,26 @@ export function createHardware ({ ampHolder, cabHolder, spec, change, toggle }) 
   }
   function onDbl (e) { const el = e.target.closest('.kn[data-param], .fd[data-param]'); if (el) change(el.dataset.param, spec(el.dataset.param).def) }
   function onClick (e) {
+    const foot = e.target.closest('[data-role="foot"]')
+    if (foot) { const hw = foot.closest('.hw'); toggle('foot', hw.dataset.engaged === 'false', Number(hw.dataset.pedal)); return }
     const sw = e.target.closest('.sw'); if (!sw) return
     const role = sw.dataset.role, on = sw.getAttribute('aria-pressed') !== 'true'
     if (sw.dataset.param) change(sw.dataset.param, on ? 1 : 0)
     else if (role === 'power' || role === 'standby') toggle(role, on)
   }
-  for (const h of holders) {
+  const wired = new WeakSet()
+  function wire (h) {
+    if (wired.has(h)) return
+    wired.add(h)
     h.addEventListener('pointerdown', onDown); h.addEventListener('pointermove', onMove)
     h.addEventListener('pointerup', onUp); h.addEventListener('pointercancel', onUp)
     h.addEventListener('keydown', onKey); h.addEventListener('wheel', onWheel, { passive: false })
     h.addEventListener('dblclick', onDbl); h.addEventListener('click', onClick)
   }
+  for (const h of holders) wire(h)
 
   return {
-    show, reflect, setFinish, setPower, setStandby, setPilot, setCapture, setIR, setSlim, level, setSalvage,
+    show, reflect, setFinish, setPower, setStandby, setPilot, setCapture, setIR, setSlim, level, setSalvage, setPedals, engage,
     get kit () { return state.kit },
     /** New crops for every Salvage piece; returns the new seed to keep. */
     shuffle () { SALV_SEED = (Math.random() * 1e9) | 0 || 1; setSalvage(salvCur(), SALV_SEED); return SALV_SEED },

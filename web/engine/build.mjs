@@ -42,7 +42,7 @@ const cflags = [
   '-Wno-deprecated-declarations', '-Wno-unused-command-line-argument',
 ]
 const exports = ['rig_init', 'rig_input', 'rig_output', 'rig_process', 'rig_set_param', 'rig_text_buffer', 'rig_load_model',
-  'rig_error', 'rig_clear_model', 'rig_info', 'rig_take_input_peak', 'rig_status', 'rig_slot_load', 'rig_slot_clear', 'rig_slot_info', 'rig_weights_buffer']
+  'rig_error', 'rig_clear_model', 'rig_info', 'rig_take_input_peak', 'rig_status', 'rig_slot_load', 'rig_slot_clear', 'rig_slot_info', 'rig_weights_buffer', 'rig_slot_render']
 const ldflags = [
   '-O3', '-msimd128', '-fwasm-exceptions', '-sSTANDALONE_WASM=1', '--no-entry', '-sFILESYSTEM=0',
   '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=33554432', '-sSTACK_SIZE=1048576', '-sERROR_ON_UNDEFINED_SYMBOLS=1',

@@ -21,7 +21,7 @@ const SWITCH = { switchMode: 1, switchMs: 30, warmRate: 0.25 }
 export function createWebAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {} } = {}) {
   let ctx = null, node = null, convolver = null, analyser = null
   let micStream = null, micSource = null, demoSource = null, demoBuffer = null, wasmBytes = null
-  let irOn = true, messageId = 0, scratch = null, status = null, slots = null
+  let irOn = true, messageId = 0, scratch = null, status = null, slots = null, load = null
   const waiting = new Map()
   const peaks = { input: 0, raw: 0 }
   const post = (m) => node?.port.postMessage(m)
@@ -34,7 +34,7 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
     else node.connect(analyser)
   }
   function onWorklet(m) {
-    if (m.type === 'meter') { peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); status = m.status ?? status; slots = m.slots ?? slots }
+    if (m.type === 'meter') { peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); status = m.status ?? status; slots = m.slots ?? slots; load = m.load ?? load }
     else if (m.type === 'slot') { waiting.get(m.id)?.(m); waiting.delete(m.id) }
     else if (m.type === 'error') onError(`The engine could not start: ${m.error}`)
     else if (m.type === 'log') console.debug('[engine]', m.line)
@@ -106,6 +106,8 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
     clearSlot(slot) { return ask({ type: 'clearSlot', slot }) },
     /** Asks to hear a slot, or none (-1); the engine switches once it is warm. */
     play(slot) { post({ type: 'param', name: 'play', value: slot }) },
+    /** Asks pedal p (from 0) to hear a slot, or none (-1); the engine switches once it is warm (build plan R6). */
+    pedal(p, slot) { post({ type: 'param', name: `pedal${p + 1}`, value: slot }) },
     /** Throws when the browser cannot read the WAV. */
     async loadIR(bytes) {
       const decoded = await ctx.decodeAudioData(bytes.slice(0).buffer)
@@ -146,7 +148,8 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
     stop() { stopDemo(); closeMic(); ctx?.suspend() },
     async listInputs() { return (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput') },
 
-    /** The peaks since the last call: the input after its gain, the input before it, and the output. */
+    /** The peaks since the last call: the input after its gain, the input before it, and the output; and the audio
+     *  thread's load (the engine's share of real time, over the worklet's last report). */
     takeMeters() {
       let output = 0
       if (analyser) {
@@ -154,7 +157,7 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
         analyser.getFloatTimeDomainData(scratch)
         for (const v of scratch) { const a = Math.abs(v); if (a > output) output = a }
       }
-      const m = { input: peaks.input, raw: peaks.raw, output, status, slots }
+      const m = { input: peaks.input, raw: peaks.raw, output, status, slots, load }
       peaks.input = 0; peaks.raw = 0
       return m
     },

@@ -11,7 +11,7 @@
 // The library (build plan R4) reads its folder through the app as well: the app's own folder dialog, the folder's
 // listing, what each file says about itself (read natively, by library.js's rules), a file's bytes, and a watch that
 // says when the folder changes (onLibChanged).
-import { PARAM, SLOTS } from './engine.js'
+import { PARAM, SLOTS, pedalsOf } from './engine.js'
 
 // The desktop's switch between captures (build plan R5): a true crossfade, both captures playing, and a capture left
 // behind warmed again at twice real time (the app builds and warms a capture off the audio thread before handing it over).
@@ -49,7 +49,7 @@ function base64(floats) {
 export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {}, onLibChanged = () => {} } = {}) {
   const view = globalThis.chrome.webview
   const post = (m) => view.postMessage(m)
-  let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, slots = null, settingsAt = -Infinity
+  let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, slots = null, load = null, settingsAt = -Infinity
   const ready = new Promise((ok) => { gotReady = ok })
   const waiting = new Map()
   const peaks = { input: 0, raw: 0, output: 0 }
@@ -61,7 +61,8 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     if (m.type === 'meter') {
       peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); peaks.output = Math.max(peaks.output, m.output)
       if ('muted' in m) engine = { muted: m.muted, hz: m.hz, trips: m.trips, seconds: m.seconds }
-      if ('playing' in m) slots = { playing: m.playing, ready: bits(m.ready), switching: Boolean(m.switching) }
+      if ('playing' in m) slots = { playing: m.playing, ready: bits(m.ready), switching: Boolean(m.switching), pedals: pedalsOf(m.pedals ?? 0) }
+      if ('load' in m) load = m.load
     } else if (m.type === 'libChanged') {
       onLibChanged()
     } else if (m.type === 'ready' || m.type === 'status') {
@@ -101,6 +102,8 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     clearSlot(slot) { post({ type: 'clearSlot', slot }) },
     /** Asks to hear a slot, or none (-1); the engine switches once it is warm. */
     play(slot) { this.setParam('play', slot) },
+    /** Asks pedal p (from 0) to hear a slot, or none (-1); the engine switches once it is warm (build plan R6). */
+    pedal(p, slot) { this.setParam(`pedal${p + 1}`, slot) },
     async loadIR(bytes) {
       let wav
       try { wav = await decodeWav(bytes) } catch (err) { throw new Error(err?.message?.startsWith('This') ? err.message : 'This file is not a WAV CRBN Rig can read.') }
@@ -134,7 +137,7 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     async listInputs() { return [] },
 
     takeMeters() {
-      const m = { ...peaks, status: engine, slots }
+      const m = { ...peaks, status: engine, slots, load }
       peaks.input = 0; peaks.raw = 0; peaks.output = 0
       return m
     },

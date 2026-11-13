@@ -394,6 +394,57 @@ try {
       await search('')
     }
 
+    // The pedals (build plan R6, P3-UX U5): a capture dragged from the library onto the board is a pedal, on, and heard
+    // through the engine while the riff plays; the kit's footswitch stomps it off and on; its Drive knob is a setting;
+    // with Salvage, a pedal coming never moves the amp's cut; it is there again after a reload; taken off, it is gone.
+    {
+      const LIB_DRAG = 'application/x-crbn-rig-library'
+      const spot = (p) => $l(`#board-row .pspot[data-pedal="${p}"]`)
+      const pstate = (p) => spot(p)?.dataset.state ?? (spot(p) ? 'empty' : 'none')
+      const dropLib = (path, target) => {
+        const dt = new (lw().DataTransfer)()
+        dt.setData(LIB_DRAG, path)
+        target.dispatchEvent(new (lw().DragEvent)('drop', { dataTransfer: dt, bubbles: true, cancelable: true }))
+      }
+      $l('#lm-kits-classic [data-kit="hammer"]').click()
+      const ampFace = () => $l('#hw-amp .k-hammer .cabinet')
+      await wait(() => ampFace()?.dataset.wear, 15000, 'Salvage on the amp')
+      const before = { seed: ampFace().__seed, image: ampFace().style.backgroundImage, wear: ampFace().dataset.wear }
+      const empty = pstate(0) === 'empty' && /Add a pedal/.test(spot(0)?.textContent ?? '')
+      $l('#play-demo').click()
+      dropLib('NAM Core/wavenet.nam', spot(0))
+      await wait(() => pstate(0) === 'on', 15000, 'the pedal heard')
+      const hwPedal = () => $l('#board-row .hw.pedal[data-pedal="0"]')
+      const shown = hwPedal()?.querySelector('.pname')?.textContent === 'Test Model' && $$l('#board-row .hw.pedal .kn').map((k) => k.dataset.param).join() === 'pedalDrive1,pedalLevel1'
+      await wait(() => hwPedal()?.querySelector('.pface')?.style.backgroundImage.startsWith('url'), 8000, 'the pedal’s Salvage')
+      const after = { seed: ampFace().__seed, image: ampFace().style.backgroundImage, wear: ampFace().dataset.wear }
+      check('a capture dragged from the library onto the board is a pedal, heard while the riff plays (R6)', empty && shown && pstate(0) === 'on' && pstate(1) === 'empty', `${pstate(0)}; ${hwPedal()?.querySelector('.pname')?.textContent}; next ${pstate(1)}`)
+      check('with Salvage, a pedal on the board never moves the amp’s cut', before.seed === after.seed && before.image === after.image && before.wear === after.wear, `seed ${before.seed} -> ${after.seed}`)
+      hwPedal().querySelector('[data-role="foot"]').click()
+      await wait(() => pstate(0) === 'off', 5000, 'stomped off')
+      const off = !hwPedal().classList.contains('on') && /off/i.test(spot(0).querySelector('.rig-hw').dataset.word)
+      hwPedal().querySelector('[data-role="foot"]').click()
+      await wait(() => pstate(0) === 'on', 5000, 'stomped on again')
+      check('the kit’s footswitch stomps the pedal off and on, its light and its word with it', off && hwPedal().classList.contains('on') && hwPedal().querySelector('[data-role="foot"]').getAttribute('aria-pressed') === 'true', `${off}`)
+      const drive = hwPedal().querySelector('.kn[data-param="pedalDrive1"]')
+      drive.focus(); drive.dispatchEvent(new (lw().KeyboardEvent)('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }))
+      const kept = JSON.parse(lw().localStorage.getItem('crbn-rig/settings') ?? '{}')
+      await new Promise((r) => setTimeout(r, 400))
+      const saved = JSON.parse(lw().localStorage.getItem('crbn-rig/settings') ?? '{}').pedalDrive1
+      check('a pedal’s Drive is a setting, kept like the amp’s knobs', Math.abs(+drive.getAttribute('aria-valuenow') - 1) < 1e-9 && saved === 1, `${drive.getAttribute('aria-valuenow')} dB, kept ${saved} (was ${kept.pedalDrive1})`)
+      const load = $l('#load')
+      check('the board shows the audio thread’s load while it plays', !load.hidden && /^CPU \d+%$/.test(load.textContent), load.textContent)
+      frame.contentWindow.location.reload()
+      await wait(() => ld().documentElement.dataset.ready === 'true' && pstate(0) === 'on', 30000, 'the board after a reload')
+      check('the board is there again after a reload', $l('#board-row .hw.pedal[data-pedal="0"] .pname')?.textContent === 'Test Model', $l('#board-row .pspot')?.title)
+      $l('#board-row [data-remove="0"]').click()
+      await wait(() => pstate(0) === 'empty', 5000, 'taken off')
+      const forgot = lw().localStorage.getItem('crbn-rig/pedals')
+      check('a pedal taken off the board is gone, and forgotten', pstate(0) === 'empty' && !$l('#board-row .hw.pedal') && JSON.parse(forgot).every((x) => x === null), forgot)
+      $l('#lm-kits-new [data-kit="crbn"]').click()
+      $l('#stop').click()
+    }
+
     // The three drawings (D-RIG-008 (d)): the list by default, cards and shelves in the look menu.
     const pickLib = (v) => $l(`.segmented[data-rig="library"] [data-value="${v}"]`).click()
     const isList = ld().documentElement.dataset.library === 'a' && $l('#lib-body .lib-list')
@@ -549,6 +600,51 @@ try {
     let worst = 0
     for (let i = 0; i < want.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]))
     check('a switch between two slots through the worklet equals the engine run directly', worst < 1e-6 && switchAt === AT * 128, `max difference ${worst.toExponential(2)}; the dip began at block ${switchAt / 128}`)
+  }
+
+  // A pedal stomped on through the worklet (build plan R6): the example capture as the amp, NAM Core's small WaveNet as
+  // pedal 1 (in slot 12, the first of its two), asked for while the riff plays, with its Drive at +3 dB. The worklet's
+  // output equals the engine run directly with the same asks at the same blocks.
+  {
+    const pedal = new Uint8Array(await (await fetch('/__examples/wavenet.nam')).arrayBuffer())
+    const AT = 300
+    const e3 = await createEngine(wasm.slice(0), rate)
+    e3.loadSlot(0, packCapture(capture)); e3.loadSlot(12, packCapture(pedal)); e3.setParam('switchMode', 1); e3.setParam('pedalDrive1', 3); e3.play(0)
+    const want = new Float32Array(input.length)
+    for (let b = 0, at = 0; at < input.length; b++, at += 128) {
+      if (b === AT) e3.pedal(0, 12)
+      e3.process(input.subarray(at, Math.min(input.length, at + 128)), want.subarray(at, Math.min(input.length, at + 128)))
+    }
+    const st = e3.slots()
+    const Q = 128, ctx = new OfflineAudioContext(1, input.length + Q, rate)
+    await ctx.audioWorklet.addModule('/rig-processor.js')
+    const node = new AudioWorkletNode(ctx, 'crbn-rig', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
+      processorOptions: { wasm: wasm.slice(0) },
+    })
+    const replies = []
+    node.port.onmessage = (e) => replies.push(e.data)
+    const src = new AudioBufferSourceNode(ctx, { buffer: di })
+    src.connect(node); node.connect(ctx.destination)
+    src.start(Q / rate)
+    const send = (m, ...t) => node.port.postMessage(m, t)
+    const settle = async (n) => { send({ type: 'clearSlot', id: 200 + n, slot: 11 }); await wait(() => replies.some((m) => m.id === 200 + n), 15000, 'the worklet') }
+    const first = ctx.suspend(Q / rate).then(async () => {
+      await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
+      for (const [slot, bytes] of [[0, capture], [12, pedal]]) { const { text, weights } = packCapture(bytes); send({ type: 'slot', id: slot + 1, slot, text: text.buffer, weights: weights.buffer }, text.buffer, weights.buffer) }
+      send({ type: 'param', name: 'switchMode', value: 1 }); send({ type: 'param', name: 'pedalDrive1', value: 3 }); send({ type: 'param', name: 'play', value: 0 })
+      await settle(0)
+      await ctx.resume()
+    })
+    const later = ctx.suspend(((AT + 1) * Q) / rate).then(async () => { send({ type: 'param', name: 'pedal1', value: 12 }); await settle(1); await ctx.resume() })
+    const rendered = await ctx.startRendering()
+    await Promise.all([first, later])
+    const got = rendered.getChannelData(0).subarray(Q)
+    let worst = 0, changed = 0
+    for (let i = 0; i < want.length; i++) { worst = Math.max(worst, Math.abs(got[i] - want[i])); if (i >= AT * 128 + 1440) changed = Math.max(changed, Math.abs(want[i])) }
+    const meters = replies.filter((m) => m.type === 'meter')
+    const heard = meters.at(-1)?.slots?.pedals?.[0]?.playing, load = meters.at(-1)?.load
+    check('a pedal stomped on through the worklet equals the engine run directly', worst < 1e-6 && st.pedalSwitchAt === AT * 128 && st.pedals[0].playing === 12 && heard === 12 && Number.isFinite(load), `max difference ${worst.toExponential(2)}; the fade began at block ${st.pedalSwitchAt / 128}; the worklet says pedal 1 hears slot ${heard}, load ${Number.isFinite(load) ? load.toFixed(3) : load}`)
   }
 
   // The squeal guard in a real loop through the worklet (build plan R3): its output, 7 ms later through a band-pass at
