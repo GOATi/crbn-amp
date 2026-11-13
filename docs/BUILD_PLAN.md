@@ -332,8 +332,9 @@ art are the customising this section shows. It can be the end of R1b's session i
   now shows the amp with a Salvage pedal beside it in place of the cabinet. `node packaging/hub/salvage-frames.mjs
   --set=heroes` makes `crbn-rig-shot-2b-salvage-3.png` (5 frames, 3.3 MB): the amps are his cuts unchanged (compared
   against the picker's renders), and the pedal is the example capture under the kit's own pedal name, Scrap fuzz. The
-  owner reviews it on https://claude.ai/artifact/3GmgppTvACKEty82urTmqc. Then, on his word: the new name second in
-  `pictures.json` `storeMedia`, `hub-listing plan`, `upload`, `apply`, and a look at the store.
+  owner reviewed it on https://claude.ai/artifact/3GmgppTvACKEty82urTmqc and said publish. **In the store** since
+  2026-11-14: second in `pictures.json` `storeMedia` in place of `-1`, uploaded (200/200), `apply` 19 of 19 (record
+  version 26 -> 28), the CDN's bytes the listing folder's (`packaging/hub/README.md` has the row).
 - **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
   `packaging/hub/words.json` `page`. It covers:
   - the twenty kits, CRBN the default;
@@ -785,7 +786,10 @@ lived in the page's own cookie inside the app's WebView2 profile and reached not
 ### R6, step 2 as built: pedals in series (2026-11-14, SYNC:RIG-029)
 
 Taken before step 3 on the owner's word (SYNC:RIG-029): the store's Salvage picture should show a pedal beside the amp,
-as the Hardware Lab drew it, and a picture shows only what the app does, so the pedals came first. Not published yet.
+as the Hardware Lab drew it, and a picture shows only what the app does, so the pedals came first. **Shipped** on the
+owner's word the same night (SYNC:RIG-029 ADDENDUM): web build `20261113-1444-22ba710-d452aea2` live (roll back with
+`--promote-only=20261113-0539-4a72586-093c12a5`), desktop **0.9.5** signed on the dev Hub (manifest `8cab0957…`, 76 of
+76 files install byte-identical), and the store's Salvage picture (R1c, below).
 
 - **The engine** (`web/engine/rig_engine.cpp`, both builds): up to four **pedal stages** in series before the amp, each a
   `Stage` that hears one slot or none, switched exactly as the amp is (R5's switch, now one per stage). `pedal1` to
