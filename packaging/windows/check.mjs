@@ -353,6 +353,56 @@ if (!process.argv.includes('--no-app')) {
       const load = await js("document.getElementById('load').textContent")
       check('a pedal from the library plays in the native engine’s first pedal stage; its footswitch stomps it off and on', /^CPU \d+%$/.test(load) && outWith.output > 1e-4 && outWithout.output > 1e-4 && Math.abs(20 * Math.log10(outWith.output / outWithout.output)) > 0.1,
         `${await js("document.querySelector('#board-row .pname')?.textContent")}; output ${outWith.output.toExponential(2)} on, ${outWithout.output.toExponential(2)} off; ${load}`)
+
+      // R6 step 3 (SYNC:RIG-030). The pedal's Tone: its switch on the kit's pedal puts it in, and its knob at +6 dB
+      // changes what the native engine plays; switched out, it is the pedal as captured again.
+      await js("(() => { const k = document.querySelector('#board-row .hw.pedal .kn[data-param=\"pedalTone1\"]'); k.focus(); k.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); document.querySelector('#board-row .hw.pedal .sw[data-role=\"tone\"]').click(); return true })()")
+      const outTone = await measure()
+      await js("document.querySelector('#board-row .hw.pedal .sw[data-role=\"tone\"]').click(); true")
+      const outBypass = await measure()
+      const toneDB = 20 * Math.log10(outTone.output / outBypass.output), bypassDB = 20 * Math.log10(outBypass.output / outWith.output)
+      check('a pedal’s Tone reaches the native engine: in at +6 dB it changes the sound; bypassed, the pedal as captured', Math.abs(toneDB) > 0.3 && Math.abs(bypassDB) < 0.3,
+        `Tone in ${toneDB.toFixed(2)} dB from bypassed; bypassed ${bypassDB.toFixed(2)} dB from before`)
+
+      // Variants with real keys from Windows: W, the pedal stomped off there; Q brings it back on; W off again.
+      const variantOn = "[...document.querySelectorAll('#variants [data-variant]')].findIndex((b) => b.getAttribute('aria-checked') === 'true')"
+      const realKey = (k, file) => (existsSync(launcher)
+        ? spawnSync('pwsh', ['-NoProfile', '-File', launcher, '-ProcessId', String(app.pid), '-Out', join(out, file), '-Keys', k], { encoding: 'utf8' })
+        : js(`document.body.dispatchEvent(new KeyboardEvent('keydown', { code: 'Key${k.toUpperCase()}', key: '${k}', bubbles: true })); true`))
+      await js('document.activeElement?.blur(); true')
+      await realKey('w', 'keys-variant-w.png')
+      await until(`${variantOn} === 1`, 5000, 'variant W by key')
+      await js("document.querySelector('#board-row .hw.pedal [data-role=\"foot\"]').click(); true")
+      await until(`${pedalState} === 'off'`, 8000, 'the pedal off in W')
+      await js('document.activeElement?.blur(); true')
+      await realKey('q', 'keys-variant-q.png')
+      await until(`${variantOn} === 0 && ${pedalState} === 'on'`, 8000, 'Q: the pedal on again')
+      await realKey('w', 'keys-variant-w2.png')
+      await until(`${variantOn} === 1 && ${pedalState} === 'off'`, 8000, 'W: the pedal off again')
+      check('variants: real Q and W switch the pedals while the riff plays, in the native engine', true, await js("[...document.querySelectorAll('#variants .vn')].map((n) => n.textContent).join(', ')"))
+
+      // A rig file imported through the app's file box: its second pedal found in the library by its path and heard in
+      // the native engine's second stage, its variant picked; then saved by name for the second opening.
+      const rigFile = join(out, 'imported.rig.json')
+      writeFileSync(rigFile, JSON.stringify({
+        format: 'crbn-rig', version: 1, name: 'Desktop rig', amp: { name: 'wavenet.nam', path: 'NAM Core/wavenet.nam', size: null }, ir: null,
+        pedals: [{ name: 'wavenet.nam', path: 'NAM Core/wavenet.nam', size: null }, { name: 'lstm.nam', path: 'NAM Core/lstm.nam', size: null }, null, null],
+        settings: { gateOn: 1, gateThresholdDB: -80, eqOn: 1, bass: 6, middle: 5, treble: 5, outputDB: -30, irOn: 1 },
+        variants: [{ name: 'Clean', pedals: [{ on: false }, { on: true, drive: 2 }, null, null] }, { name: 'Push', pedals: [{ on: true }, { on: true }, null, null] }, { name: 'Lead', pedals: [{ on: true, toneOn: true, tone: 3 }, { on: false }, null, null] }],
+        variant: 0,
+      }))
+      const fileBox = await send('DOM.querySelector', { nodeId: (await send('DOM.getDocument')).root.nodeId, selector: '#rig-file' })
+      await send('DOM.setFileInputFiles', { nodeId: fileBox.nodeId, files: [rigFile] })
+      const pedal2 = "document.querySelector('#board-row .pspot[data-pedal=\"1\"]')?.dataset.state"
+      await until(`document.getElementById('rig-name').value === 'Desktop rig' && ${pedal2} === 'on' && ${pedalState} === 'off'`, 20000, 'the imported rig')
+      const imported = await js("({ names: [...document.querySelectorAll('#board-row .hw.pedal .pname')].map((n) => n.textContent).join(', '), drive: Number(document.querySelector('#board-row .hw.pedal .kn[data-param=\"pedalDrive2\"]')?.getAttribute('aria-valuenow')) })")
+      await js("document.getElementById('rig-save').click(); true")
+      await until("JSON.parse(localStorage.getItem('crbn-rig/rigs') ?? '{}').book?.length === 1 && document.getElementById('rig-bar').dataset.state === 'saved'", 5000, 'the rig saved')
+      check('a rig file imported in the app finds its pedals in the library; the native engine plays the second in its second stage', imported.names === 'Test Model, Test LSTM' && imported.drive === 2, JSON.stringify(imported))
+      // Push, both pedals on, for the second opening
+      await js('document.activeElement?.blur(); true')
+      await realKey('w', 'keys-variant-w3.png')
+      await until(`${variantOn} === 1 && ${pedalState} === 'on' && ${pedal2} === 'on'`, 8000, 'Push: both pedals on')
       await js("document.getElementById('play-demo').click(); true")
 
       writeFileSync(join(libDir, 'Copied in.nam'), template)
@@ -454,6 +504,13 @@ if (!process.argv.includes('--no-app')) {
       if (boardBack === 'Test Model on') break
     }
     check('opened again, the board is back, its pedal heard', boardBack === 'Test Model on', boardBack || 'no board')
+    // and the rig open, its variant, both pedals heard (R6 step 3)
+    let rigBack = ''
+    for (const end = Date.now() + 15000; Date.now() < end; await sleep(200)) {
+      rigBack = (await js2("(() => { const v = [...document.querySelectorAll('#variants [data-variant]')].findIndex((b) => b.getAttribute('aria-checked') === 'true'); const s = document.querySelector('#board-row .pspot[data-pedal=\"1\"]'); return `${document.getElementById('rig-name').value} ${document.getElementById('rig-bar').dataset.state} ${v} ${s?.querySelector('.pname')?.textContent} ${s?.dataset.state}` })()")) ?? ''
+      if (rigBack === 'Desktop rig saved 1 Test LSTM on') break
+    }
+    check('opened again, the rig is open in its variant, both pedals heard', rigBack === 'Desktop rig saved 1 Test LSTM on', rigBack)
     await js2("document.getElementById('stop').click(); true")
   } catch (err) {
     check('the second opening ran to the end', false, err?.message ?? err)

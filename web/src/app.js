@@ -669,7 +669,7 @@ function wirePads() {
 
 const LIB_DRAG = 'application/x-crbn-rig-library'
 function makeLibrary() {
-  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') { syncRigStars(); syncPads() } } })
+  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') { syncRigStars(); syncPads(); if (rigs.ready) syncRigBar() } } })
   libView = createLibraryView({ lib, play: playEntry, playing: playingPaths, toast, pickFiles: () => $('lib-dir').click(), dragType: LIB_DRAG })
   $('lib-dir').addEventListener('change', (e) => { const f = e.target.files; if (f?.length) lib.openFiles(f).catch((err) => toast(String(err?.message ?? err))); e.target.value = '' })
   for (const slot of ['capture', 'ir']) {

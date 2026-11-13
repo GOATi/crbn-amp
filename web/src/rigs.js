@@ -97,8 +97,12 @@ export function readRigFile(text) {
   return tidyRig(x)
 }
 
-/** A rig's sound, for telling whether the rig playing differs from the one saved (its name aside). */
-export const soundOf = (rig) => JSON.stringify({ ...rig, name: '' })
+/** A rig's sound, for telling whether the rig playing differs from the one saved (its name aside). A file in the
+ *  library is its path: its size is known only once the library has opened, which may be after the rig has. */
+export const soundOf = (rig) => {
+  const ref = (r) => (r?.path ? { name: r.name, path: r.path } : r)
+  return JSON.stringify({ ...rig, name: '', amp: ref(rig.amp), ir: ref(rig.ir), pedals: rig.pedals.map(ref) })
+}
 
 /**
  * Finds a reference in the library open now: the same path, else the same file name and size, else the only file with
