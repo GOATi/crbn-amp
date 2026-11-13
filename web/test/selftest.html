@@ -100,10 +100,18 @@ try {
   check('Power and Standby switch the amp, with the pilot and the words', off && stby && $d('#hw-amp [data-pilot]').textContent === 'On' && $d('#hw-amp .hw').dataset.standby === 'false', `${off}/${stby}`)
 
   $d('#lm-kits-classic [data-kit="hammer"]').click()
-  const salvSetup = ['sheet:orange', 'mesh:perf', 'metal:copper', 'glow:valves', 'words:tags'].every((kv) => { const [k, v] = kv.split(':'); return $d(`#lm-salv [data-salv="${k}"][data-val="${v}"]`)?.getAttribute('aria-pressed') === 'true' })
-  check('Salvage opens in the owner’s setup, its choices in the look menu (D-RIG-015)', salvSetup && !$d('#lm-salv').hidden && html.dataset.salvWords === 'tags', `${salvSetup}/${html.dataset.salvWords}`)
-  await wait(() => /^url\("?data:image\/jpeg/.test($d('#hw-amp .k-hammer .cabinet').style.backgroundImage), 8000, 'Salvage’s photographed sheet')
-  check('Salvage paints from the library’s photographed sheets', true, $d('#hw-amp .k-hammer .cabinet').style.backgroundImage.slice(0, 30))
+  const salvSetup = ['sheet:peel', 'mesh:perf', 'metal:copper', 'glow:valves', 'words:tags'].every((kv) => { const [k, v] = kv.split(':'); return $d(`#lm-salv [data-salv="${k}"][data-val="${v}"]`)?.getAttribute('aria-pressed') === 'true' })
+  check('Salvage opens in the owner’s setup on Peeling orange, its choices in the look menu (D-RIG-015, D-RIG-022)', salvSetup && !$d('#lm-salv').hidden && html.dataset.salvWords === 'tags' && $$d('#lm-salv [data-salv="sheet"]').length === 7, `${salvSetup}/${html.dataset.salvWords}/${$$d('#lm-salv [data-salv="sheet"]').length} sheets`)
+  await wait(() => /^url\("?data:image\/jpeg/.test($d('#hw-amp .k-hammer .cabinet').style.backgroundImage) && /^url\("?data:image\/jpeg/.test($d('#hw-amp .k-hammer .salv-plate').style.backgroundImage), 15000, 'Salvage’s photographed sheets')
+  {
+    // the amp from the 3200-pixel Peeling orange, its name plate from the next sheet, Scuffed red (D-RIG-022)
+    const sizes = {}
+    await Promise.all(['peel', 'scuff'].map((n) => new Promise((ok) => { const im = new win.Image(); im.onload = () => { sizes[n] = `${im.naturalWidth}x${im.naturalHeight}`; ok() }; im.onerror = () => { sizes[n] = 'missing'; ok() }; im.src = `/hw/tex/salvage-${n}.jpg` })))
+    const asked = win.performance.getEntriesByType('resource').map((e) => e.name.match(/salvage-(\w+)\.jpg/)?.[1]).filter(Boolean)
+    check('Salvage paints from Peeling orange, its plate from Scuffed red, both 3200 pixels wide (D-RIG-022)', sizes.peel === '3200x2400' && sizes.scuff === '3200x2049' && asked.includes('peel') && asked.includes('scuff') && !asked.includes('orange'), `${JSON.stringify(sizes)}; loaded ${asked.join(', ')}`)
+    const credits = [...doc.querySelectorAll('#about a')].map((a) => a.getAttribute('href'))
+    check('About credits Salvage’s photographs, PixCrafter’s with a link to its page', credits.includes('https://www.pixcrafter.com/grunge-metal-with-peeling-paint-texture-background/') && credits.includes('https://texturelabs.org/textures/metal_294/') && credits.includes('hw/tex/CREDITS.md'), credits.filter((h) => /pixcrafter|texturelabs|CREDITS/.test(h)).join(' '))
+  }
   $d('#lm-salv [data-salv="mesh"][data-val="chicken"]').click()
   check('a Salvage choice is kept', JSON.parse(win.localStorage.getItem('crbn-rig/rig')).salv.mesh === 'chicken', win.localStorage.getItem('crbn-rig/rig'))
   $d('#lm-salv [data-salv="mesh"][data-val="perf"]').click()

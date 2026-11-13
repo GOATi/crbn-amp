@@ -590,7 +590,7 @@ const SHEET_ZOOM_MAX = 1.2
 // The rows of a sheet its photograph smears, as fractions of its height: Rust and orange (Total Textures met007) was
 // stretched across rows 296 to 440 of 768 to make it tile, and that band is the "stretched" look the owner saw in #3
 // and #5 (turned a quarter, it ran down their faces). Measured: detail runs about twice as strongly down those rows
-// as across them, and nowhere else on the four sheets passes 1.2.
+// as across them, and nowhere else on the six sheets passes 1.2 (the two photographs of D-RIG-022 peak at 1.01 and 1.15).
 const SHEET_SOFT = { orange: [296 / 768, 440 / 768] }
 // A piece's crop of a sheet: its quarter turn, scale, offset and flips. The random draws are R1's, in R1's order, so
 // a crop the rules leave alone is the one it always was.
@@ -632,8 +632,10 @@ function cropOf (w, h, img, R, soft) {
   }
   return { iw, ih, cw, ch, sc, ox, oy, fx, fy, turn: (quarter ? Math.PI / 2 : 0) + (half ? Math.PI : 0) }
 }
+// High-quality smoothing: the 3200-pixel sheets are drawn smaller than they are (D-RIG-022), and the default
+// smoothing shimmers when it shrinks a photograph more than about twice.
 function drawCrop (g, img, p) {
-  g.save(); g.translate(p.ox + p.cw * p.sc / 2, p.oy + p.ch * p.sc / 2); g.rotate(p.turn); g.scale(p.fx * p.sc, p.fy * p.sc); g.drawImage(img, -p.iw / 2, -p.ih / 2); g.restore()
+  g.save(); g.imageSmoothingQuality = 'high'; g.translate(p.ox + p.cw * p.sc / 2, p.oy + p.ch * p.sc / 2); g.rotate(p.turn); g.scale(p.fx * p.sc, p.fy * p.sc); g.drawImage(img, -p.iw / 2, -p.ih / 2); g.restore()
 }
 // A sheet's crop, as on the faceplates: its own scale, offset, quarter turn and flips.
 function sheetCrop (g, w, h, img, R, soft) { drawCrop(g, img, cropOf(w, h, img, R, soft)) }
@@ -748,12 +750,15 @@ function meshTex (cv, w, h, img, seed, tint, glow, soft) {
   g.save(); g.filter = 'blur(' + (2 * k) + 'px)'; g.globalAlpha = .8; g.drawImage(mk, 2.5 * k, 3 * k); g.restore()
   g.drawImage(sk, 0, 0)
 }
-// Salvage's sheets, from GOATi's texture library (\\GOATi-SV22\Art_Resources\Textures_Sets, Total Textures volume 2,
-// Aged & Stressed: metal/met007, metal/met009, metal/met011, misc/mis008), each scaled to 1024x768 (D-RIG-010 (a),
-// D-RIG-016). The grille's bare metals stay drawn (metalPaint), as the owner picked them in the lab.
+// Salvage's sheets (tex/CREDITS.md). First, the owner's two reference photographs, the very ones the Hardware Lab's
+// mock wore as its Rust and orange and Worn red, scaled to 3200 px wide (D-RIG-022): Peeling orange (PixCrafter) and
+// Scuffed red (Texturelabs Metal 294). Then four from GOATi's texture library (\\GOATi-SV22\Art_Resources\Textures_Sets,
+// Total Textures volume 2, Aged & Stressed: metal/met007, metal/met009, metal/met011, misc/mis008), each scaled to
+// 1024x768 (D-RIG-010 (a), D-RIG-016). The order matters: a name plate is cut from the sheet after its amp's.
+// The grille's bare metals stay drawn (metalPaint), as the owner picked them in the lab.
 const tex = name => new URL('tex/salvage-' + name + '.jpg', import.meta.url).href
-const SALV_TEX = [['orange', 'Rust and orange', tex('orange')], ['red', 'Worn red', tex('red')], ['pale', 'Pale blue, rust runs', tex('pale')], ['blue', 'Blue over red', tex('blue')]]
-let SALV_SHEET = 'orange'
+const SALV_TEX = [['peel', 'Peeling orange', tex('peel')], ['scuff', 'Scuffed red', tex('scuff')], ['orange', 'Rust and orange', tex('orange')], ['red', 'Worn red', tex('red')], ['pale', 'Pale blue, rust runs', tex('pale')], ['blue', 'Blue over red', tex('blue')]]
+let SALV_SHEET = 'peel'
 function salvCur () { return { sheet: SALV_SHEET, mesh: SALV_MESH, metal: SALV_METAL, glow: SALV_GLOW, words: SALV_WORDS } }
 function syncSheets () {
   const cur = salvCur()
@@ -1506,8 +1511,9 @@ function ownKit (k) {
 export const SALVAGE_CHOICES = {
   sheet: [...SALV_TEX.map(x => [x[0], x[1]]), ['mixed', 'Mixed']], mesh: MESH_TYPES, metal: MESH_METALS, glow: GLOWS, words: WORD_STYLES,
 }
-/** His Salvage setup (D-RIG-015 (b)), the default. */
-export const SALVAGE_DEFAULTS = { sheet: 'orange', mesh: 'perf', metal: 'copper', glow: 'valves', words: 'tags' }
+/** His Salvage setup (D-RIG-015 (b)), the default: on Peeling orange since D-RIG-022, the photograph his setup was
+ *  picked on in the lab. */
+export const SALVAGE_DEFAULTS = { sheet: 'peel', mesh: 'perf', metal: 'copper', glow: 'valves', words: 'tags' }
 /** The kits a player picks from: the classic ones, then the energy kits; CRBN, the owner's, is the default (D-RIG-009 (b)).
  *  `swatch` is the colour a menu shows for the kit: its own, except Salvage, whose own colours are its photographs.
  *  An energy kit's `parts` are what the Rig builder starts from when a player builds from it. */

@@ -90,6 +90,9 @@ riff (web\demo\di.wav) and example capture (web\demo\example.nam) are from Neura
 
 ThirdPartyNotices.txt carries the notices of everything the program contains; web\look\fonts\LICENSES.md and
 web\hw\fonts\LICENSES.md the page's fonts'. MODIFIED-FILES.txt lists the files GOATi changed from the original.
+Salvage's sheet metal is photographed (web\hw\tex\CREDITS.md): Peeling orange by PixCrafter
+(https://www.pixcrafter.com/grunge-metal-with-peeling-paint-texture-background/), Scuffed red by Texturelabs
+(https://texturelabs.org/textures/metal_294/), and the others from Total Textures.
 Built from GOATi's commit $commit.
 "@ -replace "`r?`n", "`r`n" | Set-Content -NoNewline -Encoding utf8 (Join-Path $Stage 'NOTICE.txt')
 & (Join-Path $Root 'scripts\change-list.ps1') -Out (Join-Path $Stage 'MODIFIED-FILES.txt')

@@ -221,6 +221,29 @@ art are the customising this section shows. It can be the end of R1b's session i
     1. His favourite: https://www.pixcrafter.com/grunge-metal-with-peeling-paint-texture-background/
     2. Second: https://texturelabs.org/textures/metal_294/
     3. Good: https://www.textures4photoshop.com/tex/grunge-and-rust/old-rusty-painted-metal-texture-with-green-paint.aspx
+  - **The first two are in, 2026-11-13 (D-RIG-022, SYNC:RIG-025).** The owner asked for them by link, with the
+    Hardware Lab's mock as the look to reach. They turned out to be the very photographs the lab wore as Rust and orange and Worn red
+    (the lab's own `tex/salvage-*.jpg`, 1400 pixels wide: same shapes, same pictures), which the build had stood in
+    for with Total Textures sheets of the same names.
+    - **The sheets:** Peeling orange (`salvage-peel.jpg`, PixCrafter, 5000x3750 original) and Scuffed red
+      (`salvage-scuff.jpg`, Texturelabs Metal 294, its 4240x2715 file), each 3200 pixels wide, progressive JPEG at
+      quality 82: 1.9 and 1.3 MB, loaded only when Salvage is drawn. First in the Sheet row, so a name plate cut from
+      the next sheet pairs them as the lab did; the Total Textures four follow, and Mixed draws from all six.
+    - **The default is Peeling orange** (the owner's word through the picker): the owner's setup was picked on that
+      photograph.
+      Saved rigs keep their sheet, and the store's pictures (Total Textures' orange) are unchanged.
+    - **Why 3200:** `cropOf` sizes a crop by the sheet as a whole, so the paint shows at the lab's scale on any sheet,
+      and the pixels only buy sharpness. On an amp 1,000 page pixels wide, drawn at 2x, the worst crop (1.9 times
+      beyond covering) is 1.19 device pixels per sheet pixel and an average one 0.92. `SHEET_ZOOM_MAX` no longer
+      binds on them. `drawCrop` now asks for high-quality smoothing, since a sheet is drawn smaller than it is.
+    - **Neither smears:** detail down the rows against across them peaks at 1.01 and 1.15 per sixteenth of the
+      height, under the 1.2 that found Total Textures' orange (2.53), so `SHEET_SOFT` names neither.
+    - **Credits and terms** (`web/src/hw/tex/CREDITS.md`, linked from About, and both `NOTICE.txt`s): PixCrafter
+      asks for a link back to the resource's page, which About gives; Texturelabs asks none. Both allow commercial
+      use within a product and forbid passing the files on; the page serves its reduced copies as files it draws
+      from, as it does Total Textures'. The owner was told so in the question that approved publishing.
+    - **Still open:** the third reference (textures4photoshop, green paint), and #7's blue, which waits for a larger
+      sheet.
 - **The second picture: Salvage, cycling.**
   - Capture several Salvage shuffles. Use `node packaging/hub/desktop-shot.mjs --kit=hammer` for the desktop. For
     the web, the page's own Shuffle, or a `seed`, gives a new crop on every piece. Include his setup (D-RIG-015 (b)).
