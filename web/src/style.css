@@ -532,8 +532,10 @@ dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 
 /* R6 step 3: each pedal's Tone and its switch (on, or bypassed: the capture as captured), its grip and arrows to move it
    along the board, and the board's other two drawings, rows (a) and chain chips (c), from the Rig Lab. */
-.stomp { width: 150px; }
+.stomp { width: 168px; }
+.stomp .sk { gap: 4px; }
 .stomp .knob svg { width: 40px; height: 40px; }
+.stomp .knob output, .prow .knob output, .cpanel .knob output { white-space: nowrap; font-size: calc(10px * var(--d-scale)); }
 .stomp .sl { display: flex; align-items: center; gap: 10px; }
 .tsw { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 5px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--field); color: var(--text-dim); font: 600 calc(9.5px * var(--d-scale)) / 1.4 var(--font-display); letter-spacing: var(--d-track); text-transform: uppercase; cursor: pointer; }
 .tsw i { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--text-faint); }
