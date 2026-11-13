@@ -26,6 +26,13 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-14 (SYNC:RIG-030): R6 is finished in both builds (step 3; D-RIG-026). Rigs beside the pads, saved by name and
+  exported or imported as a small JSON file of names and references; variants on Q, W and E keeping each pedal on or
+  off and its knobs; a pedal moved along the board by its grip or arrows; a Tone on each pedal (a tilt about 800 Hz)
+  with a switch that bypasses it, off by default; the board drawn as stompboxes, rows or chain chips. The engine's
+  pedal knobs glide while heard. Engine 53/53, web 85/85, desktop 45/45; web build `20261113-1546-7c4360d-081f912e`
+  live; the desktop unsigned until a SimplySign session. Next: R7, MIDI.
+
 - 2026-11-13 (SYNC:RIG-024): R5 is built in both builds: favourites on standby (U4). Ten pads, the library's first ten
   favourite captures, held warm in the engine's slots and switched by keys 1 to 0, the arrows and the key left of 1:
   a 30 ms crossfade on the desktop, a dip in a browser. A load no longer stops the sound (R4's 0.1 s gap): the page

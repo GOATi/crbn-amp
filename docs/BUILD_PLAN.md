@@ -45,7 +45,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R3 | Power, auto-off, squeal guard (U1): built and shipped (SYNC:RIG-020, D-RIG-021) | Done: auto-play (resume if playing at close), the web publish, his SimplySign session | Both builds; no false trips on real playing (the synthetic set passes; his real playing is still to try) |
 | R4 | The library (U3): built and shipped (SYNC:RIG-021, RIG-022) | Done: his word to release, his SimplySign session | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
-| R6 | Rigs, variants and pedals (U5) | Nothing new | Pedals in series, hot-swapped while playing |
+| R6 | Rigs, variants and pedals (U5): built; web live (SYNC:RIG-029, RIG-030; D-RIG-025, D-RIG-026) | Done: rigs beside the pads, variants, the Tone | Pedals in series, hot-swapped while playing |
 | R7 | MIDI (U6) | MIDI in the browser, yes or no; his MC8 backup file, if he has one | His MC8 drives Rig by drag and drop |
 | R8 | TONE3000 in the library (U7) | His word on TONE3000's API terms, which the session brings him | Browse, favourite and play TONE3000 captures in the library |
 | R9 | Release and store | A SimplySign session; his look at the new pictures | Signed release, web promoted, store refreshed |
@@ -851,6 +851,78 @@ owner's word the same night (SYNC:RIG-029 ADDENDUM): web build `20261113-1444-22
     heard.
 - **Not done (step 3):** rigs (saved, exported and imported as a small JSON file of names and file references) and
   variants on Q, W and E; moving a pedal along the board; the rows and chain-chip drawings in the look menu.
+
+### R6, step 3 as built: rigs, variants, moving pedals, a pedal's Tone (2026-11-14, SYNC:RIG-030, D-RIG-026)
+
+A night session, the owner away; his four picks at the kickoff are D-RIG-026: rigs beside the pads, a variant keeps its
+pedals on or off and their knobs, a Tone knob on each pedal with a switch that bypasses it ("so that players can choose
+to activate our tone and tweak, or just bypass it completely"), and the web version promoted once every check passed.
+**Shipped (web):** build `20261113-1546-7c4360d-081f912e` live (roll back with
+`--promote-only=20261113-1444-22ba710-d452aea2`); `check.mjs --url`: all 72 files match. **Desktop:** built and checked
+unsigned (0.9.5's folder, 45/45); a signed release waits for a SimplySign session.
+
+- **The engine** (`web/engine/rig_engine.cpp`, both builds):
+  - `pedalTone1..4` (ids 32 to 35) tilt a pedal's sound about 800 Hz: a one-pole low-pass splits it, the rest goes up
+    by the Tone's dB and what is below down by as much (-6 to +6 on the knob, the engine allows ±12).
+    `pedalToneOn1..4` (36 to 39) switch it in; 0, the default, is bypassed, the capture as captured, and every earlier
+    case stays bit-identical.
+  - A pedal's Drive, Level and Tone **glide** (a 5 ms one-pole, a frame at a time) when they change while the pedal is
+    heard, and jump while it is not; a variant moves several at once (45 ms to settle within a thousandth of a dB).
+  - `RunStage` takes one play callback: `Run` for the amp, `RunPedal` (Drive in, the tilt, Level out) for the pedals.
+- **The page:**
+  - `web/src/rigs.js`: the rig book in localStorage (`crbn-rig/rigs`), up to 200 rigs; the rig file, `crbn-rig`
+    version 1, a small JSON file of names and references (a library file by its path, name and size; the example by
+    name), never a capture; everything read is tidied and clamped; a reference is found in the library open now by
+    the same path, else the same name and size, else the only file with that name. A file from outside the library
+    is kept beside the rig in IndexedDB (`rf:<name>\n<size>`), so the rig opens again in this browser; an exported
+    rig names it, and whoever opens it needs it in their own library.
+  - **The rig bar** above the board: the rig's name (Enter saves), Save (a dot while the rig playing differs from the
+    one saved), the saved rigs to open, the variants, New, Export, Import, Delete (pressed twice). Opening a rig sets
+    the amp, the cabinet, the gate, the EQ, the output level, the cabinet switch and the board, then its variant, and
+    names in words any file the library does not have. A `.json` dropped on the page imports too.
+  - **Variants** on Q, W and E (Clean, Push, Lead; double-click to rename): the one picked follows the player's stomps
+    and pedal knobs. Picking one sets each pedal's knobs and stomps it on or off: the engine glides the knobs of a
+    pedal that plays, and a pedal stomped fades as always.
+  - **Moving a pedal:** each pedal has a grip (dragged onto another place, the two swap) and arrows (swap with the
+    neighbour). Each place keeps its two engine slots, so a place loads the capture coming to it and fades into it from
+    what it played; the settings and the variants' parts move with the pedal.
+  - **The board's three drawings** (D-RIG-008 (d), the look menu's new "Pedals" row): stompboxes (b, the default),
+    rows (a, the Rig Lab's: a grip, a switch, the name and state, the knobs, the Tone, the arrows) and chain chips (c:
+    Input, each pedal, the amp's capture, the cabinet, Output; a pedal's chip opens its controls underneath). The kit's
+    own pedal shows only with stompboxes on the Hardware drawing.
+  - **The Tone** on every drawing: a third knob between Drive and Level, and a Tone switch, dimming the knob while
+    bypassed. On the kit's pedal the switch is the kit's own toggle, small, beside the lamp (`hw.js` `.ptone`).
+  - **Found and fixed:** the web backend said it had started when its AudioContext existed, before the worklet's node
+    did; a pedal or capture loaded in between (a drop just after Play) asked a node that was not there and failed with
+    "Cannot play". `started` now means the node exists.
+- **The session's picks, for the owner's review** (each a line to change):
+  - A pedal new to the board joins every variant as it is set now (on, as it came), as all three variants start as
+    the board was; the player stomps it out where it does not belong. (First built the other way, off in the other
+    variants; a pedal then went silent on W for no reason the player could see.)
+  - A pedal dragged onto another place **swaps** with it, rather than pushing the rest along: four places, and a swap
+    moves two pedals, not up to four.
+  - The Tone is a tilt about 800 Hz, -6 to +6 dB, bypassed by default. A rig keeps the gate, the EQ, the output level
+    and the cabinet switch; the input level and its calibration stay the player's interface's.
+  - Variants are named Clean, Push and Lead until renamed; Delete asks by changing its word to "Sure? Delete" for
+    three seconds rather than a dialog.
+- **Tests:**
+  - `web/engine/test.mjs`: 53 cases (4 new), both builds: the Tone in at +6 dB, and at -6 with Drive +3 and Level -2,
+    -91 and -89 dB from a tilt made by hand; bypassed, identical to the pedal with no Tone; Drive, Level and Tone moved
+    together while the pedal plays, -95 dB from the glide made by hand (45 ms). Native against wasm within 2e-5.
+  - `web/check.mjs`: 85 checks (11 new): the Tone bypassed out of the box, its switch and knob; a pedal moved by its
+    arrows and back by its grip, settings and all, both heard while the riff plays; Q, W and E by key; a rig saved,
+    the board changed, opened again; exported (1.8 KB, no weights), a non-rig refused, imported as "Test rig 2" and
+    opened; rows and chips, a chip's panel; the rigs and the variant after a reload; a pedal with its Tone in through
+    the real worklet equal to the engine run directly (0 difference).
+  - **A check that passed by accident, made real:** R6 step 2's "the board is there again after a reload" reloaded the
+    self-test's `?example` page (which skips the board by design) and waited on the old document, which was still
+    ready, so it passed before the reload landed. It now opens `/` and waits on the new document, and passes.
+  - `packaging/windows/check.mjs`: 45 checks (4 new): the Tone at +6 dB changes the native engine's sound 4.66 dB and
+    bypassed is 0.01 dB from the plain pedal; real Q and W from Windows switch the pedals while the riff plays; a rig
+    file through the app's file box finds both pedals in the library, its Drive set; opened again, the rig is open in
+    its variant with both pedals heard. Export is not exercised on the desktop: WebView2 offers the system's Save
+    dialog (`showSaveFilePicker`), which a check would leave open.
+- **Not done:** pads that hold rigs (the owner kept them beside); MIDI for rigs and variants (R7).
 
 ### R7. MIDI (U6)
 
