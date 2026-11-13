@@ -244,6 +244,11 @@ art are the customising this section shows. It can be the end of R1b's session i
       from, as it does Total Textures'. The owner was told so in the question that approved publishing.
     - **Still open:** the third reference (textures4photoshop, green paint), and #7's blue, which waits for a larger
       sheet.
+  - **The third reference, asked for at RIG-026:** its download sits behind a reCAPTCHA, so it needs the owner's
+    click. Its terms (textures4photoshop.com/tex/about.aspx): free for commercial use with a credit linking to
+    www.textures4photoshop.com, no redistribution, games and websites allowed. Neither Box-C nor the texture library
+    has it. Once the full-size file is on Box-C: a third sheet as Peeling orange and Scuffed red were made (3200 px,
+    q82, CREDITS.md, About's credit with the link, both NOTICE.txt files, the self-test's sheet count).
 - **The second picture: Salvage, cycling.**
   - Capture several Salvage shuffles. Use `node packaging/hub/desktop-shot.mjs --kit=hammer` for the desktop. For
     the web, the page's own Shuffle, or a `seed`, gives a new crop on every piece. Include his setup (D-RIG-015 (b)).
@@ -275,6 +280,23 @@ art are the customising this section shows. It can be the end of R1b's session i
     frames them with the words "No two alike.", the amp's choices as pills, and Shuffle lit on the two new cuts of
     his setup. `words.json` has the skins section, second on the page; it also fixes "File > Preferences" (gone
     since R2a) to "Audio settings".
+- **A draft on D-RIG-022's photographs (SYNC:RIG-026), for the owner's verdicts; nothing uploaded.** The owner said
+  yes to redoing the cycling picture on Peeling orange. Eight cuts were shot as the first eight were, each `sheet, mesh,
+  metal, glow, words, seed` ("setup" is `perf, copper, valves, tags`):
+  - #1 `peel`, setup, `314159`: mostly the grey steel;
+  - #2 `peel`, setup, `271828`: orange over the grey with the panel seam, closest to the lab;
+  - #3 `peel`, setup, `161803`: the grey side again;
+  - #4 `peel`, setup, `141421`: orange both sides of the seam;
+  - #5 `scuff, perf, copper, valves, paint, 173205`;
+  - #6 `scuff, chicken, rust, neon, stamped, 223606`;
+  - #7 `peel, expanded, scrap, embers, stamped, 244949`;
+  - #8 `mixed, woven, steel, furnace, raised, 264575`: Mixed drew Pale blue for the amp.
+
+  `node packaging/hub/salvage-frames.mjs --set=peel` makes the draft, `crbn-rig-shot-2b-salvage-2.png` (frames #2, #6,
+  #4 with Shuffle lit, #5, #7; 3.3 MB); `--set=r1c` still makes today's picture. The owner reviews both on a private
+  page, https://claude.ai/artifact/VVaB1RuCneT84pvj9cDkfq, and answers in chat. Then: `PEEL` in salvage-frames.mjs as
+  the owner orders it, rebuilt and shown again if it changed, the new name second in `pictures.json` `storeMedia`,
+  `hub-listing plan`, `upload`, `apply`, and a look at the store.
 - **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
   `packaging/hub/words.json` `page`. It covers:
   - the twenty kits, CRBN the default;
