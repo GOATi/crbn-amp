@@ -590,7 +590,9 @@ Arrows give next and previous.
 
 ### R5, as built (2026-11-13, SYNC:RIG-024)
 
-Desktop **0.9.4** and the web version, built and checked; published only on the owner's word (see SYNC:RIG-024).
+Web build `20261113-0409-12f896b-6798a825`, live (roll back with `--promote-only=20261112-0709-b07901a-0bb8a2c1`).
+Desktop **0.9.4**, signed, on the dev Hub (manifest `89634c92…`, 71 of 71 files install byte-identical). Shipped on the
+owner's word in the session, for his live test.
 
 - **The engine's slots** (`web/engine/rig_engine.cpp`, both builds): twelve, ten for the pads and two for whatever plays
   off them, so a switch from a library click to the next still fades. One is heard; `play` (a parameter) asks for a

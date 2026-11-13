@@ -29,8 +29,10 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 - 2026-11-13 (SYNC:RIG-024): R5 is built in both builds: favourites on standby (U4). Ten pads, the library's first ten
   favourite captures, held warm in the engine's slots and switched by keys 1 to 0, the arrows and the key left of 1:
   a 30 ms crossfade on the desktop, a dip in a browser. A load no longer stops the sound (R4's 0.1 s gap): the page
-  reads a capture's JSON and the audio thread builds it in 2 ms. Desktop 0.9.4; engine test 40/40, web check 63/63,
-  desktop check 35/35. `docs/BUILD_PLAN.md` "R5, as built".
+  reads a capture's JSON and the audio thread builds it in 2 ms. Engine test 40/40, web check 63/63, desktop check
+  35/35. Shipped on the owner's word: web build `20261113-0409-12f896b-6798a825` (roll back with
+  `--promote-only=20261112-0709-b07901a-0bb8a2c1`); desktop 0.9.4 signed on dev (manifest `89634c92…`, 71 of 71).
+  `docs/BUILD_PLAN.md` "R5, as built".
 
 - 2026-11-12 (SYNC:RIG-022): R4 shipped on the owner's word: web build `20261112-0709-b07901a-0bb8a2c1` (roll back with
   `--promote-only=20261111-1620-1e45d76-b2af5c94`); desktop 0.9.3 signed on dev (manifest `67e64025…`, 70 of 70).
