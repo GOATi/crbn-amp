@@ -431,6 +431,19 @@ console.table(guardRows)
   }
   const ampAlone = async (src, params = {}) => (await chain({ [AMP]: pack.amp }, { 0: { play: AMP } }, params, src)).out
   const scaled = (a, g) => a.map((v) => v * g)
+  // A pedal's Tone made by hand (R6 step 3): a one-pole low-pass at 800 Hz splits the sound, the rest up by t dB and what
+  // is below down by t; `tOf(n)` is the tilt at frame n.
+  const TILT = 1 - Math.exp((-2 * Math.PI * 800) / RATE)
+  const tilt = (a, tOf) => {
+    const o = new Float32Array(a.length)
+    let low = 0
+    for (let n = 0; n < a.length; n++) {
+      const y = a[n], t = tOf(n)
+      low += TILT * (y - low)
+      o[n] = t === 0 ? y : low / dB(t) + dB(t) * (y - low)
+    }
+    return o
+  }
   const silentBefore = (a, at) => { const q = a.slice(); q.fill(0, 0, at); return q }
   const nativeChain = (params, timeline, slotFiles) => {
     const inFile = join(out, 'pedal-in.f32'), outFile = join(out, 'pedal-out.f32'), statusFile = join(out, 'pedal-status.json')
@@ -468,6 +481,10 @@ console.table(guardRows)
       async () => alone(pack.p1, await alone(pack.p1, input))],
     ["a pedal's Drive (+6 dB) and Level (-4 dB)", { [AMP]: 'amp', [PA]: 'p1' }, { 0: { play: AMP, pedal1: PA } }, { pedalDrive1: 6, pedalLevel1: -4 },
       async () => scaled(await alone(pack.p1, scaled(input, dB(6))), dB(-4))],
+    ["a pedal's Tone in, +6 dB (R6 step 3)", { [AMP]: 'amp', [PA]: 'p1' }, { 0: { play: AMP, pedal1: PA } }, { pedalToneOn1: 1, pedalTone1: 6 },
+      async () => tilt(await alone(pack.p1, input), () => 6)],
+    ["a pedal's Tone in, -6 dB, with Drive +3 and Level -2", { [AMP]: 'amp', [PA]: 'p1' }, { 0: { play: AMP, pedal1: PA } }, { pedalToneOn1: 1, pedalTone1: -6, pedalDrive1: 3, pedalLevel1: -2 },
+      async () => scaled(tilt(await alone(pack.p1, scaled(input, dB(3))), () => -6), dB(-2))],
   ]) {
     const run = await chain(Object.fromEntries(Object.entries(slots).map(([s, k]) => [s, pack[k]])), timeline, params)
     const ref = await ampAlone(await refOf())
@@ -525,6 +542,40 @@ console.table(guardRows)
     const [ok, detail] = withNative(run, { switchMode: mode }, timeline, { [AMP]: 'amp', [PA]: 'p1', [PB]: 'p2' },
       `starts at block ${S / B}; ${err.toFixed(0)} dB from a ${label} made by hand`)
     row(`a pedal swapped for another while a note rings (a ${label})`, ok && S === SW * B && err < -80, detail)
+  }
+
+  // The Tone bypassed (R6 step 3): a Tone set and switched out is the pedal with no Tone, to the bit.
+  {
+    const slots = { [AMP]: pack.amp, [PA]: pack.p1 }, timeline = { 0: { play: AMP, pedal1: PA } }
+    const plain = await chain(slots, timeline), bypassed = await chain(slots, timeline, { pedalToneOn1: 0, pedalTone1: 6 })
+    const err = worstDB(bypassed.out, plain.out)
+    row("a pedal's Tone bypassed", err === -Infinity, err === -Infinity ? 'identical to the pedal with no Tone' : `${err.toFixed(0)} dB from the pedal with no Tone`)
+  }
+
+  // A variant's change while the pedal is heard (R6 step 3): Drive, Level and Tone all move at once, mid-note, and glide
+  // there over about 5 ms rather than step. The reference glides them by hand as the engine does, block by block (a
+  // one-pole toward each setting, a frame at a time, ending once within a thousandth of a dB).
+  {
+    const set = { pedalDrive1: 6, pedalLevel1: -4, pedalToneOn1: 1, pedalTone1: 4 }
+    const timeline = { 0: { play: AMP, pedal1: PA }, [SW]: set }
+    const run = await chain({ [AMP]: pack.amp, [PA]: pack.p1 }, timeline)
+    const N = input.length, dr = new Float64Array(N), lv = new Float64Array(N), tl = new Float64Array(N)
+    const to = { d: dB(6), l: dB(-4), t: 4 }, a = 1 - Math.exp(-1 / (0.005 * RATE))
+    let d = 1, l = 1, t = 0, glideEnds = -1
+    for (let b = 0; b * B < N; b++) {
+      const glide = b >= SW && !(d === to.d && l === to.l && t === to.t)
+      for (let n = b * B; n < Math.min(N, (b + 1) * B); n++) {
+        if (glide) { d += a * (to.d - d); l += a * (to.l - l); t += a * (to.t - t) }
+        dr[n] = d; lv[n] = l; tl[n] = t
+      }
+      if (glide && Math.abs(d / to.d - 1) < 1e-4 && Math.abs(l / to.l - 1) < 1e-4 && Math.abs(t - to.t) < 1e-3) { d = to.d; l = to.l; t = to.t; glideEnds = b + 1 }
+    }
+    const pedal = tilt(await alone(pack.p1, input.map((v, n) => v * dr[n])), (n) => tl[n]).map((v, n) => v * lv[n])
+    const ref = await ampAlone(pedal)
+    const err = worstDB(run.out, ref, PRE * B)
+    const [ok, detail] = withNative(run, {}, timeline, { [AMP]: 'amp', [PA]: 'p1' },
+      `${err.toFixed(0)} dB from the glide made by hand, from the note on; it glides ${(((glideEnds - SW) * B) / RATE * 1000).toFixed(0)} ms`, PRE * B)
+    row("a pedal's Drive, Level and Tone changed together while it plays (a variant)", ok && err < -80 && glideEnds > SW, detail)
   }
 
   // A capture plays in one place at a time: a pedal asked for the amp's slot stays as it was.

@@ -77,6 +77,13 @@ constexpr int kAmp = kPedals; // the stages: the pedals in the order the signal 
 constexpr int kNone = -1; // no capture: the dry signal, as the desktop always played it
 constexpr int kNoRequest = -2;
 constexpr double kHalfPi = 1.5707963267948966;
+// A pedal's Tone (R6 step 3): a first-order tilt about kTiltHz. The capture's sound splits at kTiltHz into what is below
+// (a one-pole low-pass) and the rest; Tone t dB raises the rest by t and lowers what is below by t, so at 0 it is the
+// sound unchanged. Bypassed, the tilt is 0. A pedal's Drive, Level and tilt glide to a new setting over about
+// kGlideSeconds while it is heard (a variant's knobs change together, R6 step 3), and jump while it is not.
+constexpr double kTiltHz = 800.0;
+constexpr double kTiltMaxDB = 12.0;
+constexpr double kGlideSeconds = 0.005;
 
 // Parameter ids, shared with rig-processor.js.
 enum Param : int
@@ -105,7 +112,9 @@ enum Param : int
   kPedal1, // any write asks pedal 1 to hear this slot, or none (-1: it passes the signal through); pedals 2 to 4 follow
   kPedalDrive1 = kPedal1 + kPedals, // each pedal's level into its capture, in dB
   kPedalLevel1 = kPedalDrive1 + kPedals, // and out of it
-  kNumParams = kPedalLevel1 + kPedals
+  kPedalTone1 = kPedalLevel1 + kPedals, // each pedal's tilt, in dB: the treble up and the bass down by this much (R6 step 3)
+  kPedalToneOn1 = kPedalTone1 + kPedals, // 1: the tilt is in; 0 (the default): bypassed, the capture as it was captured
+  kNumParams = kPedalToneOn1 + kPedals
 };
 
 // What rig_info reports about the loaded capture.
@@ -158,6 +167,7 @@ struct Slot
   int warmLeft = 0;
   bool warmedOnce = false;
   double offset = 0.0;
+  double tiltLow = 0.0; // the tilt's low-pass, when a pedal hears this slot (R6 step 3)
   bool Ready() const { return model && (warmLeft <= 0 || warmedOnce); }
   void Warmed()
   {
@@ -192,6 +202,15 @@ struct Engine
   Slot slots[kSlots];
   Stage stages[kPedals + 1];
   Stage& amp = stages[kAmp];
+
+  // A pedal's Drive and Level (as gains) and tilt (in dB) as heard now, gliding toward its settings (R6 step 3); while
+  // they glide, `glideDrive`, `glideLevel` and `glideTilt` hold one block of them, a value a frame.
+  struct Gains
+  {
+    double drive = 1.0, level = 1.0, tilt = 0.0;
+  };
+  Gains pedalNow[kPedals];
+  std::vector<double> glideDrive, glideLevel, glideTilt;
 
   dsp::noise_gate::Trigger gateTrigger;
   dsp::noise_gate::Gain gateGain;
@@ -228,6 +247,9 @@ struct Engine
     scaled.assign(kMaxBlock, 0.0);
     pedalA.assign(kMaxBlock, 0.0);
     pedalB.assign(kMaxBlock, 0.0);
+    glideDrive.assign(kMaxBlock, 0.0);
+    glideLevel.assign(kMaxBlock, 0.0);
+    glideTilt.assign(kMaxBlock, 0.0);
     inPtr[0] = in.data();
     outPtr[0] = out.data();
     gateTrigger.AddListener(&gateGain);
@@ -351,6 +373,50 @@ struct Engine
       dst[i] = outScale * (dst[i] - offset);
   }
 
+  // A pedal's capture (R6): its Drive into it, then its sound less its offset, tilted by its Tone, at its Level. `g` is
+  // the pedal's gains now; while they glide, the glide arrays hold them a frame at a time, this call's frames from `at`.
+  // With no tilt and no glide it is Run, to the bit. The tilt's low-pass follows the sound even at 0 dB, so turning the
+  // Tone in starts from where the sound is.
+  double tiltCoef = 0.0;
+  void RunPedal(const int s, NAM_SAMPLE* src, NAM_SAMPLE* dst, const int n, const Gains& g, const bool glide, const int at)
+  {
+    if (!HasCapture(s))
+    {
+      std::copy(src, src + n, dst);
+      return;
+    }
+    NAM_SAMPLE* x = src;
+    if (glide || g.drive != 1.0)
+    {
+      for (int i = 0; i < n; i++)
+        scaled[i] = (glide ? glideDrive[at + i] : g.drive) * src[i];
+      x = scaled.data();
+    }
+    for (int k = 0; k < n; k += kModelBlock)
+    {
+      NAM_SAMPLE* ip[1] = {x + k};
+      NAM_SAMPLE* op[1] = {dst + k};
+      slots[s].model->process(ip, op, std::min(kModelBlock, n - k));
+    }
+    Slot& sl = slots[s];
+    const double offset = sl.offset, c = tiltCoef;
+    double low = sl.tiltLow;
+    const double up = DBToAmp(g.tilt), down = 1.0 / up;
+    for (int i = 0; i < n; i++)
+    {
+      double y = dst[i] - offset;
+      low += c * (y - low);
+      const double t = glide ? glideTilt[at + i] : g.tilt;
+      if (t != 0.0)
+      {
+        const double u = glide ? DBToAmp(t) : up, d = glide ? 1.0 / u : down;
+        y = d * low + u * (y - low);
+      }
+      dst[i] = (glide ? glideLevel[at + i] : g.level) * y;
+    }
+    sl.tiltLow = low;
+  }
+
   // A switch asked for starts at the start of a block, once its capture is warm. It is a dip only where two captures
   // would play at once (a browser's switch mode, and a capture on both sides); against the dry signal it is a crossfade.
   void TakeRequest(Stage& st, const bool isAmp)
@@ -370,6 +436,8 @@ struct Engine
     st.playing = to;
     if (isAmp)
       ApplySlim(to);
+    else if (to != kNone)
+      slots[to].tiltLow = 0.0; // a pedal's tilt starts afresh with the capture coming in
     st.switching = true;
     st.dip = params[kSwitchMode] > 0.5 && HasCapture(st.from) && HasCapture(to);
     st.switchAt = 0;
@@ -386,19 +454,19 @@ struct Engine
     st.switching = false;
   }
 
-  // Plays a stage: the slot it hears, or a switch's fade from one to the other. `inOf(s)` and `outOf(s)` scale a slot's
-  // input and sound (Run).
-  template <typename In, typename Out>
-  void RunStage(Stage& st, NAM_SAMPLE* x, NAM_SAMPLE* dst, const int nFrames, In inOf, Out outOf)
+  // Plays a stage: the slot it hears, or a switch's fade from one to the other. `play(s, src, dst, n, at)` plays n frames
+  // of src through slot s (the dry signal for none) into dst, the block's frames from `at` (Run, or RunPedal).
+  template <typename Play>
+  void RunStage(Stage& st, NAM_SAMPLE* x, NAM_SAMPLE* dst, const int nFrames, Play play)
   {
     if (!st.switching)
-      Run(st.playing, x, dst, inOf(st.playing), outOf(st.playing), nFrames);
+      play(st.playing, x, dst, nFrames, 0);
     else if (!st.dip)
     {
       // A crossfade: both play, the one going out on a cosine and the one coming in on a sine (equal power: two
       // different captures of one guitar are only partly alike, so neither dips in the middle).
-      Run(st.from, x, aside.data(), inOf(st.from), outOf(st.from), nFrames);
-      Run(st.playing, x, dst, inOf(st.playing), outOf(st.playing), nFrames);
+      play(st.from, x, aside.data(), nFrames, 0);
+      play(st.playing, x, dst, nFrames, 0);
       for (int i = 0; i < nFrames; i++)
       {
         const int at = st.switchAt + i;
@@ -422,7 +490,7 @@ struct Engine
         if (st.switchAt < half)
         {
           const int k = std::min(nFrames - i, half - st.switchAt);
-          Run(st.from, x + i, dst + i, inOf(st.from), outOf(st.from), k);
+          play(st.from, x + i, dst + i, k, i);
           for (int j = 0; j < k; j++)
             dst[i + j] *= 0.5 * (1.0 + std::cos(2.0 * kHalfPi * (st.switchAt + j) / half));
           st.switchAt += k;
@@ -431,7 +499,7 @@ struct Engine
         else
         {
           const int k = nFrames - i;
-          Run(st.playing, x + i, dst + i, inOf(st.playing), outOf(st.playing), k);
+          play(st.playing, x + i, dst + i, k, i);
           for (int j = 0; j < k; j++)
           {
             const int at = st.switchAt - half + j;
@@ -500,10 +568,45 @@ struct Engine
       warmOne(s);
   }
 
+  // Pedal k's Drive, Level and tilt toward its settings for n frames (R6 step 3): at once while it was heard by nothing
+  // (`idle`), else gliding, a frame at a time into the glide arrays. Returns whether it glides this block.
+  bool GlidePedal(const int k, const bool idle, const int n)
+  {
+    Gains to;
+    to.drive = DBToAmp(params[kPedalDrive1 + k]);
+    to.level = DBToAmp(params[kPedalLevel1 + k]);
+    to.tilt = params[kPedalToneOn1 + k] > 0.5 ? std::clamp(params[kPedalTone1 + k], -kTiltMaxDB, kTiltMaxDB) : 0.0;
+    Gains& now = pedalNow[k];
+    if (idle || (now.drive == to.drive && now.level == to.level && now.tilt == to.tilt))
+    {
+      now = to;
+      return false;
+    }
+    const double a = 1.0 - std::exp(-1.0 / (kGlideSeconds * sampleRate));
+    for (int i = 0; i < n; i++)
+    {
+      now.drive += a * (to.drive - now.drive);
+      now.level += a * (to.level - now.level);
+      now.tilt += a * (to.tilt - now.tilt);
+      glideDrive[i] = now.drive;
+      glideLevel[i] = now.level;
+      glideTilt[i] = now.tilt;
+    }
+    // close enough to stop gliding: under a thousandth of a dB
+    if (std::fabs(now.drive / to.drive - 1.0) < 1e-4 && std::fabs(now.level / to.level - 1.0) < 1e-4 && std::fabs(now.tilt - to.tilt) < 1e-3)
+      now = to;
+    return true;
+  }
+
   void Process(const int nFrames)
   {
+    // Which pedals heard nothing before this block: their knobs take a new setting at once (GlidePedal).
+    bool idle[kPedals];
+    for (int k = 0; k < kPedals; k++)
+      idle[k] = !stages[k].switching && !HasCapture(stages[k].playing);
     for (int k = 0; k <= kAmp; k++)
       TakeRequest(stages[k], k == kAmp);
+    tiltCoef = 1.0 - std::exp(-2.0 * 3.141592653589793 * kTiltHz / sampleRate);
     const double calIn = InputCal(amp.playing);
     const double inGain = DBToAmp(params[kInputDB]) * calIn;
     float peak = inputPeak;
@@ -532,16 +635,20 @@ struct Engine
     for (int k = 0; k < kPedals; k++)
     {
       Stage& st = stages[k];
+      const bool glide = GlidePedal(k, idle[k], nFrames);
       if (!st.switching && !HasCapture(st.playing))
         continue;
-      const double drive = DBToAmp(params[kPedalDrive1 + k]), level = DBToAmp(params[kPedalLevel1 + k]);
-      RunStage(st, x, bufs[next], nFrames, [&](int) { return drive; }, [&](int) { return level; });
+      const Gains g = pedalNow[k];
+      RunStage(st, x, bufs[next], nFrames, [&](const int s, NAM_SAMPLE* src, NAM_SAMPLE* dst, const int n, const int at) {
+        RunPedal(s, src, dst, n, g, glide, at);
+      });
       x = bufs[next];
       next ^= 1;
     }
     // The amp: a capture's input calibration was applied at the input for the one heard; one going out keeps its own.
-    RunStage(amp, x, out.data(), nFrames, [&](const int s) { return s == amp.playing ? 1.0 : InputCal(s) / calIn; },
-             [&](const int s) { return OutputNorm(s); });
+    RunStage(amp, x, out.data(), nFrames, [&](const int s, NAM_SAMPLE* src, NAM_SAMPLE* dst, const int n, int) {
+      Run(s, src, dst, s == amp.playing ? 1.0 : InputCal(s) / calIn, OutputNorm(s), n);
+    });
 
     NAM_SAMPLE** stage = gateOn ? gateGain.Process(outPtr, 1, nFrames) : outPtr;
     if (params[kEQOn] > 0.5)

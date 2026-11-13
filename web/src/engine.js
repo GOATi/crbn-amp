@@ -7,7 +7,10 @@
  *  (build plan R5): `play` (any write asks to hear that slot, or none for -1, as soon as it is warm), `switchMode` (0 a
  *  crossfade, 1 a dip), `switchMs` (the whole switch) and `warmRate` (frames of silence warmed per frame heard). The
  *  pedals' (build plan R6): `pedal1` to `pedal4` (any write asks that pedal to hear a slot, or none for -1, as soon as
- *  it is warm), and each pedal's `pedalDrive` (into its capture) and `pedalLevel` (out of it), in dB. */
+ *  it is warm), and each pedal's `pedalDrive` (into its capture) and `pedalLevel` (out of it), in dB. Step 3: each
+ *  pedal's `pedalTone` (a tilt about 800 Hz, in dB, the treble up and the bass down) and `pedalToneOn` (0, the
+ *  default: the Tone bypassed, the capture as captured). A pedal's Drive, Level and Tone glide over about 5 ms while
+ *  it is heard. */
 export const PARAM = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: 2, eqOn: 3, bass: 4, middle: 5, treble: 6, outputDB: 7,
   outputMode: 8, calibrateInput: 9, inputCalibrationDBu: 10, slim: 11,
@@ -16,6 +19,8 @@ export const PARAM = Object.freeze({
   pedal1: 20, pedal2: 21, pedal3: 22, pedal4: 23,
   pedalDrive1: 24, pedalDrive2: 25, pedalDrive3: 26, pedalDrive4: 27,
   pedalLevel1: 28, pedalLevel2: 29, pedalLevel3: 30, pedalLevel4: 31,
+  pedalTone1: 32, pedalTone2: 33, pedalTone3: 34, pedalTone4: 35,
+  pedalToneOn1: 36, pedalToneOn2: 37, pedalToneOn3: 38, pedalToneOn4: 39,
 })
 
 /** How many captures the engine holds (rig_engine.cpp's kSlots): the amp's twelve (ten pads and two for whatever plays
@@ -35,11 +40,13 @@ export function pedalsOf(bits) {
 }
 
 /** The settings a person keeps, at their defaults: the desktop's (NeuralAmpModeler's constructor), then the squeal
- *  guard and auto-off, both on out of the box (D-RIG-008 (e)), then each pedal's Drive and Level (build plan R6). */
+ *  guard and auto-off, both on out of the box (D-RIG-008 (e)), then each pedal's Drive, Level and Tone, the Tone
+ *  bypassed (build plan R6). */
 export const DEFAULTS = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: -80, eqOn: 1, bass: 5, middle: 5, treble: 5, outputDB: 0,
   outputMode: 1, calibrateInput: 0, inputCalibrationDBu: 12, slim: 0, guardOn: 1, autoOff: 1,
   pedalDrive1: 0, pedalDrive2: 0, pedalDrive3: 0, pedalDrive4: 0, pedalLevel1: 0, pedalLevel2: 0, pedalLevel3: 0, pedalLevel4: 0,
+  pedalTone1: 0, pedalTone2: 0, pedalTone3: 0, pedalTone4: 0, pedalToneOn1: 0, pedalToneOn2: 0, pedalToneOn3: 0, pedalToneOn4: 0,
 })
 
 /** Why the engine muted its output (rig_guard.h's Why). */
