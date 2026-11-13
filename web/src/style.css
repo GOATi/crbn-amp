@@ -557,7 +557,7 @@ dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 .rig-hw .pedal .pled { justify-content: center; }
 .rig-hw .ptone .cc { flex-direction: row; align-items: center; gap: 3px; min-width: 0; }
 .rig-hw .ptone .sw { transform: scale(.62); margin: -9px -6px; }
-.rig-hw .ptone .lb { font-size: 8px; }
+.rig-hw .ptone .lb { font-size: 8px; color: #ece8e2; background: rgba(12, 11, 12, .62); padding: 1px 4px; border-radius: 3px; text-shadow: none; }
 .rig-hw .ptone .st { display: none; }
 .rig-hw .pknobs .cc { min-width: 38px; }
 
