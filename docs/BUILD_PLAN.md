@@ -325,6 +325,15 @@ art are the customising this section shows. It can be the end of R1b's session i
   - Pedals reach the page in R6 and get this with no more work.
   - Checked: `web/check.mjs` reads the painted faceplate back and finds the seam's dark line where the cut put it, between
     the knobs' end and the switches' start, with wear under the amp's and the cabinet's switches.
+- **The owner's heroes (SYNC:RIG-029, D-RIG-025):** from the picker (https://claude.ai/artifact/VSjYf4yb5AzErxKCYi13sw,
+  its `heroes` store), in his order: #4 seed 957038, #5 930097, #7 375725, #8 461939, and his setup on Rusted green
+  577215 last. He then asked why the pedal on the right had become an IR box: it never was a pedal in Rig (the cabinet's
+  IR panel has always been there; the pedal was the Hardware Lab's). He chose to build R6's pedals first, so each frame
+  now shows the amp with a Salvage pedal beside it in place of the cabinet. `node packaging/hub/salvage-frames.mjs
+  --set=heroes` makes `crbn-rig-shot-2b-salvage-3.png` (5 frames, 3.3 MB): the amps are his cuts unchanged (compared
+  against the picker's renders), and the pedal is the example capture under the kit's own pedal name, Scrap fuzz. The
+  owner reviews it on https://claude.ai/artifact/3GmgppTvACKEty82urTmqc. Then, on his word: the new name second in
+  `pictures.json` `storeMedia`, `hub-listing plan`, `upload`, `apply`, and a look at the store.
 - **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
   `packaging/hub/words.json` `page`. It covers:
   - the twenty kits, CRBN the default;

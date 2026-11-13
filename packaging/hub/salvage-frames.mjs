@@ -3,8 +3,10 @@
 // Hub's store plays (SYNC:RIG-017 ADDENDUM). Each frame is the amp and its cabinet as the web version draws them at
 // 3x with the demo riff playing (web/probe.mjs, as gear-shots.mjs), framed by art/art.html?piece=salvage.
 //   node web/build.mjs; node packaging/hub/salvage-frames.mjs     -> dist/hub-listing/<name> (and its frames in dist/shots)
-//     --set=r1c                                the frames: r1c, the picture in the store (Total Textures' sheets), or peel,
-//                                              the draft on D-RIG-022's photographs (SYNC:RIG-026)
+//     --set=r1c                                the frames: r1c, the picture in the store (Total Textures' sheets); peel,
+//                                              the draft on D-RIG-022's photographs (SYNC:RIG-026), which D-RIG-024's wear
+//                                              placement no longer redraws; or heroes, the owner's five hero cuts with a
+//                                              pedal beside each amp (SYNC:RIG-029)
 //     --name=crbn-rig-shot-2b-salvage-1.png   the picture's name (the CDN keeps a name for a day: a new picture, a new name;
 //                                              each set has its own default)
 //     --ms=2000                                how long each frame holds
@@ -43,10 +45,23 @@ const PEEL = [
   { n: 5, salv: ['scuff', 'perf', 'copper', 'valves', 'paint'], seed: 173205, choices: 'Scuffed red · Perforated sheet · Aged copper · Valves · Paint-filled' },
   { n: 7, salv: ['peel', 'expanded', 'scrap', 'embers', 'stamped'], seed: 244949, choices: 'Peeling orange · Expanded metal · The same scrap · Embers · Stamped' },
 ]
-const SETS = { r1c: [R1C, 'crbn-rig-shot-2b-salvage-1.png'], peel: [PEEL, 'crbn-rig-shot-2b-salvage-2.png'] }
+// The owner's heroes (SYNC:RIG-029), one cut per design picked in the hero picker (SYNC:RIG-028; its `heroes` store), in
+// his order: #4 and #5 his favourites, then #7, #8 and his setup on Rusted green. Each amp has a Salvage pedal beside it,
+// as the Hardware Lab drew the kit, in place of the cabinet: the pedals came to the page in R6 for this (build plan R6,
+// step 2). The pedal is the example capture under the kit's own pedal name, Scrap fuzz.
+const GREEN_SETUP = 'Rusted green · Perforated sheet · Aged copper · Valves · On tags'
+const HEROES = [
+  { n: 4, salv: ['peel', 'perf', 'copper', 'valves', 'tags'], seed: 957038, choices: PEEL_SETUP },
+  { n: 5, salv: ['scuff', 'perf', 'copper', 'valves', 'paint'], seed: 930097, choices: 'Scuffed red · Perforated sheet · Aged copper · Valves · Paint-filled' },
+  { n: 7, salv: ['peel', 'expanded', 'scrap', 'embers', 'stamped'], seed: 375725, choices: 'Peeling orange · Expanded metal · The same scrap · Embers · Stamped' },
+  { n: 8, salv: ['mixed', 'woven', 'steel', 'furnace', 'raised'], seed: 461939, choices: 'Mixed · Woven wire · Old steel · Furnace · Raised' },
+  { n: 'green', salv: ['green', 'perf', 'copper', 'valves', 'tags'], seed: 577215, choices: GREEN_SETUP },
+]
+const PEDAL_NAME = 'Scrap fuzz'
+const SETS = { r1c: [R1C, 'crbn-rig-shot-2b-salvage-1.png'], peel: [PEEL, 'crbn-rig-shot-2b-salvage-2.png'], heroes: [HEROES, 'crbn-rig-shot-2b-salvage-3.png', 'pedal'] }
 const set = arg('set') ?? 'r1c'
 if (!SETS[set]) { console.error(`--set= is one of ${Object.keys(SETS).join(', ')}`); process.exit(1) }
-const [FRAMES, defaultName] = SETS[set]
+const [FRAMES, defaultName, beside = 'cab'] = SETS[set]
 const name = arg('name') ?? defaultName
 
 // 1. The gear: the page at 1536x864, 3x, as the owner's eight amps were shot (gear-shots.mjs), so each seed crops as he saw it.
@@ -57,10 +72,14 @@ FRAMES.forEach(({ salv: [sheet, mesh, metal, glow, words], seed }, i) => {
     { go: '/', w: 1536, h: 864, dpr: 1, settle: 600 },
     { eval: `localStorage.setItem('crbn-rig/rig', ${JSON.stringify(JSON.stringify(rig))}), 'salvage ${seed}'` },
     { go: '/?example&look=capsule', w: 1536, h: 864, dpr: 3, settle: 1500 },
+    // the pedal on the board (it stays there from the first frame on: the board is remembered)
+    ...(beside === 'pedal' ? [{ eval: `(async () => { if (!document.querySelector('#board-row .hw.pedal')) { const b = await (await fetch('demo/example.nam')).arrayBuffer(); const dt = new DataTransfer(); dt.items.add(new File([b], '${PEDAL_NAME}.nam')); document.querySelector('#board-row .pspot.empty').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); await new Promise((ok) => setTimeout(ok, 1500)) } return document.querySelector('#board-row .hw.pedal .pname')?.textContent })()` }] : []),
     { eval: "document.getElementById('play-demo').click(), document.querySelector('#hw-amp .hw').dataset.kit" },
     { wait: 2300 },
     { shot: join(shots, `salvage-${i + 1}-amp.png`).replaceAll('\\', '/'), sel: '#hw-amp', pad: 0 },
-    { shot: join(shots, `salvage-${i + 1}-cab.png`).replaceAll('\\', '/'), sel: '#hw-cab', pad: 0 },
+    beside === 'pedal'
+      ? { shot: join(shots, `salvage-${i + 1}-pedal.png`).replaceAll('\\', '/'), sel: '#board-row .hw.pedal', pad: 0 }
+      : { shot: join(shots, `salvage-${i + 1}-cab.png`).replaceAll('\\', '/'), sel: '#hw-cab', pad: 0 },
   )
 })
 const file = join(tmpdir(), 'crbn-rig-salvage-steps.json')
@@ -82,7 +101,7 @@ const frames = []
 try {
   for (const [i, fr] of FRAMES.entries()) {
     const out = join(shots, `salvage-frame-${i + 1}.png`)
-    const q = new URLSearchParams({ piece: 'salvage', f: String(i + 1), c: fr.choices, s: fr.shuffle ? '1' : '0' })
+    const q = new URLSearchParams({ piece: 'salvage', f: String(i + 1), c: fr.choices, s: fr.shuffle ? '1' : '0', b: beside })
     await screenshot(`http://127.0.0.1:${server.address().port}/packaging/hub/art/art.html?${q}`, out, { width: 1920, height: 1080 })
     frames.push(out)
     console.log(`frame ${i + 1}: Salvage #${fr.n} (${fr.salv[0]}, seed ${fr.seed})`)

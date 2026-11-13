@@ -154,11 +154,17 @@
   // ?desk=<file.png> frames another desktop capture from dist/shots (desktop-shot.mjs --out), to compare kits.
   const desk = new URLSearchParams(location.search).get('desk')
   if (/^[\w-]+\.png$/.test(desk ?? '')) for (const img of document.querySelectorAll('.desk img')) img.src = `/dist/shots/${desk}`
-  // ?f=<n>&c=<choices, · between>&s=1 for a Salvage frame: its gear from dist/shots/salvage-<n>-amp.png and -cab.png,
-  // its choices as pills, and Shuffle lit when the frame is a new cut of the same choices.
+  // ?f=<n>&c=<choices, · between>&s=1 for a Salvage frame: its gear from dist/shots/salvage-<n>-amp.png and -cab.png
+  // (or, with &b=pedal, -pedal.png: a pedal beside the amp, as the Hardware Lab drew the kit; SYNC:RIG-029), its choices
+  // as pills, and Shuffle lit when the frame is a new cut of the same choices.
   if (piece === 'salvage') {
-    const q = new URLSearchParams(location.search), f = q.get('f')
-    if (/^\d$/.test(f ?? '')) { document.getElementById('salv-amp').src = `/dist/shots/salvage-${f}-amp.png`; document.getElementById('salv-cab').src = `/dist/shots/salvage-${f}-cab.png` }
+    const q = new URLSearchParams(location.search), f = q.get('f'), beside = q.get('b') === 'pedal' ? 'pedal' : 'cab'
+    if (/^\d$/.test(f ?? '')) {
+      const amp = document.getElementById('salv-amp'), side = document.getElementById('salv-cab')
+      amp.src = `/dist/shots/salvage-${f}-amp.png`; side.src = `/dist/shots/salvage-${f}-${beside}.png`
+      // the pedal at the amp's own scale: both are shot at the same 3x
+      if (beside === 'pedal') Promise.all([amp.decode(), side.decode()]).then(() => { side.style.width = `${(side.naturalWidth * amp.clientWidth / amp.naturalWidth).toFixed(1)}px`; side.style.marginLeft = '28px' })
+    }
     const pill = (t, lit) => `<span class="pill"${lit ? ' style="border-color:rgba(255,150,70,.8);color:#ffd2ad;background:rgba(255,140,60,.14)"' : ''}>${t.replace(/[&<>]/g, '')}</span>`
     document.getElementById('salv-choices').innerHTML = (q.get('c') ?? '').split('·').filter(Boolean).map((t) => pill(t.trim())).join('') + pill('Shuffle', q.get('s') === '1')
   }
