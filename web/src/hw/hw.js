@@ -590,7 +590,8 @@ const SHEET_ZOOM_MAX = 1.2
 // The rows of a sheet its photograph smears, as fractions of its height: Rust and orange (Total Textures met007) was
 // stretched across rows 296 to 440 of 768 to make it tile, and that band is the "stretched" look the owner saw in #3
 // and #5 (turned a quarter, it ran down their faces). Measured: detail runs about twice as strongly down those rows
-// as across them, and nowhere else on the six sheets passes 1.2 (the two photographs of D-RIG-022 peak at 1.01 and 1.15).
+// as across them, and nowhere else on the seven sheets passes 1.2 (D-RIG-022's two photographs peak at 1.01 and 1.15,
+// D-RIG-023's at 1.0).
 const SHEET_SOFT = { orange: [296 / 768, 440 / 768] }
 // A piece's crop of a sheet: its quarter turn, scale, offset and flips. The random draws are R1's, in R1's order, so
 // a crop the rules leave alone is the one it always was.
@@ -754,10 +755,12 @@ function meshTex (cv, w, h, img, seed, tint, glow, soft) {
 // mock wore as its Rust and orange and Worn red, scaled to 3200 px wide (D-RIG-022): Peeling orange (PixCrafter) and
 // Scuffed red (Texturelabs Metal 294). Then four from GOATi's texture library (\\GOATi-SV22\Art_Resources\Textures_Sets,
 // Total Textures volume 2, Aged & Stressed: metal/met007, metal/met009, metal/met011, misc/mis008), each scaled to
-// 1024x768 (D-RIG-010 (a), D-RIG-016). The order matters: a name plate is cut from the sheet after its amp's.
+// 1024x768 (D-RIG-010 (a), D-RIG-016). Last, the owner's third reference, Rusted green (Textures4Photoshop, a door
+// panel's clean interior at full size, 2390x2930, D-RIG-023), kept last so the sheets before it pair as they did.
+// The order matters: a name plate is cut from the sheet after its amp's.
 // The grille's bare metals stay drawn (metalPaint), as the owner picked them in the lab.
 const tex = name => new URL('tex/salvage-' + name + '.jpg', import.meta.url).href
-const SALV_TEX = [['peel', 'Peeling orange', tex('peel')], ['scuff', 'Scuffed red', tex('scuff')], ['orange', 'Rust and orange', tex('orange')], ['red', 'Worn red', tex('red')], ['pale', 'Pale blue, rust runs', tex('pale')], ['blue', 'Blue over red', tex('blue')]]
+const SALV_TEX = [['peel', 'Peeling orange', tex('peel')], ['scuff', 'Scuffed red', tex('scuff')], ['orange', 'Rust and orange', tex('orange')], ['red', 'Worn red', tex('red')], ['pale', 'Pale blue, rust runs', tex('pale')], ['blue', 'Blue over red', tex('blue')], ['green', 'Rusted green', tex('green')]]
 let SALV_SHEET = 'peel'
 function salvCur () { return { sheet: SALV_SHEET, mesh: SALV_MESH, metal: SALV_METAL, glow: SALV_GLOW, words: SALV_WORDS } }
 function syncSheets () {

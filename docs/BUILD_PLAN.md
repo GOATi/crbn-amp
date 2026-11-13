@@ -249,6 +249,13 @@ art are the customising this section shows. It can be the end of R1b's session i
     www.textures4photoshop.com, no redistribution, games and websites allowed. Neither Box-C nor the texture library
     has it. Once the full-size file is on Box-C: a third sheet as Peeling orange and Scuffed red were made (3200 px,
     q82, CREDITS.md, About's credit with the link, both NOTICE.txt files, the self-test's sheet count).
+  - **In, 2026-11-13 (D-RIG-023, SYNC:RIG-027): Rusted green.** The owner downloaded it (2570x3504, portrait, no colour
+    profile) and asked for it on the server. The photograph is a door panel: a letterbox and two bolts near the top and
+    the panel's raised frame round the edge, any of which a crop would put on an amp. The sheet is the clean interior at
+    full size (x 105 to 2495, y 475 to 3405: 2390x2930, q82, 1.4 MB), no smear (1.0). It is last in the Sheet row, so
+    the sheets before it pair with the same plates as before (the draft store picture's included); its own plate is
+    cut from Peeling orange. The original is in the texture library, `Textures\Metal2`. Credits as the other two, with
+    the link Textures4Photoshop's licence asks for.
 - **The second picture: Salvage, cycling.**
   - Capture several Salvage shuffles. Use `node packaging/hub/desktop-shot.mjs --kit=hammer` for the desktop. For
     the web, the page's own Shuffle, or a `seed`, gives a new crop on every piece. Include his setup (D-RIG-015 (b)).

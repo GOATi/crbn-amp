@@ -66,7 +66,9 @@ writeFileSync(join(out, 'NOTICE.txt'), [
   'ThirdPartyNotices.txt carries the notices of everything this site contains; look/fonts/LICENSES.md the fonts\'.',
   'Salvage\'s sheet metal is photographed (hw/tex/CREDITS.md): Peeling orange by PixCrafter',
   '(https://www.pixcrafter.com/grunge-metal-with-peeling-paint-texture-background/), Scuffed red by Texturelabs',
-  '(https://texturelabs.org/textures/metal_294/), and the others from Total Textures.',
+  '(https://texturelabs.org/textures/metal_294/), Rusted green by Textures4Photoshop',
+  '(https://www.textures4photoshop.com/tex/grunge-and-rust/old-rusty-painted-metal-texture-with-green-paint.aspx), and the',
+  'others from Total Textures.',
   `MODIFIED-FILES.txt lists the files GOATi changed from the original. Built from GOATi's commit ${commit}.`,
   '',
 ].join('\n'))
