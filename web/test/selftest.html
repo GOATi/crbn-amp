@@ -574,6 +574,8 @@ try {
       await wait(() => ld() !== was && ld().documentElement.dataset.ready === 'true' && pstate(1) !== 'none', 30000, 'the page after a reload')
       check('the rigs, the rig open and its variant are there again after a reload', $l('#rig-name').value === 'Test rig 2' && variantOn() === 1 && $$l('#rig-pick option').length === 3, `${$l('#rig-name').value}; variant ${variantOn()}; ${$$l('#rig-pick option').length - 1} rigs`)
       for (const p of [1, 0]) { $l(`#board-row [data-remove="${p}"]`)?.click(); await wait(() => pstate(p) === 'empty' || pstate(p) === 'none', 5000, 'taken off') }
+      // the library drawn again after the reload, before the next checks look at it
+      await wait(() => /captures/.test(src()) && !/reading|looking/.test(src()) && $l('#lib-body .lib-list, #lib-body .lib-card, #lib-body .lib-shelf-sec'), 30000, 'the library after the reload')
       $l('#stop').click()
     }
 
