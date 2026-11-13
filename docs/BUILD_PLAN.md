@@ -857,8 +857,9 @@ owner's word the same night (SYNC:RIG-029 ADDENDUM): web build `20261113-1444-22
 A night session, the owner away; his four picks at the kickoff are D-RIG-026: rigs beside the pads, a variant keeps its
 pedals on or off and their knobs, a Tone knob on each pedal with a switch that bypasses it ("so that players can choose
 to activate our tone and tweak, or just bypass it completely"), and the web version promoted once every check passed.
-**Shipped (web):** build `20261113-1546-7c4360d-081f912e` live (roll back with
-`--promote-only=20261113-1444-22ba710-d452aea2`); `check.mjs --url`: all 72 files match. **Desktop:** built and checked
+**Shipped (web):** build `20261113-1546-7c4360d-081f912e`, then `20261113-1554-2dd431b-92673fa7` (the kit pedal's Tone
+label readable on every kit) live (roll back with `--promote-only=20261113-1546-7c4360d-081f912e`, or R6 step 2's
+`20261113-1444-22ba710-d452aea2`); `check.mjs --url`: all 72 files match. **Desktop:** built and checked
 unsigned (0.9.5's folder, 45/45); a signed release waits for a SimplySign session.
 
 - **The engine** (`web/engine/rig_engine.cpp`, both builds):
@@ -939,6 +940,10 @@ desktop only. The desktop takes MIDI through iPlug2: `PLUG_DOES_MIDI_IN` goes to
   before building the export. His own backup file is the best test.
 - **Tests:** synthetic MIDI in both builds (a virtual port on the desktop); learn, map, round-trip, and the
   mappings saved.
+- **Found (2026-11-14, SYNC:RIG-030 addendum):** `docs/reviews/2026-11-14-mc8-backup-format.md`. A bank backup is plain
+  JSON and imports one bank; the format is undocumented (the community's reading, MC8 Pro only); Morningstar documents a
+  SysEx API instead. The recommendation: learning first, the bank export later, after the owner says which MC8 he has
+  and gives one of his own bank backups.
 
 ### R8. TONE3000 in the library (U7)
 
@@ -948,6 +953,11 @@ recommendation. Build only within those terms, crediting authors as the terms as
 - Sign in to TONE3000, browse and search inside Rig's library, favourite, and play, with captures cached locally
   without a person handling files.
 - **Tests:** against TONE3000's sandbox or a recorded fixture, never hammering the live service from a test.
+- **Found (2026-11-14, SYNC:RIG-030 addendum):** `docs/reviews/2026-11-14-tone3000-api-terms.md`. A public OAuth API
+  (PKCE, a device flow), self-serve keys, no sandbox; a free tier for non-commercial products limited to its prompt
+  flows (and perhaps its lists), the full API (search, favourites, downloads) under a commercial agreement and
+  sign-off; TONE3000's branding, creator credit, no catalogue caching. The recommendation: their Select flow first;
+  ask TONE3000 before the browser inside Rig's library.
 
 ### R9. Release and store
 
