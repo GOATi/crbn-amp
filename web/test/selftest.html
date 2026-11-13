@@ -111,6 +111,18 @@ try {
     check('Salvage paints from Peeling orange, its plate from Scuffed red, both 3200 pixels wide; Rusted green is there too (D-RIG-022, D-RIG-023)', sizes.peel === '3200x2400' && sizes.scuff === '3200x2049' && sizes.green === '2390x2930' && asked.includes('peel') && asked.includes('scuff') && !asked.includes('orange'), `${JSON.stringify(sizes)}; loaded ${asked.join(', ')}`)
     const credits = [...doc.querySelectorAll('#about a')].map((a) => a.getAttribute('href'))
     check('About credits Salvage’s photographs, with the links PixCrafter’s and Textures4Photoshop’s licences ask for', credits.includes('https://www.pixcrafter.com/grunge-metal-with-peeling-paint-texture-background/') && credits.includes('https://texturelabs.org/textures/metal_294/') && credits.includes('https://www.textures4photoshop.com/tex/grunge-and-rust/old-rusty-painted-metal-texture-with-green-paint.aspx') && credits.includes('hw/tex/CREDITS.md'), credits.filter((h) => /pixcrafter|texturelabs|textures4photoshop|CREDITS/.test(h)).join(' '))
+    // Wear where hands go (D-RIG-024): Peeling orange's seam between the six knobs and the switches, the worn side behind
+    // the switches. Read back from the painted faceplate itself: a dark line where the cut says it put the seam.
+    const face = $d('#hw-amp .k-hammer .cabinet'), cabFace = $d('#hw-cab .k-hammer .cabinet')
+    await wait(() => face.dataset.seamAt && cabFace.dataset.wear, 8000, 'the amp’s seam')
+    const at = +face.dataset.seamAt, fr = face.getBoundingClientRect(), kEnd = $d('#hw-amp .knobs').getBoundingClientRect().right - fr.left, tStart = $d('#hw-amp .tgs').getBoundingClientRect().left - fr.left
+    const shown = new win.Image(); shown.src = face.style.backgroundImage.replace(/^url\("?|"?\)$/g, ''); await shown.decode()
+    const cv = doc.createElement('canvas'); cv.width = shown.naturalWidth; cv.height = shown.naturalHeight
+    const g = cv.getContext('2d'); g.drawImage(shown, 0, 0)
+    const k = cv.width / face.clientWidth
+    const col = (x) => { const d = g.getImageData(Math.round(x * k), Math.round(14 * k), 1, Math.round(50 * k)).data; let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] + d[i + 1] + d[i + 2]; return s / (d.length / 4) / 3 }
+    const line = Math.min(...[-3, -2, -1, 0, 1, 2, 3].map((dx) => col(at + dx))), beside = (col(at - 16) + col(at + 16)) / 2
+    check('Salvage wears where hands go: Peeling orange’s seam between the knobs and the switches, worn behind the switches (D-RIG-024)', at > kEnd - 2 && at < tStart + 2 && line < beside * .7 && +face.dataset.wear > .1 && +cabFace.dataset.wear > .1, `seam at ${at.toFixed(1)} px (knobs end ${kEnd.toFixed(0)}, switches start ${tStart.toFixed(0)}); its line ${line.toFixed(0)} against ${beside.toFixed(0)} beside it; wear ${face.dataset.wear}, the cabinet's ${cabFace.dataset.wear}`)
   }
   $d('#lm-salv [data-salv="mesh"][data-val="chicken"]').click()
   check('a Salvage choice is kept', JSON.parse(win.localStorage.getItem('crbn-rig/rig')).salv.mesh === 'chicken', win.localStorage.getItem('crbn-rig/rig'))

@@ -304,6 +304,27 @@ art are the customising this section shows. It can be the end of R1b's session i
   page, https://claude.ai/artifact/VVaB1RuCneT84pvj9cDkfq, and answers in chat. Then: `PEEL` in salvage-frames.mjs as
   the owner orders it, rebuilt and shown again if it changed, the new name second in `pictures.json` `storeMedia`,
   `hub-listing plan`, `upload`, `apply`, and a look at the store.
+- **The owner's verdicts on the draft (SYNC:RIG-028):** #4, #5, #7 and #8 the best, #4 and #5 the best of those; "all
+  of these are pretty good. There aren't any bad ones." The owner asked for a way to flick through seeds and lock one
+  hero cut per design, and named what made the lab's Salvage good: "the scratches on the pedals lined up with where a
+  human foot would be pressing", and on the amp "a line between the six knobs and where the power section is, and the
+  paint is more worn out around where humans would be flicking the switches". Asked through the picker: make that
+  deliberate first, then pick (the recommendation), since it changes what every seed draws.
+- **Wear where hands go, as built (D-RIG-024, `web/src/hw/hw.js` `cropOf`):**
+  - Each sheet gets a wear map when it loads (`wearMap`, 96 cells across): each spot's OKLab distance from the sheet's
+    paint (the median of its most chromatic 40%), scaled by the 95th percentile. Checked on all seven: the bare steel
+    on Peeling orange, the scuffs on Scuffed red, the rust and peeled patch on Rusted green, the rust runs on the rest.
+  - A piece with controls (`zonesOf`: the amp's `.knobs` against its `.tgs` and `.pwr`, a pedal's `.pknobs` against
+    its footswitch `.fs`, the cabinet's IR switch) draws 16 cuts from its seed and takes one of the best four by the
+    mean wear under its switches less the mean under its knobs. The name plate and the grille keep the plain cut.
+  - A sheet with a seam (`SHEET_SEAM`, Peeling orange at 0.594) puts it exactly between the knobs and the switches
+    where they share a row, unturned, flipped so the worn side faces the switches; scale, height and the vertical flip
+    are the seed's.
+  - Every seed draws differently from before, so `salvage-frames.mjs` no longer redraws the store's picture of R1c or
+    RIG-026's draft: the store keeps its uploaded picture until the heroes replace it.
+  - Pedals reach the page in R6 and get this with no more work.
+  - Checked: `web/check.mjs` reads the painted faceplate back and finds the seam's dark line where the cut put it, between
+    the knobs' end and the switches' start, with wear under the amp's and the cabinet's switches.
 - **The section:** a `## Choosing and customising your own skins` section (or the owner's wording) in
   `packaging/hub/words.json` `page`. It covers:
   - the twenty kits, CRBN the default;

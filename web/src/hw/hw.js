@@ -593,13 +593,112 @@ const SHEET_ZOOM_MAX = 1.2
 // as across them, and nowhere else on the seven sheets passes 1.2 (D-RIG-022's two photographs peak at 1.01 and 1.15,
 // D-RIG-023's at 1.0).
 const SHEET_SOFT = { orange: [296 / 768, 440 / 768] }
-// A piece's crop of a sheet: its quarter turn, scale, offset and flips. The random draws are R1's, in R1's order, so
-// a crop the rules leave alone is the one it always was.
+// Sheets with a seam running down them, as a fraction of their width: Peeling orange is two panels butted together,
+// worn steel on one side and paint on the other (measured: 0.597 at the top to 0.591 at the bottom).
+const SHEET_SEAM = { peel: 0.594 }
+
+// Wear where hands go (D-RIG-024, the owner's note on the lab's Salvage): metal is worn most where people touch it. In
+// the lab's picture the sheet's seam fell between the six knobs and the switches, the worn steel sat behind the
+// switches, and the pedals were worn round their footswitches. Each piece with controls now places its cut that way:
+// - its seam, on a sheet that has one, exactly between the knobs and the switches, the worn side towards the switches;
+// - otherwise, of 16 cuts drawn from its seed, one of the four with the most wear under the switches (the footswitch
+//   on a pedal, the IR switch on the cabinet) against the least under the knobs, so cuts still differ.
+// A sheet's wear is how far each spot of it is from its paint, in OKLab: the paint is the median colour of its most
+// chromatic 40%, and a spot's distance is scaled by the sheet's 95th percentile (wearMap). Pieces without controls
+// (the name plate, the grille) keep the plain random cut.
+const WEAR_CANDIDATES = 16, WEAR_KEEP = 4
+const SALV_WEAR = {}
+function oklab (r, g, b) {
+  const f = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4) }
+  const R = f(r), G = f(g), B = f(b)
+  const l = Math.cbrt(.4122214708 * R + .5363325363 * G + .0514459929 * B), m = Math.cbrt(.2119034982 * R + .6806995451 * G + .1073969566 * B), s = Math.cbrt(.0883024619 * R + .2817188376 * G + .6299787005 * B)
+  return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s]
+}
+const quantile = (arr, q) => { const s = Float32Array.from(arr).sort(); return s[Math.min(s.length - 1, Math.floor(q * (s.length - 1)))] }
+// A sheet's wear map, 96 cells across; null where the photograph cannot be read back (a file opened from disk). With a
+// seam, the mean wear either side of it, which says which way to flip.
+function wearMap (img, seam) {
+  try {
+    const W = 96, H = Math.max(1, Math.round(img.naturalHeight * W / img.naturalWidth)), n = W * H
+    const c = document.createElement('canvas'); c.width = W; c.height = H
+    const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, W, H)
+    const d = g.getImageData(0, 0, W, H).data, L = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n), C = new Float32Array(n)
+    for (let i = 0; i < n; i++) { const o = oklab(d[4 * i], d[4 * i + 1], d[4 * i + 2]); L[i] = o[0]; A[i] = o[1]; B[i] = o[2]; C[i] = Math.hypot(o[1], o[2]) }
+    const cut = quantile(C, .6), pick = ch => quantile(ch.filter((_, i) => C[i] >= cut), .5)
+    const pl = pick(L), pa = pick(A), pb = pick(B), dist = new Float32Array(n)
+    for (let i = 0; i < n; i++) dist[i] = Math.hypot(L[i] - pl, A[i] - pa, B[i] - pb)
+    const norm = Math.max(quantile(dist, .95), 1e-6), a = new Float32Array(n)
+    // scaled, then softened a cell each way
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let s = 0, k = 0
+      for (let j = Math.max(0, y - 1); j <= Math.min(H - 1, y + 1); j++) for (let i = Math.max(0, x - 1); i <= Math.min(W - 1, x + 1); i++) { s += Math.min(1, dist[j * W + i] / norm); k++ }
+      a[y * W + x] = s / k
+    }
+    const map = { w: W, h: H, a, left: 0, right: 0 }
+    if (seam != null) {
+      const sx = Math.round(seam * W); let l = 0, r = 0
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (x < sx - 1) l += a[y * W + x] / (sx - 1) / H; else if (x > sx + 1) r += a[y * W + x] / (W - sx - 2) / H }
+      map.left = l; map.right = r
+    }
+    return map
+  } catch (err) { return null }
+}
+// Where a piece's hands go, measured from its own controls in page pixels: the knobs, the switches, and the place for
+// a seam (between the knobs and the switches, where they sit side by side). Null for a piece with no switches.
+function zonesOf (el) {
+  const er = el.getBoundingClientRect()
+  if (!er.width) return null
+  const rel = n => { const r = n.getBoundingClientRect(); return r.width && r.height ? [r.left - er.left, r.top - er.top, r.width, r.height] : null }
+  const all = sel => [...el.querySelectorAll(sel)].map(rel).filter(Boolean)
+  const hands = all('.tgs, .pwr, .fs, .cplate .cc'), knobs = all('.knobs, .pknobs')
+  if (!hands.length) return null
+  let seamAt = null
+  const k = el.querySelector('.knobs'), t = el.querySelector('.tgs'), a = k && rel(k), b = t && rel(t)
+  if (a && b && b[0] >= a[0] + a[2] - 2 && b[1] < a[1] + a[3] && a[1] < b[1] + b[3]) seamAt = (a[0] + a[2] + b[0]) / 2
+  return { hands, knobs, seamAt }
+}
+// How well a cut puts the wear where hands go: the mean wear under the switches less the mean under the knobs, each
+// sampled on a 6 by 4 grid through the cut's own transform (drawCrop's, inverted).
+function wearScore (p, zones, wear) {
+  const cx = p.ox + p.cw * p.sc / 2, cy = p.oy + p.ch * p.sc / 2, c = Math.cos(-p.turn), s = Math.sin(-p.turn)
+  const at = (x, y) => {
+    const vx = x - cx, vy = y - cy, u = (vx * c - vy * s) / (p.fx * p.sc) + p.iw / 2, v = (vx * s + vy * c) / (p.fy * p.sc) + p.ih / 2
+    const i = Math.min(wear.w - 1, Math.max(0, Math.floor(u / p.iw * wear.w))), j = Math.min(wear.h - 1, Math.max(0, Math.floor(v / p.ih * wear.h)))
+    return wear.a[j * wear.w + i]
+  }
+  const mean = rects => { let t = 0, n = 0; for (const [x, y, rw, rh] of rects) for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) { t += at(x + (i + .5) / 6 * rw, y + (j + .5) / 4 * rh); n++ } return n ? t / n : 0 }
+  return mean(zones.hands) - (zones.knobs.length ? mean(zones.knobs) : 0)
+}
+// A cut with the sheet's seam at `at` (page pixels across the piece), unturned, flipped so its worn side faces the
+// switches, its scale and height its own draws.
+function seamCrop (w, h, img, R, seam, wear, at) {
+  const iw = img.naturalWidth, ih = img.naturalHeight
+  const fx = wear.left > wear.right ? -1 : 1, fy = R() < .5 ? -1 : 1, sx = fx < 0 ? 1 - seam : seam
+  const need = Math.max(w / iw, h / ih, at / (sx * iw), (w - at) / ((1 - sx) * iw))
+  const sc = Math.min(need * (1.02 + R() * .5), Math.max(SHEET_ZOOM_MAX, need * 1.02))
+  return { iw, ih, cw: iw, ch: ih, sc, ox: at - sx * iw * sc, oy: (h - ih * sc) * R(), fx, fy, turn: 0 }
+}
+// A piece's cut: the plain random one (randomCrop) for a piece without controls or a sheet without a wear map; else
+// one of the best of 16 by wearScore, from a second stream drawn off the seed.
+function cropOf (w, h, img, R, soft, zones, wear, seam) {
+  const plain = randomCrop(w, h, img, R, soft)
+  if (!zones || !wear) return plain
+  const R2 = mulberry((R() * 4294967296) >>> 0), seamed = seam != null && zones.seamAt != null
+  const cands = []
+  for (let i = 0; i < WEAR_CANDIDATES; i++) cands.push(seamed ? seamCrop(w, h, img, R2, seam, wear, zones.seamAt) : i ? randomCrop(w, h, img, R2, soft) : plain)
+  for (const p of cands) p.score = wearScore(p, zones, wear)
+  cands.sort((a, b) => b.score - a.score)
+  const p = cands[Math.floor(R2() * WEAR_KEEP)]
+  if (seamed) p.seamAt = zones.seamAt
+  return p
+}
+// A piece's plain random cut of a sheet: its quarter turn, scale, offset and flips. The random draws are R1's, in R1's
+// order, so a crop the rules leave alone is the one it always was (a name plate's and a grille's still are).
 // - A sheet turns a quarter only where, turned, it still spans the piece without magnifying.
 // - No crop magnifies past the cap, unless the piece is so large that none could.
 // - A crop that would show a sheet's smeared rows moves to the nearest clean rows above or below them, magnifying
 //   only as far as it must to fit there and never past the cap; where it cannot fit, it stays as it was.
-function cropOf (w, h, img, R, soft) {
+function randomCrop (w, h, img, R, soft) {
   const iw = img.naturalWidth, ih = img.naturalHeight
   const quarter = R() < .35 && Math.max(w / ih, h / iw) <= 1, cw = quarter ? ih : iw, ch = quarter ? iw : ih
   const cover = Math.max(w / cw, h / ch), rz = R()
@@ -794,13 +893,18 @@ function paintSalvage (el) {
   // the words' colour comes from the metal behind the controls, not the whole sheet
   const ui = el.querySelector('.ui, .cplate'), er = el.getBoundingClientRect(), ur = ui && ui.getBoundingClientRect()
   const reg = ur && er.width ? [(ur.left - er.left) / er.width, (ur.top - er.top) / er.height, ur.width / er.width, ur.height / er.height] : null
-  if (img) r = photoTex(w, h, img, el.__seed, tint, reg, SHEET_SOFT[sheet])
+  // where hands go on this piece (D-RIG-024); the plate has no controls, so its cut stays the plain one
+  const zones = img ? zonesOf(el) : null
+  if (img) r = photoTex(w, h, img, el.__seed, tint, reg, SHEET_SOFT[sheet], zones, SALV_WEAR[sheet], SHEET_SEAM[sheet])
   if (r) {
     el.style.backgroundImage = r.url; el.style.backgroundSize = r.size || '100% 100%'; el.style.backgroundPosition = r.pos || '0 0'
     el.style.setProperty('--ink', r.light ? '#17130e' : '#f5f0e6')
     el.style.setProperty('--halo', r.light ? INK_HALO[1] : INK_HALO[0])
     if (r.canvas) inkEach(el, r.canvas)
     if (el.classList.contains('salv-plate')) el.dataset.ink = r.light ? 'dark' : 'light'
+    // what the cut did with the wear (D-RIG-024), for the self-test: its score, and where it put the seam
+    if (r.crop?.score != null) el.dataset.wear = r.crop.score.toFixed(3); else delete el.dataset.wear
+    if (r.crop?.seamAt != null) el.dataset.seamAt = r.crop.seamAt.toFixed(1); else delete el.dataset.seamAt
   } else {
     el.style.backgroundImage = `url(${salvageTex(w, h, finFor(kitOf(hw)), el.__seed)})`; el.style.backgroundSize = '100% 100%'; el.style.backgroundPosition = '0 0'
     el.style.removeProperty('--ink'); el.style.removeProperty('--halo')
@@ -827,8 +931,8 @@ function inkEach (el, c) {
     }
   } catch (err) {}
 }
-function photoTex (w, h, img, seed, tint, reg, soft) {
-  const R = mulberry(seed ^ 0x5a17), p = cropOf(w, h, img, R, soft), iw = p.iw, sc = p.sc
+function photoTex (w, h, img, seed, tint, reg, soft, zones, wear, seam) {
+  const R = mulberry(seed ^ 0x5a17), p = cropOf(w, h, img, R, soft, zones, wear, seam), iw = p.iw, sc = p.sc
   const k = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k)
   const g = c.getContext('2d'); g.scale(k, k)
   drawCrop(g, img, p)
@@ -842,7 +946,7 @@ function photoTex (w, h, img, seed, tint, reg, soft) {
     const sg = s.getContext('2d'), q = reg || [0, 0, 1, 1]; sg.drawImage(c, q[0] * c.width, q[1] * c.height, Math.max(1, q[2] * c.width), Math.max(1, q[3] * c.height), 0, 0, 24, 24)
     const d = sg.getImageData(0, 0, 24, 24).data; let L = 0
     for (let i = 0; i < d.length; i += 4) L += RL(d[i], d[i + 1], d[i + 2])
-    return { url: `url(${c.toDataURL('image/jpeg', .86)})`, light: L / (d.length / 4) > INK_SPLIT, canvas: c }
+    return { url: `url(${c.toDataURL('image/jpeg', .86)})`, light: L / (d.length / 4) > INK_SPLIT, canvas: c, crop: p }
   } catch (err) {
     // the photo can't be read back here (a file opened from disk): show it straight, cropped by CSS
     return { url: `linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,0) 45%, rgba(0,0,0,.24)), url(${img.src})`, size: `auto, ${Math.round(sc * iw / w * 100)}% auto`, pos: `0 0, ${Math.round(R() * 100)}% ${Math.round(R() * 100)}%`, light: false }
@@ -1440,7 +1544,7 @@ function loadSheets () {
     if (SALV_IMG[id] || SALV_LOADING.has(id)) continue
     SALV_LOADING.add(id)
     const im = new Image(); im.decoding = 'async'
-    im.onload = () => { SALV_IMG[id] = im; resalvage(false) }
+    im.onload = () => { SALV_IMG[id] = im; SALV_WEAR[id] = wearMap(im, SHEET_SEAM[id]); resalvage(false) }
     im.src = SALV_TEX.find(x => x[0] === id)[2]
   }
 }
