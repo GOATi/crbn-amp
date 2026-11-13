@@ -14,6 +14,7 @@ import { ART_NAME_MAX, ART_TYPES, MAX_KITS, NAME_MAX, artURL, artURLNow, importA
 import { createLibrary } from './library.js'
 import { createLibraryView } from './library-view.js'
 import { applyPrefs, fontOf, loadLooks, loadPrefs, lookList, looks, ownPrefs, sanitize, savePrefs, setEvery, sharesAcrossApps } from './look.js'
+import { PADS, captureKey, createPadsView, createStandby } from './pads.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
 
 const $ = (id) => document.getElementById(id)
@@ -289,10 +290,11 @@ async function ensureAudio() {
   audio.setIROn(settings.irOn > 0.5)
   audio.setStandby(standby)
   syncProtection()
-  if (capture.bytes) {
-    const result = await sendCapture()
-    if (!result.ok) { toast(`${capture.name}: ${result.error}`); await clearCapture() }
+  // The capture chosen before the engine ran, then the pads behind it (build plan R5).
+  if (capture.key) {
+    try { await hear() } catch (err) { toast(`${capture.name}: ${err?.message ?? err}`); await clearCapture() }
   }
+  slots.fill()
   if (ir.bytes) {
     try { await prepareIR(); showIR() } catch (err) { toast(`${ir.name}: ${desktop ? err?.message : 'not a WAV the browser can read.'}`); await clearIR() }
   }
@@ -343,7 +345,7 @@ async function toggleDemo() {
   if (muted) liftMute()
   try {
     await ensureAudio()
-    if (!capture.bytes) await loadExample()
+    if (!capture.key) await loadExample()
     await audio.playDemo()
     syncProtection()
   } catch (err) {
@@ -392,7 +394,10 @@ function showDriver() {
 
 // ------------------------------------------------------------------------------------------------- the capture
 // `from` is { key, p } when it came from the library (its folder's key and its path there), else null.
-const capture = { name: '', bytes: null, meta: null, info: null, from: null }
+// The capture the person chose to hear: its key (pads.js's captureKey), name and what it says, and its bytes or a way to
+// read them. The engine may still be warming it; it switches once it is warm (build plan R5).
+const capture = { key: null, name: '', bytes: null, read: null, meta: null, info: null, from: null, example: false }
+let lastCapture = null // the one before it, for the key left of 1
 
 function parseCapture(bytes) {
   let json
@@ -401,33 +406,50 @@ function parseCapture(bytes) {
   return json.metadata ?? {}
 }
 
+// The engine's slots, as this page keeps them, and the pads (build plan R5).
+const slots = createStandby({ audio, parse: parseCapture, onChange: (why) => { padsView?.sync(); if (why !== 'pads') syncHeard() } })
+let padsView = null, heardState = null
+
 async function useCapture(name, bytes, { remember = true, example = false, from = null } = {}) {
   const meta = parseCapture(bytes)
-  const previous = { ...capture }
-  Object.assign(capture, { name, bytes, meta, info: null, example, from })
-  showCapture('Loading…')
-  if (audio.started) {
-    const result = await sendCapture()
-    if (!result.ok) {
-      Object.assign(capture, previous)
-      if (previous.bytes) await sendCapture(); else audio.clearCapture()
-      showCapture()
-      throw new Error(result.error)
-    }
-  }
-  showCapture()
-  libView?.refreshMarks()
-  if (remember) await rememberFile('capture', name, bytes, from)
+  await choose({ key: captureKey({ from, example, name, size: bytes.length }), name, bytes, meta, from, example }, { remember })
 }
 
-async function sendCapture() {
-  const result = await audio.loadCapture(capture.bytes)
-  if (result.ok) {
-    capture.info = result.info
-    $('slim').hidden = !result.info?.slimmable
-    hardware?.setSlim(Boolean(result.info?.slimmable))
+// The one way a capture comes in: a file, a library row, a pad, the example, or the last one back. The engine holds it
+// in a slot (loading it unless a slot holds it already) and switches to it once it is warm; a capture that cannot be
+// played leaves the one before playing.
+async function choose(c, { remember = true } = {}) {
+  const previous = { ...capture }
+  Object.assign(capture, { key: c.key, name: c.name, bytes: c.bytes ?? null, read: c.read ?? null, meta: c.meta ?? slots.metaOf(c.key), info: null, from: c.from ?? null, example: Boolean(c.example) })
+  heardState = null
+  showCapture()
+  if (audio.started) {
+    try { await hear() } catch (err) { Object.assign(capture, previous); showCapture(); throw err }
   }
-  return result
+  if (previous.key && previous.key !== capture.key) lastCapture = previous
+  $('pads-last').disabled = !lastCapture
+  showCapture()
+  libView?.refreshMarks()
+  padsView?.sync()
+  if (remember) {
+    const bytes = capture.bytes ?? await capture.read?.().catch(() => null)
+    if (bytes) await rememberFile('capture', capture.name, bytes, capture.from)
+  }
+}
+
+// Asks the engine for the chosen capture.
+async function hear() {
+  const r = await slots.play(capture.key, { name: capture.name, meta: capture.meta, bytes: capture.bytes, read: capture.read })
+  capture.info = r.info
+  capture.meta ??= r.meta
+  $('slim').hidden = !r.info?.slimmable
+  hardware?.setSlim(Boolean(r.info?.slimmable))
+}
+
+// The capture panel says Loading until the engine plays what was chosen.
+function syncHeard() {
+  const state = capture.key && audio.started ? slots.stateOf(capture.key) : null
+  if (state !== heardState) { heardState = state; showCapture() }
 }
 
 async function loadExample() {
@@ -443,7 +465,7 @@ function fillChips(list, chips) {
 // The library's star beside what the rig plays, when it came from the folder open now.
 function syncRigStars() {
   for (const [slot, f] of [['capture', capture], ['ir', ir]]) {
-    const b = $(`${slot}-star`), here = Boolean(f.bytes && f.from && lib?.key && f.from.key === lib.key)
+    const b = $(`${slot}-star`), here = Boolean((f === capture ? f.key : f.bytes) && f.from && lib?.key && f.from.key === lib.key)
     b.hidden = !here
     if (!here) continue
     const on = lib.isFav(f.from.p)
@@ -452,9 +474,12 @@ function syncRigStars() {
     b.title = on ? 'In your favourites: click to take it out' : 'Add to your favourites'
   }
 }
-function showCapture(note) {
+function showCapture() {
   const drop = $('capture-drop')
-  const has = Boolean(capture.bytes)
+  const has = Boolean(capture.key)
+  // Until the engine plays it: Loading (read, built, warmed) or Switching (a fade under way).
+  const state = has && audio.started ? slots.stateOf(capture.key) : null
+  const note = state === 'loading' ? 'Loading…' : state === 'next' ? 'Switching…' : ''
   drop.classList.toggle('has', has)
   drop.querySelector('[data-clear]').hidden = !has
   $('amp-logo').classList.toggle('none', !has)
@@ -490,10 +515,13 @@ function showCapture(note) {
 }
 
 async function clearCapture() {
-  Object.assign(capture, { name: '', bytes: null, meta: null, info: null, example: false, from: null })
-  if (audio.started) audio.clearCapture()
+  if (capture.key) lastCapture = { ...capture }
+  $('pads-last').disabled = !lastCapture
+  Object.assign(capture, { key: null, name: '', bytes: null, read: null, meta: null, info: null, example: false, from: null })
+  if (audio.started) slots.stop() // the dry signal, faded to; the capture stays held
   showCapture()
   libView?.refreshMarks()
+  padsView?.sync()
   await forgetFile('capture')
 }
 
@@ -547,17 +575,81 @@ async function clearIR() {
 // draws it. A click plays a file through the same path a dropped file takes; a star keeps it among the folder's
 // favourites, which build plan R5 puts on standby.
 async function playEntry(e) {
-  const bytes = await lib.read(e.p)
   const name = e.p.slice(e.p.lastIndexOf('/') + 1), from = { key: lib.key, p: e.p }
-  if (e.k === 'ir') await useIR(name, bytes, { from })
-  else await useCapture(name, bytes, { from })
+  if (e.k === 'ir') { await useIR(name, await lib.read(e.p), { from }); return }
+  // A capture a slot holds already (a pad, or one just played) is switched to at once, unread.
+  const p = e.p
+  await choose({ key: captureKey({ from }), name, from, read: () => lib.read(p) })
 }
 function playingPaths() {
-  const here = (f) => (f.bytes && f.from && f.from.key === lib?.key ? f.from.p : null)
+  const here = (f) => ((f === capture ? f.key : f.bytes) && f.from && f.from.key === lib?.key ? f.from.p : null)
   return { capture: here(capture), ir: here(ir) }
 }
+
+// ------------------------------------------------------------------------------------------------- the pads
+// Favourites on standby (build plan R5, P3-UX U4): the library's first ten favourite captures, in the order they were
+// starred, held warm by the engine. Keys 1 to 0 play them, the arrows the next and previous, and the key left of 1 the
+// capture before this one. Pads hold library favourites only; a dropped file plays but has no star.
+function syncPads() {
+  const list = []
+  if (lib?.key) {
+    const byPath = new Map(lib.entries.map((e) => [e.p, e]))
+    for (const p of lib.favourites) {
+      const e = byPath.get(p)
+      if (!e || e.k !== 'nam') continue
+      const from = { key: lib.key, p }
+      list.push({ key: captureKey({ from }), p, name: e.n, gear: e.gear, source: { name: p.slice(p.lastIndexOf('/') + 1), read: () => lib.read(p) } })
+      if (list.length === PADS) break
+    }
+  }
+  slots.setPads(list)
+  const empty = $('pads-empty')
+  empty.hidden = list.length > 0
+  empty.textContent = !lib?.key
+    ? 'Open your library, then star captures: the first ten wait here, loaded and warm, on keys 1 to 0.'
+    : 'Star captures in your library: the first ten wait here, loaded and warm, on keys 1 to 0.'
+}
+async function playPad(i) {
+  const p = slots.pads[i]
+  if (!p) return
+  try { await choose({ key: p.key, name: p.source.name, from: { key: lib.key, p: p.p }, read: p.source.read }) } catch (err) { toast(`${p.name}: ${err?.message ?? err}`) }
+}
+// The next or previous pad from the one playing (from the first or last when no pad plays).
+function stepPad(d) {
+  const n = slots.pads.length
+  if (!n) return
+  const at = slots.pads.findIndex((p) => p.key === capture.key)
+  playPad(at < 0 ? (d > 0 ? 0 : n - 1) : (at + d + n) % n)
+}
+async function playLast() {
+  if (!lastCapture) return
+  const c = lastCapture
+  try { await choose(c) } catch (err) { toast(`${c.name}: ${err?.message ?? err}`) }
+}
+function wirePads() {
+  padsView = createPadsView({ el: document.querySelector('.isl.pads'), standby: slots, press: playPad, hint: (i) => (i === slots.pads.length ? 'Star one in your library' : 'Empty') })
+  $('pads-last').addEventListener('click', playLast)
+  // Keys 1 to 0, the arrows and the key left of 1, wherever typing or a dialog does not want them; arrows also leave a
+  // knob, a choice of buttons or the library's list alone.
+  addEventListener('keydown', (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return
+    const t = e.target
+    if (t?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"], dialog, #look-menu, .lm-build')) return
+    const digit = /^(?:Digit|Numpad)([0-9])$/.exec(e.code)?.[1] ?? (/^[0-9]$/.test(e.key) ? e.key : null)
+    if (digit !== null) { e.preventDefault(); playPad(digit === '0' ? 9 : Number(digit) - 1); return }
+    if (e.code === 'Backquote' || e.key === '`') { e.preventDefault(); playLast(); return }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      if (t?.closest?.('[role="slider"], [role="radio"], [role="tab"], [role="listbox"], [role="option"], [role="menuitem"], .lib-body')) return
+      e.preventDefault()
+      stepPad(e.key === 'ArrowRight' ? 1 : -1)
+    }
+  })
+  syncPads()
+  padsView.render()
+}
+
 function makeLibrary() {
-  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') syncRigStars() } })
+  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') { syncRigStars(); syncPads() } } })
   libView = createLibraryView({ lib, play: playEntry, playing: playingPaths, toast, pickFiles: () => $('lib-dir').click() })
   $('lib-dir').addEventListener('change', (e) => { const f = e.target.files; if (f?.length) lib.openFiles(f).catch((err) => toast(String(err?.message ?? err))); e.target.value = '' })
   for (const slot of ['capture', 'ir']) {
@@ -657,6 +749,7 @@ function meterLoop() {
   meterOut(m.output, m.output >= 0.999)
   // What the engine muted the output for: a new trip shows its banner. After the person turns the output back on,
   // reports still on their way from before are not news; a trip counted since is.
+  slots.status(m.slots)
   const st = m.status
   if (st) {
     lastStatus = st
@@ -673,7 +766,7 @@ function meterLoop() {
 const RIG_KEY = 'crbn-rig/rig'
 // v2 (R1): the hardware kit, Salvage's choices and the seed of its crops. Before v2 the default finish was the look's
 // own; a v1 finish of 'look' was never a choice a person made, so it becomes the kit's own.
-const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', library: 'a', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
+const RIG_DEFAULTS = { v: 2, finish: 'own', custom: DEFAULT_CUSTOM, layout: 'b', amp: 'b', meters: 'b', power: 'b', library: 'a', pads: 'a', kit: DEFAULT_KIT, salv: { ...SALVAGE_DEFAULTS }, seed: 1 }
 const abc = (v, d = 'b') => (/^[abc]$/.test(v) ? v : d)
 const kitId = (v) => (KIT_LIST.some((k) => k.id === v) || (isOwnId(v) && kits.some((k) => k.id === v)) ? v : DEFAULT_KIT)
 const salvOf = (s) => Object.fromEntries(Object.entries(SALVAGE_DEFAULTS).map(([k, d]) => [k, SALVAGE_CHOICES[k].some((c) => c[0] === s?.[k]) ? s[k] : d]))
@@ -685,7 +778,7 @@ function loadRig() {
     v: 2,
     finish: FINISHES.some((f) => f.id === finish) ? finish : 'own',
     custom: HEX_RE.test(r.custom ?? '') ? r.custom.toLowerCase() : DEFAULT_CUSTOM,
-    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power), library: abc(r.library, 'a'),
+    layout: abc(r.layout), amp: abc(r.amp), meters: abc(r.meters), power: abc(r.power), library: abc(r.library, 'a'), pads: abc(r.pads, 'a'),
     kit: kitId(r.kit), salv: salvOf(r.salv), seed: Number.isInteger(r.seed) && r.seed > 0 ? r.seed : 1,
   }
 }
@@ -697,6 +790,7 @@ function applyAll() {
   const { look, accent } = applyPrefs(prefs)
   root.dataset.layout = rig.layout; root.dataset.amp = rig.amp; root.dataset.meters = rig.meters; root.dataset.power = rig.power
   if (root.dataset.library !== rig.library) { root.dataset.library = rig.library; libView?.render() }
+  if (root.dataset.pads !== rig.pads) { root.dataset.pads = rig.pads; padsView?.render() }
   const hex = finishHex(rig, look.id)
   for (const [k, v] of Object.entries(finishVars(hex))) root.style.setProperty(k, v)
   if (hardware) {
@@ -1105,6 +1199,7 @@ async function start() {
   if (query.has('look')) { prefs = { ...prefs, look: query.get('look') }; prefs = sanitize(prefs); keepPrefs = false }
   for (const k of ['layout', 'amp', 'meters', 'power']) if (query.has(k)) { rig[k] = abc(query.get(k)); keepRig = false }
   if (query.has('library')) { rig.library = abc(query.get('library'), 'a'); keepRig = false }
+  if (query.has('pads')) { rig.pads = abc(query.get('pads'), 'a'); keepRig = false }
   // ?kit= shows a hardware kit (Salvage's id is hammer, after the kit it replaced) for a scripted screenshot
   if (query.has('kit')) { rig.kit = kitId(query.get('kit')); rig.amp = 'b'; keepRig = false }
   if (query.has('finish')) {
@@ -1135,6 +1230,7 @@ async function start() {
   meterIn = meterOf('meter-in'); meterOut = meterOf('meter-out')
 
   makeLibrary()
+  wirePads()
   wireFiles()
   $('play-guitar').addEventListener('click', playGuitar)
   $('play-demo').addEventListener('click', toggleDemo)

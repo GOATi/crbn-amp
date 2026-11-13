@@ -3,13 +3,15 @@
      results to /__result. Checks: the page paints in Capsule with Rig's brand; Rig's hardware (every kit, CRBN by
      default, bound to the settings, Salvage from the library's sheets); the engine plays the example capture in
      this browser, directly and through the real AudioWorklet (rig-processor.js), and the two agree; the cabinet stage
-     scales as the desktop's does; the library (R4), its folder in the browser's private folder. -->
+     scales as the desktop's does; the library (R4), its folder in the browser's private folder; favourites on standby
+     (R5): pads from the library's favourites, switched by key while the riff plays, and a switch through the worklet
+     equal to the engine run directly. -->
 <meta charset="utf-8">
 <title>CRBN Rig self-test</title>
 <body style="margin:0">
 <iframe id="page" src="/?example" style="width:1440px;height:900px;border:0"></iframe>
 <script type="module">
-import { createEngine } from '/engine.js'
+import { createEngine, packCapture } from '/engine.js'
 import { irGain, scaledIR } from '/ir.js'
 
 const results = { checks: [], userAgent: navigator.userAgent }
@@ -317,6 +319,50 @@ try {
     $l('#lib-chips [data-favs]').click()
     check('a star keeps a favourite; Favourites shows it; the rig’s own star agrees', favRows.length === 1 && favRows[0] === 'Test Model' && $l('#capture-star').getAttribute('aria-pressed') === 'true', favRows.join(', '))
 
+    // Favourites on standby (build plan R5, P3-UX U4): the library's favourite captures on pads 1 to 0, in the order
+    // starred, held warm by the engine. While the riff plays, keys switch between them (1 to 0, the arrows, the key left
+    // of 1), and a digit typed into the search is a search.
+    {
+      await search('Core/lstm.nam')
+      $l('#lib-body .lib-star').click()
+      await search('')
+      const pad = (i) => $l(`.pads-grid [data-pad="${i}"]`)
+      const padName = (i) => pad(i)?.querySelector('.pn')?.firstChild?.textContent ?? ''
+      const state = (i) => pad(i)?.dataset.state
+      const names = [padName(0), padName(1), padName(2)]
+      check('the pads are the library’s favourites, in the order starred', names[0] === 'Test Model' && names[1] === 'Test LSTM' && pad(2)?.classList.contains('empty') && $l('#pads-empty').hidden, names.join(' / '))
+      $l('#play-demo').click()
+      await wait(() => state(0) === 'playing' && state(1) === 'ready', 15000, 'pad 1 heard and pad 2 warm')
+      const press = (code, key, target = ld().body) => target.dispatchEvent(new (lw().KeyboardEvent)('keydown', { code, key, bubbles: true, cancelable: true }))
+      const t0 = performance.now()
+      press('Digit2', '2')
+      await wait(() => state(1) === 'playing' && $l('#capture-name').textContent === 'Test LSTM', 5000, 'key 2')
+      const keyMs = performance.now() - t0
+      press('ArrowLeft', 'ArrowLeft')
+      await wait(() => state(0) === 'playing', 5000, 'the left arrow')
+      press('Backquote', '`')
+      await wait(() => state(1) === 'playing', 5000, 'the key left of 1')
+      check('keys switch pads while the riff plays: 2, the left arrow, and the key left of 1 back', true, `key 2 heard in ${keyMs.toFixed(0)} ms (meters report about every 32 ms)`)
+      const q = $l('#lib-q')
+      q.focus(); press('Digit1', '1', q)
+      await new Promise((r) => setTimeout(r, 300))
+      const typed = state(1) === 'playing' && $l('#capture-name').textContent === 'Test LSTM'
+      q.blur()
+      check('a digit typed into the search is left to the search', typed, state(1))
+      const pickPads = (v) => $l(`.segmented[data-rig="pads"] [data-value="${v}"]`).click()
+      const isSwitches = ld().documentElement.dataset.pads === 'a' && $$l('.pads-grid.pd-a .disc').length === 10
+      pickPads('b'); const isCaps = $$l('.pads-grid.pd-b .kk').length === 10 && state(1) === 'playing'
+      pickPads('c'); const isList = $$l('.pads-grid.pd-c .sn').length === 10 && /Playing/.test(pad(1).textContent)
+      pickPads('a')
+      check('pads are footswitches by default, with keycaps and a setlist in the look menu; Playing in words', isSwitches && isCaps && isList, `${isSwitches}/${isCaps}/${isList}`)
+      press('Digit1', '1')
+      await wait(() => state(0) === 'playing', 5000, 'key 1')
+      $l('#stop').click()
+      await search('Core/lstm.nam')
+      $l('#lib-body .lib-star').click()
+      await search('')
+    }
+
     // The three drawings (D-RIG-008 (d)): the list by default, cards and shelves in the look menu.
     const pickLib = (v) => $l(`.segmented[data-rig="library"] [data-value="${v}"]`).click()
     const isList = ld().documentElement.dataset.library === 'a' && $l('#lib-body .lib-list')
@@ -373,7 +419,8 @@ try {
   const input = di.getChannelData(0)
 
   const engine = await createEngine(wasm.slice(0), rate)
-  const loaded = engine.loadCapture(capture)
+  const loaded = engine.loadSlot(0, packCapture(capture))
+  engine.play(0)
   check('the example capture loads', loaded.ok, loaded.error ?? '')
   const direct = new Float32Array(input.length)
   let t0 = performance.now()
@@ -403,14 +450,15 @@ try {
     src.start(Q / rate)
     const paused = ctx.suspend(Q / rate).then(async () => {
       await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
-      const bytes = capture.slice(0)
-      node.port.postMessage({ type: 'capture', id: 1, bytes: bytes.buffer }, [bytes.buffer])
-      await wait(() => replies.some((m) => m.type === 'capture'), 15000, 'the capture in the worklet')
+      const { text, weights } = packCapture(capture)
+      node.port.postMessage({ type: 'slot', id: 1, slot: 0, text: text.buffer, weights: weights.buffer }, [text.buffer, weights.buffer])
+      node.port.postMessage({ type: 'param', name: 'play', value: 0 })
+      await wait(() => replies.some((m) => m.type === 'slot'), 15000, 'the capture in the worklet')
       await ctx.resume()
     })
     const rendered = await ctx.startRendering()
     await paused
-    const reply = replies.find((m) => m.type === 'capture')
+    const reply = replies.find((m) => m.type === 'slot')
     return { out: rendered.getChannelData(0).subarray(Q), reply }
   }
   t0 = performance.now()
@@ -427,6 +475,50 @@ try {
   const wet = await render(scaledIR(impulse, rate))
   const ratio = rms(wet.out) / rms(dry.out)
   check('the cabinet stage scales by -18 dB as the desktop does', Math.abs(ratio / irGain(rate) - 1) < 0.01, `ratio ${ratio.toFixed(5)}, expected ${irGain(rate).toFixed(5)}`)
+
+  // A switch through the worklet (build plan R5): two captures in two slots, a browser's dip from one to the other while
+  // the riff plays, asked for at a quantum the context pauses on. The worklet's output equals the engine run directly with
+  // the same asks at the same blocks.
+  {
+    const second = new Uint8Array(await (await fetch('/__examples/wavenet_a1_standard.nam')).arrayBuffer())
+    const AT = 300 // the block the switch is asked for, about 0.8 s in
+    const e2 = await createEngine(wasm.slice(0), rate)
+    e2.loadSlot(0, packCapture(capture)); e2.loadSlot(1, packCapture(second)); e2.setParam('switchMode', 1); e2.play(0)
+    const want = new Float32Array(input.length)
+    for (let b = 0, at = 0; at < input.length; b++, at += 128) {
+      if (b === AT) e2.play(1)
+      e2.process(input.subarray(at, Math.min(input.length, at + 128)), want.subarray(at, Math.min(input.length, at + 128)))
+    }
+    const switchAt = e2.slots().switchAt
+    const Q = 128, ctx = new OfflineAudioContext(1, input.length + Q, rate)
+    await ctx.audioWorklet.addModule('/rig-processor.js')
+    const node = new AudioWorkletNode(ctx, 'crbn-rig', {
+      numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
+      processorOptions: { wasm: wasm.slice(0) },
+    })
+    const replies = []
+    node.port.onmessage = (e) => replies.push(e.data)
+    const src = new AudioBufferSourceNode(ctx, { buffer: di })
+    src.connect(node); node.connect(ctx.destination)
+    src.start(Q / rate)
+    const send = (m, ...t) => node.port.postMessage(m, t)
+    // a message with a reply after the asks: when it comes back, the worklet has taken them
+    const settle = async (n) => { send({ type: 'clearSlot', id: 100 + n, slot: 11 }); await wait(() => replies.some((m) => m.id === 100 + n), 15000, 'the worklet') }
+    const first = ctx.suspend(Q / rate).then(async () => {
+      await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
+      for (const [slot, bytes] of [[0, capture], [1, second]]) { const { text, weights } = packCapture(bytes); send({ type: 'slot', id: slot + 1, slot, text: text.buffer, weights: weights.buffer }, text.buffer, weights.buffer) }
+      send({ type: 'param', name: 'switchMode', value: 1 }); send({ type: 'param', name: 'play', value: 0 })
+      await settle(0)
+      await ctx.resume()
+    })
+    const later = ctx.suspend(((AT + 1) * Q) / rate).then(async () => { send({ type: 'param', name: 'play', value: 1 }); await settle(1); await ctx.resume() })
+    const rendered = await ctx.startRendering()
+    await Promise.all([first, later])
+    const got = rendered.getChannelData(0).subarray(Q)
+    let worst = 0
+    for (let i = 0; i < want.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]))
+    check('a switch between two slots through the worklet equals the engine run directly', worst < 1e-6 && switchAt === AT * 128, `max difference ${worst.toExponential(2)}; the dip began at block ${switchAt / 128}`)
+  }
 
   // The squeal guard in a real loop through the worklet (build plan R3): its output, 7 ms later through a band-pass at
   // 2.4 kHz, back into its input over a guitar's hiss, at a loop gain over 1. It grows into a squeal, and the guard mutes
@@ -449,9 +541,10 @@ try {
     src.start(Q / rate)
     const paused = ctx.suspend(Q / rate).then(async () => {
       await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
-      const bytes = capture.slice(0)
-      node.port.postMessage({ type: 'capture', id: 1, bytes: bytes.buffer }, [bytes.buffer])
-      await wait(() => replies.some((m) => m.type === 'capture'), 15000, 'the capture in the worklet')
+      const { text, weights } = packCapture(capture)
+      node.port.postMessage({ type: 'slot', id: 1, slot: 0, text: text.buffer, weights: weights.buffer }, [text.buffer, weights.buffer])
+      node.port.postMessage({ type: 'param', name: 'play', value: 0 })
+      await wait(() => replies.some((m) => m.type === 'slot'), 15000, 'the capture in the worklet')
       await ctx.resume()
     })
     const rendered = await ctx.startRendering()

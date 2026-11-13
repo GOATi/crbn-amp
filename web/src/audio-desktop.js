@@ -11,7 +11,12 @@
 // The library (build plan R4) reads its folder through the app as well: the app's own folder dialog, the folder's
 // listing, what each file says about itself (read natively, by library.js's rules), a file's bytes, and a watch that
 // says when the folder changes (onLibChanged).
-import { PARAM } from './engine.js'
+import { PARAM, SLOTS } from './engine.js'
+
+// The desktop's switch between captures (build plan R5): a true crossfade, both captures playing, and a capture left
+// behind warmed again at twice real time (the app builds and warms a capture off the audio thread before handing it over).
+const SWITCH = { switchMode: 0, switchMs: 30, warmRate: 2 }
+const bits = (v) => { const out = []; for (let s = 0; s < SLOTS; s++) if (v & (1 << s)) out.push(s); return out }
 
 /** True inside the desktop app's WebView2. */
 export const inDesktopApp = () => typeof globalThis.chrome?.webview?.postMessage === 'function'
@@ -44,7 +49,7 @@ function base64(floats) {
 export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {}, onLibChanged = () => {} } = {}) {
   const view = globalThis.chrome.webview
   const post = (m) => view.postMessage(m)
-  let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, settingsAt = -Infinity
+  let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, slots = null, settingsAt = -Infinity
   const ready = new Promise((ok) => { gotReady = ok })
   const waiting = new Map()
   const peaks = { input: 0, raw: 0, output: 0 }
@@ -56,6 +61,7 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     if (m.type === 'meter') {
       peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); peaks.output = Math.max(peaks.output, m.output)
       if ('muted' in m) engine = { muted: m.muted, hz: m.hz, trips: m.trips, seconds: m.seconds }
+      if ('playing' in m) slots = { playing: m.playing, ready: bits(m.ready), switching: Boolean(m.switching) }
     } else if (m.type === 'libChanged') {
       onLibChanged()
     } else if (m.type === 'ready' || m.type === 'status') {
@@ -83,17 +89,18 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
       await ready
       if (begun) return false
       begun = true
-      for (const [name, value] of Object.entries(params)) this.setParam(name, value)
+      for (const [name, value] of Object.entries({ ...params, ...SWITCH })) this.setParam(name, value)
       return true
     },
     wake() { return null },
 
     setParam(name, value) { if (name in PARAM) post({ type: 'param', id: PARAM[name], value: Number(value) }) },
-    async loadCapture(bytes) {
-      // A .nam capture is JSON: it goes as its text.
-      return ask({ type: 'capture', text: new TextDecoder().decode(bytes) })
-    },
-    clearCapture() { post({ type: 'clearCapture', id: 0 }) },
+    /** Builds a capture into one of the engine's slots (build plan R5): it goes as its text, and the app builds and
+     *  warms it off the audio thread. Resolves to { ok, info } or { ok: false, error }. */
+    async loadSlot(slot, bytes) { return ask({ type: 'slot', slot, text: new TextDecoder().decode(bytes) }) },
+    clearSlot(slot) { post({ type: 'clearSlot', slot }) },
+    /** Asks to hear a slot, or none (-1); the engine switches once it is warm. */
+    play(slot) { this.setParam('play', slot) },
     async loadIR(bytes) {
       let wav
       try { wav = await decodeWav(bytes) } catch (err) { throw new Error(err?.message?.startsWith('This') ? err.message : 'This file is not a WAV CRBN Rig can read.') }
@@ -127,7 +134,7 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     async listInputs() { return [] },
 
     takeMeters() {
-      const m = { ...peaks, status: engine }
+      const m = { ...peaks, status: engine, slots }
       peaks.input = 0; peaks.raw = 0; peaks.output = 0
       return m
     },

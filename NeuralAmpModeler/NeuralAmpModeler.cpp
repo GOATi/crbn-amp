@@ -1,14 +1,15 @@
 // CRBN Rig's desktop app: Rig's page over Rig's engine (crbn-launcher D-RIG-017, build plan R2). See NeuralAmpModeler.h.
 //
 // The page and this host talk in JSON (web/src/audio-desktop.js is the page's side):
-//   page -> app  {type:'hello'}  {type:'param', id, value}  {type:'capture', id, text}  {type:'clearCapture', id}
+//   page -> app  {type:'hello'}  {type:'param', id, value}  {type:'slot', id, slot, text}  {type:'clearSlot', slot}
 //                {type:'ir', id, rate, samples}  {type:'clearIR'}  {type:'irOn', on}  {type:'standby', on}
 //                {type:'source', source: 'live' | 'demo' | 'none'}  {type:'demo', id, rate, samples}
 //                {type:'audioSettings'}  {type:'chrome', dark, caption}
 //                the library (build plan R4, RigLibrary.h): {type:'libPick', id, start}  {type:'libList', id, folder}
 //                {type:'libMeta', id, folder, paths}  {type:'libRead', id, folder, path}  {type:'libWatch', folder}
 //   app -> page  {type:'ready' | 'status', sampleRate, running, driver, input, output, buffer, latencyMs, ...}
-//                {type:'meter', input, raw, output, muted, hz, trips, seconds}  {type:'capture', id, ok, info | error}
+//                {type:'meter', input, raw, output, muted, hz, trips, seconds, playing, ready, switching}
+//                {type:'slot', id, ok, info | error}
 //                {type:'ir', id, ok, ...}
 //                {type:'demo', id, ok, error}
 //                {type:'libPick', id, ok, path}  {type:'libList', id, ok, files: [{p, s, m}], truncated, error}
@@ -16,6 +17,9 @@
 //                {type:'libChanged'}
 // `muted` is what muted the output, if anything (the squeal guard or auto-off, rig_engine.cpp's Status), with its
 // frequency; `trips` counts them, so the page sees each one. Standby, the guard and auto-off are engine parameters.
+// The engine holds up to twelve captures in slots (build plan R5): `slot` builds and warms one here, off the audio
+// thread, and the page asks for a slot with the engine's `play` parameter; `playing` is the slot heard, `ready` a bit
+// per slot holding a warm capture, `switching` whether a crossfade is under way.
 // `samples` are float32 little-endian in base64: an IR's first channel, or the riff, at its own rate, decoded by the
 // page as the web version decodes them.
 #include <algorithm>
@@ -312,11 +316,12 @@ void NeuralAmpModeler::OnIdle()
   {
     mMetersAt = now;
     const rig::Meters m = mEngine.TakeMeters();
-    char json[256];
+    char json[320];
     std::snprintf(json, sizeof json,
                   "{\"type\":\"meter\",\"input\":%.6g,\"raw\":%.6g,\"output\":%.6g,\"muted\":%d,\"hz\":%.6g,\"trips\":%d,"
-                  "\"seconds\":%.6g}",
-                  m.input, m.raw, m.output, m.muted, m.hz, m.trips, m.seconds);
+                  "\"seconds\":%.6g,\"playing\":%d,\"ready\":%d,\"switching\":%s}",
+                  m.input, m.raw, m.output, m.muted, m.hz, m.trips, m.seconds, m.playing, m.ready,
+                  m.switching ? "true" : "false");
     Post(json);
   }
 }
@@ -469,12 +474,12 @@ void NeuralAmpModeler::OnPageMessage(const std::string& text)
   }
   else if (type == "param")
     mEngine.SetParam(static_cast<int>(num("id", -1)), num("value"));
-  else if (type == "capture")
+  else if (type == "slot")
   {
     rig::CaptureInfo info;
     std::string error;
-    nlohmann::json reply = {{"type", "capture"}, {"id", num("id")}};
-    if (mEngine.StageCapture(str("text"), info, error))
+    nlohmann::json reply = {{"type", "slot"}, {"id", num("id")}};
+    if (mEngine.StageSlot(static_cast<int>(num("slot", -1)), str("text"), info, error))
     {
       reply["ok"] = true;
       reply["info"] = {{"loudness", info.hasLoudness ? nlohmann::json(info.loudness) : nlohmann::json()},
@@ -491,11 +496,8 @@ void NeuralAmpModeler::OnPageMessage(const std::string& text)
     }
     Post(Dump(reply));
   }
-  else if (type == "clearCapture")
-  {
-    mEngine.ClearCapture();
-    Post(Dump({{"type", "capture"}, {"id", num("id")}, {"ok", true}, {"info", nullptr}}));
-  }
+  else if (type == "clearSlot")
+    mEngine.ClearSlot(static_cast<int>(num("slot", -1)));
   else if (type == "ir")
   {
     double seconds = 0.0;

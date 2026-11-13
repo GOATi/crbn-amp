@@ -11,11 +11,17 @@
 // Then the squeal guard's and auto-off's cases (build plan R3, scenarios.mjs), in both builds: feedback through a real
 // loop trips the guard within 300 ms, a pulled jack trips auto-off, and the riff, long notes clean and at high gain,
 // chords hit hard, and sine sweeps trip nothing; and Standby's fade.
+//
+// Then the slots (build plan R5), in both builds: a switch between two captures while a note rings, as a crossfade (the
+// desktop's) and as a dip (a browser's), equal to a reference made from each capture played alone and faded by hand,
+// with no gap in the crossfade; a capture loaded and warmed while another plays, which must not change one sample of
+// what is heard; a switch to a capture still cold, which waits for its warm; and weights handed over as floats (the
+// page's way) against the same capture read from its text.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { PARAM, createEngine } from '../src/engine.js'
-import { RATE, firstLoud, fuzzCapture, loopCases, loopExcitation, openCases, resonance, runLoop } from './scenarios.mjs'
+import { PARAM, createEngine, packCapture } from '../src/engine.js'
+import { RATE, firstLoud, fuzzCapture, loopCases, loopExcitation, openCases, pluck, resonance, runLoop } from './scenarios.mjs'
 
 const root = resolve(import.meta.dirname, '..', '..')
 const out = join(root, 'dist', 'engine', 'test')
@@ -58,7 +64,7 @@ function buildNative() {
     ...['dsp.cpp', 'NoiseGate.cpp', 'RecursiveLinearFilter.cpp'].map((f) => join(root, 'AudioDSPTools', 'dsp', f)),
     join(root, 'NeuralAmpModeler', 'ToneStack.cpp'),
   ]
-  const headers = readdirSync(join(root, 'web', 'engine')).filter((f) => f.endsWith('.h')).map((f) => join(root, 'web', 'engine', f))
+  const headers = [...readdirSync(join(root, 'web', 'engine')).filter((f) => f.endsWith('.h')).map((f) => join(root, 'web', 'engine', f)), join(root, 'NeuralAmpModeler', 'ResamplingNAM.h')]
   const newest = Math.max(...[...sources, ...headers].map((s) => statSync(s).mtimeMs))
   if (existsSync(exe) && statSync(exe).mtimeMs > newest) return
   const vswhere = join(process.env['ProgramFiles(x86)'], 'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
@@ -243,5 +249,133 @@ console.table(guardRows)
   console.log(`${tripped && lifted ? 'ok  ' : 'FAIL'}  Turning the output back on lifts auto-off's mute`)
   if (!(tripped && lifted)) failures++
 }
+// --- slots and switches (build plan R5) --------------------------------------------------------------------------
+// Two of NAM Core's captures as two pads: the standard WaveNet (TONE3000's common kind) and A2. A note rings (110 Hz,
+// plucked), and 0.67 s in, the pad changes. The gate and the EQ are off here: the gate follows the input, and the
+// references below play each capture alone, one of them from silence, and fade them after the chain, where the engine
+// fades before its EQ and DC blocker (filters a fade does not commute with; the DC blocker's 5 Hz is all that is left).
+// The guard and auto-off are off: a steady note is what the guard asks about.
+{
+  const B = 128, PRE = 100, SW = PRE + 250, MS = 30
+  const capA = join(models, 'wavenet_a1_standard.nam'), capB = join(models, 'A2.nam')
+  const packA = packCapture(readFileSync(capA)), packB = packCapture(readFileSync(capB))
+  const note = pluck(110, 2.5, { t60: 6, peak: 0.5 })
+  const input = new Float32Array(PRE * B + note.length)
+  input.set(note, PRE * B)
+  const base = { guardOn: 0, autoOff: 0, gateOn: 0, eqOn: 0, switchMs: MS, warmRate: 64 }
+  // Plays `input` through an engine with these slots and asks, block by block, for what `timeline` says ({ block: slot }).
+  // `before` is called before each block (to load a slot mid-way).
+  async function render(slots, timeline, params, src = input, before = () => {}) {
+    const e = await createEngine(wasm, RATE)
+    for (const [k, v] of Object.entries({ ...base, ...params })) e.setParam(k, v)
+    for (const [s, packed] of Object.entries(slots)) { const r = e.loadSlot(Number(s), packed); if (!r.ok) throw new Error(r.error) }
+    const out = new Float32Array(src.length)
+    for (let b = 0, at = 0; at < src.length; b++, at += B) {
+      before(e, b)
+      if (b in timeline) e.play(timeline[b])
+      e.process(src.subarray(at, at + B), out.subarray(at, at + B))
+    }
+    return { out, slots: e.slots() }
+  }
+  const nativeSwitch = (params, timeline, slotFiles, src = input) => {
+    const inFile = join(out, 'switch-in.f32'), outFile = join(out, 'switch-out.f32'), statusFile = join(out, 'switch-status.json')
+    writeFileSync(inFile, Buffer.from(src.buffer, src.byteOffset, src.byteLength))
+    const args = ['-', inFile, outFile, String(RATE), String(B),
+      ...Object.entries({ ...base, ...params }).flatMap(([k, v]) => ['--param', `${PARAM[k]}=${v}`]),
+      ...Object.entries(slotFiles).flatMap(([s, f]) => ['--slot', `${s}=${f}`]),
+      ...Object.entries(timeline).flatMap(([b, s]) => ['--at', `${b}:${PARAM.play}=${s}`]), '--status', statusFile]
+    const r = spawnSync(exe, args, { encoding: 'utf8' })
+    if (r.status !== 0) throw new Error(`the native harness exited ${r.status} ${(r.stderr || '').trim()}`)
+    const b = readFileSync(outFile)
+    return { out: new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)), status: JSON.parse(readFileSync(statusFile, 'utf8')) }
+  }
+  const peakOf = (a, from, to) => { let m = 0; for (let i = Math.max(0, from); i < Math.min(a.length, to); i++) m = Math.max(m, Math.abs(a[i])); return m }
+  const env = (a, at, w = 120) => { let s = 0; for (let i = at; i < at + w; i++) s += a[i] * a[i]; return Math.sqrt(s / w) }
+  const maxDiff = (a, b, from = 0, to = a.length) => { let m = 0; for (let i = from; i < to; i++) m = Math.max(m, Math.abs(a[i] - b[i])); return m }
+  const rows = []
+  const row = (name, ok, detail) => { rows.push({ case: name, detail, result: ok ? 'ok' : 'FAIL' }); if (!ok) failures++ }
+
+  // A switch, crossfade and dip, against the reference: A alone; B alone from silence until it comes in; mixed with the
+  // engine's own curves (equal power for the crossfade, a raised cosine out and then in for the dip).
+  // A alone, with the same settings as the run it is compared with (its own first fade, from no capture, differs by mode).
+  const aloneA = (params) => render({ 1: packA }, { 0: 1 }, params).then((r) => r.out)
+  for (const [mode, label] of [[0, 'crossfade'], [1, 'dip']]) {
+    const refA = await aloneA({ switchMode: mode })
+    const run = await render({ 1: packA, 2: packB }, { 0: 1, [SW]: 2 }, { switchMode: mode })
+    const S = run.slots.switchAt, L = Math.round((MS / 1000) * RATE), half = L >> 1, startB = mode ? S + half : S
+    const quiet = input.slice(); quiet.fill(0, 0, startB)
+    const refB = (await render({ 1: packB }, { 0: 1 }, { switchMode: mode }, quiet)).out
+    const ref = new Float32Array(input.length)
+    for (let n = 0; n < ref.length; n++) {
+      if (n < S) ref[n] = refA[n]
+      else if (n >= S + L) ref[n] = refB[n]
+      else if (!mode) { const t = (n - S) / L; ref[n] = Math.cos((t * Math.PI) / 2) * refA[n] + Math.sin((t * Math.PI) / 2) * refB[n] }
+      else if (n < S + half) ref[n] = 0.5 * (1 + Math.cos((Math.PI * (n - S)) / half)) * refA[n]
+      else ref[n] = 0.5 * (1 - Math.cos((Math.PI * (n - S - half)) / (L - half))) * refB[n]
+    }
+    // A click is broadband; what the references cannot hold is slow: the note's own DC (an asymmetric capture's mean under
+    // a note) moves from A's to B's in front of the 5 Hz DC blocker, a bump under 20 Hz dying over 100 ms. So the residual
+    // is judged above 100 Hz (two one-pole high-passes), with the whole band as a looser check.
+    const from = S - 2400, to = S + L + 9600, peak = peakOf(ref, from, to)
+    const diff = new Float64Array(to - from)
+    for (let n = from; n < to; n++) diff[n - from] = run.out[n] - ref[n]
+    const a = Math.exp((-2 * Math.PI * 100) / RATE)
+    for (let pass = 0; pass < 2; pass++) { let px = 0, py = 0; for (let i = 0; i < diff.length; i++) { const x = diff[i]; py = a * (py + x - px); px = x; diff[i] = py } }
+    const clickDB = 20 * Math.log10(diff.reduce((m, v) => Math.max(m, Math.abs(v)), 0) / peak)
+    const errDB = 20 * Math.log10(maxDiff(run.out, ref, from, to) / peak)
+    const untouched = maxDiff(run.out, refA, 0, S) === 0
+    // the gap: 2.5 ms windows through the switch, against the quieter capture's level just before and just after it
+    const level = Math.min(env(refA, S - 240), env(refB, S + L + 120))
+    let lowest = Infinity, under = 0
+    for (let n = S; n + 120 <= S + L; n += 120) {
+      const r = env(run.out, n) / level
+      lowest = Math.min(lowest, r)
+      if (r < 0.1) under += 120
+    }
+    const gapOk = mode ? (under / RATE) * 1000 < 10 : lowest > 0.5
+    let ok = S === SW * B && untouched && clickDB < -45 && errDB < -30 && gapOk
+    let detail = `starts at block ${S / B}; above 100 Hz ${clickDB.toFixed(0)} dB from the reference (${errDB.toFixed(0)} dB in all); ${mode ? `under -20 dB for ${((under / RATE) * 1000).toFixed(1)} ms` : `never below ${(20 * Math.log10(lowest)).toFixed(1)} dB of the quieter`}; before it, ${untouched ? 'identical to A alone' : 'NOT A alone'}`
+    if (native) {
+      const n = nativeSwitch({ switchMode: mode }, { 0: 1, [SW]: 2 }, { 1: capA, 2: capB }), d = maxDiff(run.out, n.out)
+      ok &&= d < 1e-3 && n.status.switchAt === S
+      detail += `; native ${d < 1e-3 && n.status.switchAt === S ? `same (${d.toExponential(1)})` : `DIFFERS (${d.toExponential(1)}, at ${n.status.switchAt})`}`
+    }
+    row(`a ${label} of ${MS} ms while a note rings`, ok, detail)
+  }
+
+  // A capture loaded and warmed while another plays (a browser's way: the page sends it, the audio thread builds it and
+  // warms it a little per block), then asked for at once: the sound is A alone, sample for sample, until the switch,
+  // which waits for the warm. As the web version runs it: a warm rate of 0.25 and a dip.
+  {
+    const LOAD = PRE + 60
+    const run = await render({ 1: packA }, { 0: 1 }, { switchMode: 1, warmRate: 0.25 }, input, (e, b) => { if (b === LOAD) { const r = e.loadSlot(3, packB); if (!r.ok) throw new Error(r.error); e.play(3) } })
+    const S = run.slots.switchAt, waited = (S - LOAD * B) / RATE
+    const untouched = maxDiff(run.out, await aloneA({ switchMode: 1, warmRate: 0.25 }), 0, S) === 0
+    row('a capture loaded while another plays, and asked for at once', untouched && waited > 0.05 && waited < 1 && run.slots.playing === 3,
+      `${untouched ? 'nothing heard changed' : 'THE SOUND CHANGED'} until the switch; the switch waited ${(waited * 1000).toFixed(0)} ms for the warm`)
+  }
+
+  // Back to the pad just left: it is warming again, and may be heard at once (its histories are a real signal's).
+  {
+    const run = await render({ 1: packA, 2: packB }, { 0: 1, [SW]: 2, [SW + 12]: 1 }, { switchMode: 1, warmRate: 0.25 })
+    const back = run.slots.switchAt, first = SW * B, L = Math.round((MS / 1000) * RATE)
+    row('back to the pad just left, while it warms again', run.slots.playing === 1 && back >= first + L && back <= first + L + 2 * B,
+      `the second switch began ${((back - first) / RATE * 1000).toFixed(1)} ms after the first`)
+  }
+
+  // Floats handed over (the page's way) and text read by the engine give the same capture, sample for sample.
+  {
+    let worst = 0
+    for (const f of ['wavenet_a1_standard.nam', 'A2.nam', 'slimmable_container.nam', 'wavenet_condition_dsp.nam', 'lstm.nam']) {
+      const bytes = readFileSync(join(models, f))
+      const viaText = (await render({ 1: bytes }, { 0: 1 }, {}, input.subarray(0, (PRE + 120) * B))).out
+      const viaFloats = (await render({ 1: packCapture(bytes) }, { 0: 1 }, {}, input.subarray(0, (PRE + 120) * B))).out
+      worst = Math.max(worst, maxDiff(viaText, viaFloats))
+    }
+    row('weights as floats against the same capture as text (five kinds)', worst === 0, worst === 0 ? 'identical' : `differ by ${worst.toExponential(1)}`)
+  }
+  console.table(rows)
+}
+
 console.log(failures ? `${failures} FAILED` : 'web engine: all cases pass')
 process.exit(failures ? 1 : 0)

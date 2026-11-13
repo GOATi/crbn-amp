@@ -588,6 +588,80 @@ Arrows give next and previous.
   - Memory is not the limit: the engine's linear memory is 32 MB with or without a standard capture (its weights are
     about 100 KB of floats). Ten held captures cost about ten times one model's buffers; measure in R5.
 
+### R5, as built (2026-11-13, SYNC:RIG-024)
+
+Desktop **0.9.4** and the web version, built and checked; published only on the owner's word (see SYNC:RIG-024).
+
+- **The engine's slots** (`web/engine/rig_engine.cpp`, both builds): twelve, ten for the pads and two for whatever plays
+  off them, so a switch from a library click to the next still fades. One is heard; `play` (a parameter) asks for a
+  slot, and the switch starts at the next block once that slot is warm. A switch is 30 ms: a **crossfade** on the
+  desktop (both captures play, equal power), a **dip** in a browser (the one going out fades alone, then the one
+  coming in fades in alone from silence, on raised cosines: under -20 dB for 5 ms).
+- **Loads off the playing path:**
+  - A capture is built **cold**: NAM Core's prewarm on construction and reset held off (it ran twice), then warmed once
+    by playing it silence (`ResamplingNAM::PlaySilence`, `WarmFrames`). The desktop builds and warms on its UI thread
+    (`rig_stage_slot`) and hands the capture over per slot. A browser builds on the audio thread and warms there a little
+    per block: 128 frames each time the credit allows, a quarter of a frame per frame heard (`warmRate` 0.25), twice
+    that while a switch waits for it, four times while nothing is heard. Nothing heard changes while another slot loads
+    and warms: the engine test checks it sample for sample.
+  - **The browser's page reads the capture's JSON** (`engine.js`'s `packCapture`) and hands the engine its weights as
+    floats beside the rest. In WebAssembly a decimal number is read in software 128-bit floats (`__floatscan`,
+    `fmodl`, `__multf3`): 85% of a standard capture's 40 ms build was its 13,802 weights; Edge's own `JSON.parse` reads
+    the whole file in 2.5 ms. The engine puts them back as numbers (`PutWeightsBack`), the same floats NAM Core reads.
+    A standard capture now builds on the audio thread in **2.1 ms** in headless Edge (A2 in 6.4 ms). R4's 0.1 s dropout
+    on a click in the library is gone: the old capture plays on until the new one is warm (about 0.27 s for A2 while a
+    standard capture plays), then the dip.
+  - Captures are built for 128-frame blocks (`kModelBlock`; the engine plays a larger host block in pieces): at 1024
+    frames each standard capture held about 6 MB of per-block buffers, twelve 102 MB. Twelve now fit in the engine's
+    first 32 MB.
+  - A slot left behind by a switch is warmed again in the background, but may be heard at once meanwhile (its
+    histories are a real signal's, so no cold thump): going back to the pad just left is one fade.
+  - Each capture's **offset for silence** (its biases', measured at the end of its warm) is taken off what it plays:
+    NAM Core's standard WaveNet sits at -1.0e-3, A2 at -2.6e-3, and a switch stepped from one to the other in front of
+    the DC blocker, which makes a step a slow bump. The DC blocker took it off in steady playing anyway.
+- **The pads** (`web/src/pads.js`, `index.html`, `style.css`): the library's first ten favourite **captures**, in the
+  order starred, drawn as D-RIG-008 (d) picked: **footswitches** (A) by default, keycaps (B) and a setlist (C) under
+  "Favourites" in the look menu, from the Rig Lab's drawings. Under the rig in Amp front and Signal chain, a rail on the
+  right in Captures first, five across on a narrow screen. Each pad says what it is doing in words: Playing,
+  Switching, Loading, Cannot play. A pad's capture is loaded when it is starred (once the audio has started), held
+  warm, and switched to without being read again.
+  - **Keys:** 1 to 0 for the pads, the left and right arrows for the previous and next pad, and the key left of 1
+    (Backquote) for the capture before this one (also the "Last two" button). Not while typing in a field, a dialog or
+    the look menu; arrows are left to a knob, a choice of buttons or the library's list.
+  - **Pads hold library favourites only** (the kickoff's default, for the owner to change): a dropped file plays, but
+    has no star until it is in the library's folder.
+- **Protocol:** the worklet's `capture` and `clearCapture` became `slot` (text and weights) and `clearSlot`; the
+  desktop's became `slot` (text) and `clearSlot`; the meters carry `playing`, `ready` and `switching`.
+  `rig_load_model` stays as the harness's load (slot 0, warmed and heard at once).
+- **Measured** (Box-C; headless Edge on the main thread, the worklet's engine; the audio thread's share per 128-frame
+  block):
+  - One standard capture: 22% (p90 34%). A crossfade of two: 45% (p90 **90%**). The dip: 22% (p90 34%). Warming at
+    0.25 while one plays: 36% on average, 71% p90 (one block in four carries 128 frames of warming).
+  - So the browser keeps the dip: a crossfade fits a fast desktop's median but not its slow blocks, nor a laptop.
+  - Desktop: a real 2 from Windows heard (pad 2 Playing) 31 ms after the key, the meter report's lag included.
+- **Tests:**
+  - `web/engine/test.mjs`: 40 cases (5 new), wasm and MSVC. A crossfade and a dip while a note rings, against a
+    reference made from each capture alone and faded by hand: above 100 Hz -60 dB and -51 dB from it (a click would be
+    tens of dB above; what the reference cannot hold is the note's own DC moving in front of the DC blocker, a bump
+    under 20 Hz), the crossfade never below the quieter capture, the dip under -20 dB for 5 ms, both builds the same
+    (1.8e-5). A capture loaded and warmed while another plays: not one sample heard changes. Back to the pad just left:
+    one fade later. Weights as floats against the same captures as text: identical, five kinds.
+  - `web/check.mjs`: 63 checks (5 new). The pads from the favourites in the order starred; keys 2, the left arrow
+    and the key left of 1 switching while the riff plays; a digit typed in the search left to it; the three drawings;
+    a dip between two slots through the real AudioWorklet equal to the engine run directly (0 difference).
+  - `packaging/windows/check.mjs`: 35 checks (2 new). A real 2 from Windows switching pads while the riff plays in the
+    native engine, and the arrow back; on the second opening, the pads back, loaded and warm. Standby's check now
+    measures 1.5 s (the riff is a second of silence first; one second caught the sine only by timer slop).
+- **Found:**
+  - A JavaScript `String.replace` reads `$$` in its replacement as one `$`: a scripted edit turned the self-test's
+    `$$l(…)` into `$l(…)`. Edit with split and join, or a function.
+  - Six headless Edge browsers from the Hardware Lab session (11 November, `hwlab\edgeprof1..6`) had used about 125
+    CPU-hours and kept Box-C at 64%: R4's timing checks failed (5,000 files natively in 11.5 s). Stopped on the owner's
+    word; then 2.2 s.
+  - `NeuralAmpModeler/ResamplingNAM.h` is the fork's own file, not a vendored library: it gained `SetPrewarmOnReset`
+    forwarding, `WarmFrames`, `PlaySilence` and `SilenceLevel`, and a block size for its constructor (upstream's 2048
+    stays the default). No vendored library changed.
+
 ### R6. Rigs, variants and pedals (U5)
 
 As P3-UX's U5. Stompboxes (B) by default, rows (A) and chain chips (C) in the look menu. Variants sit on Q, W and E.

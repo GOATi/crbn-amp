@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include "../iPlug2/IPlug/IPlugConstants.h"
 
@@ -38,7 +39,9 @@ class ResamplingNAM : public nam::DSP
 {
 public:
   // Resampling wrapper around the NAM models
-  ResamplingNAM(std::unique_ptr<nam::DSP> encapsulated, const double expected_sample_rate)
+  // CRBN Rig passes maxBlockSize: the block it will never exceed (its engine plays 128 frames at a time), since sizing
+  // the model for 2048 first costs a capture's build time and memory for nothing.
+  ResamplingNAM(std::unique_ptr<nam::DSP> encapsulated, const double expected_sample_rate, const int maxBlockSize = 2048)
   : nam::DSP(encapsulated->NumInputChannels(), encapsulated->NumOutputChannels(), expected_sample_rate)
   , mEncapsulated(std::move(encapsulated))
   , mSupportsArbitrarySampleRate(mEncapsulated->SupportsArbitrarySampleRate())
@@ -70,13 +73,47 @@ public:
     // _prewarm_samples = 0;
 
     // And be ready
-    int maxBlockSize = 2048; // Conservative
     Reset(expected_sample_rate, maxBlockSize);
   };
 
   ~ResamplingNAM() = default;
 
   void prewarm() override { mEncapsulated->prewarm(); };
+
+  // CRBN Rig (build plan R5): the engine builds a capture without NAM Core's prewarm on reset (it ran twice per load),
+  // then warms it once, all at once off the audio thread or a little per block on it (rig_engine.cpp's slots).
+  void SetPrewarmOnReset(const bool prewarmOnReset) override
+  {
+    nam::DSP::SetPrewarmOnReset(prewarmOnReset);
+    mEncapsulated->SetPrewarmOnReset(prewarmOnReset);
+  }
+
+  // Frames of silence, at the host's rate, that leave the model and the resampler as a prewarm leaves them: every
+  // history holds what silence makes of it, so an earlier signal can no longer be heard.
+  int WarmFrames()
+  {
+    const double modelRate = mSupportsArbitrarySampleRate ? GetExpectedSampleRate() : GetEncapsulatedSampleRate();
+    const double ratio = modelRate > 0.0 ? GetExpectedSampleRate() / modelRate : 1.0;
+    return static_cast<int>(std::ceil(mEncapsulated->GetPrewarmSamples() * ratio)) + GetLatency() + 1;
+  }
+
+  // Plays `frames` of silence through the model (and the resampler), in blocks no larger than Reset allowed.
+  // Allocates nothing: the buffers are Reset's.
+  void PlaySilence(int frames)
+  {
+    NAM_SAMPLE* in[1] = {mSilence.data()};
+    NAM_SAMPLE* out[1] = {mSink.data()};
+    while (frames > 0)
+    {
+      const int n = std::min(frames, mMaxExternalBlockSize);
+      process(in, out, n);
+      mSilenceLevel = mSink[static_cast<size_t>(n - 1)];
+      frames -= n;
+    }
+  }
+
+  // What the model last put out for silence: once warm, its constant answer to silence (its biases' offset).
+  NAM_SAMPLE SilenceLevel() const { return mSilenceLevel; }
 
   void process(NAM_SAMPLE** input, NAM_SAMPLE** output, const int num_frames) override
   {
@@ -100,6 +137,8 @@ public:
   {
     mExpectedSampleRate = sampleRate;
     mMaxExternalBlockSize = maxBlockSize;
+    mSilence.assign(static_cast<size_t>(std::max(1, maxBlockSize)), 0.0);
+    mSink.assign(mSilence.size(), 0.0);
     // Adaptive models convert their own coefficients to the host rate. Fixed-rate models must be reset at the
     // rate of the audio they will actually receive, including Linear children inside a Sequential model.
     const double modelSampleRate = mSupportsArbitrarySampleRate ? sampleRate : GetEncapsulatedSampleRate();
@@ -139,4 +178,8 @@ private:
 
   // This function is defined to conform to the interface expected by the iPlug2 resampler.
   std::function<void(NAM_SAMPLE**, NAM_SAMPLE**, int)> mBlockProcessFunc;
+
+  // PlaySilence's buffers, and its last output (CRBN Rig).
+  std::vector<NAM_SAMPLE> mSilence, mSink;
+  NAM_SAMPLE mSilenceLevel = 0.0;
 };

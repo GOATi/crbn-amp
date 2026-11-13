@@ -3,12 +3,18 @@
 // nothing either lacks: no TextEncoder or TextDecoder (an AudioWorkletGlobalScope has neither), no fetch.
 
 /** Parameter ids, as rig_engine.cpp numbers them. `standby` and `clearTrip` (any write lifts the guard's or
- *  auto-off's mute) are the power switch's (build plan R3), sent as the person acts, never kept as settings. */
+ *  auto-off's mute) are the power switch's (build plan R3), sent as the person acts, never kept as settings. The slots'
+ *  (build plan R5): `play` (any write asks to hear that slot, or none for -1, as soon as it is warm), `switchMode` (0 a
+ *  crossfade, 1 a dip), `switchMs` (the whole switch) and `warmRate` (frames of silence warmed per frame heard). */
 export const PARAM = Object.freeze({
   inputDB: 0, gateOn: 1, gateThresholdDB: 2, eqOn: 3, bass: 4, middle: 5, treble: 6, outputDB: 7,
   outputMode: 8, calibrateInput: 9, inputCalibrationDBu: 10, slim: 11,
   standby: 12, guardOn: 13, autoOff: 14, clearTrip: 15,
+  play: 16, switchMode: 17, switchMs: 18, warmRate: 19,
 })
+
+/** How many captures the engine holds (rig_engine.cpp's kSlots): ten pads and two for whatever plays off them. */
+export const SLOTS = 12
 
 /** The settings a person keeps, at their defaults: the desktop's (NeuralAmpModeler's constructor), then the squeal
  *  guard and auto-off, both on out of the box (D-RIG-008 (e)). */
@@ -22,7 +28,7 @@ export const MUTED = Object.freeze({ 0: null, 1: 'squeal', 2: 'silence', 3: 'hum
 
 const INFO = Object.freeze({
   loaded: 0, hasLoudness: 1, loudness: 2, hasInputLevel: 3, inputLevel: 4, hasOutputLevel: 5, outputLevel: 6,
-  modelSampleRate: 7, slimmable: 8, latencyFrames: 9,
+  modelSampleRate: 7, slimmable: 8, latencyFrames: 9, ready: 10,
 })
 
 // UTF-8 to a string without TextDecoder (error messages and the engine's log lines).
@@ -37,6 +43,36 @@ function utf8(bytes) {
     s += String.fromCodePoint(c)
   }
   return s
+}
+
+/**
+ * Splits a capture's JSON into its text without its weights and the weights as float32s, for loadSlot (build plan R5).
+ * In WebAssembly, reading a decimal number runs in software 128-bit floats: a standard capture's 13,802 weights took 85%
+ * of a 40 ms build on the audio thread, where the browser's own JSON.parse reads the whole file in 2.5 ms. Every
+ * "weights" array of numbers becomes {"rig.f32": [at, count]} (rig_engine.cpp's PutWeightsBack), with the same floats
+ * NAM Core would have read. Runs where TextEncoder does (the page, Node), never in the worklet.
+ * @param {Uint8Array | object} capture  the .nam file's bytes, or its parsed JSON
+ * @returns {{ text: Uint8Array, weights: Float32Array }}
+ */
+export function packCapture(capture) {
+  const json = capture instanceof Uint8Array ? JSON.parse(new TextDecoder().decode(capture)) : capture
+  const parts = []
+  let total = 0
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.map(walk)
+    if (!v || typeof v !== 'object') return v
+    const o = {}
+    for (const [k, x] of Object.entries(v)) {
+      if (k === 'weights' && Array.isArray(x) && x.every((n) => typeof n === 'number')) { o[k] = { 'rig.f32': [total, x.length] }; parts.push(x); total += x.length }
+      else o[k] = walk(x)
+    }
+    return o
+  }
+  const text = new TextEncoder().encode(JSON.stringify(walk(json)))
+  const weights = new Float32Array(total)
+  let at = 0
+  for (const p of parts) { weights.set(p, at); at += p.length }
+  return { text, weights }
 }
 
 /**
@@ -83,6 +119,18 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
     }
   }
   const info = (k) => x.rig_info(INFO[k])
+  const describe = (get) => {
+    if (!get('loaded')) return null
+    return {
+      loudness: get('hasLoudness') ? get('loudness') : null,
+      inputLevel: get('hasInputLevel') ? get('inputLevel') : null,
+      outputLevel: get('hasOutputLevel') ? get('outputLevel') : null,
+      sampleRate: get('modelSampleRate'),
+      slimmable: get('slimmable') === 1,
+      latencyFrames: get('latencyFrames'),
+    }
+  }
+  const bits = (v) => { const out = []; for (let s = 0; s < SLOTS; s++) if (v & (1 << s)) out.push(s); return out }
   const errorText = () => { views(); const p = x.rig_error(); let e = p; while (u8[e] !== 0) e++; return utf8(u8.subarray(p, e)) }
 
   return {
@@ -99,7 +147,8 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
       }
     },
     setParam(name, value) { if (name in PARAM) x.rig_set_param(PARAM[name], Number(value)) },
-    /** Loads a capture from the bytes of its .nam file. Returns { ok: true } or { ok: false, error }. */
+    /** The harness's load (test.mjs): plays a capture from the bytes of its .nam file at once, with no fade (slot 0).
+     *  Returns { ok: true, info } or { ok: false, error }. */
     loadCapture(bytes) {
       const ptr = x.rig_text_buffer(bytes.length)
       views()
@@ -108,17 +157,31 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
       return { ok: false, error: errorText() }
     },
     clearCapture() { x.rig_clear_model() },
-    captureInfo() {
-      if (!info('loaded')) return null
-      return {
-        loudness: info('hasLoudness') ? info('loudness') : null,
-        inputLevel: info('hasInputLevel') ? info('inputLevel') : null,
-        outputLevel: info('hasOutputLevel') ? info('outputLevel') : null,
-        sampleRate: info('modelSampleRate'),
-        slimmable: info('slimmable') === 1,
-        latencyFrames: info('latencyFrames'),
+    /** What the capture heard holds, or null. */
+    captureInfo() { return describe(info) },
+    /** Builds a capture into a slot (build plan R5), cold: the engine warms it a little per block, and a switch to it
+     *  (play) starts once it is warm. `capture` is packCapture's { text, weights } (as the page sends it), or a .nam
+     *  file's bytes (read by the engine, slowly). Returns { ok: true, info }, { ok: false, error }, or
+     *  { ok: false, busy: true } when the slot is heard or fading. */
+    loadSlot(slot, capture) {
+      const text = capture instanceof Uint8Array ? capture : capture.text
+      if (!(capture instanceof Uint8Array)) {
+        const wp = x.rig_weights_buffer(capture.weights.length)
+        new Float32Array(memory.buffer, wp, capture.weights.length).set(capture.weights)
       }
+      const ptr = x.rig_text_buffer(text.length)
+      views()
+      u8.set(text, ptr)
+      const r = x.rig_slot_load(slot, text.length)
+      if (r === 0) return { ok: true, info: this.slotInfo(slot) }
+      if (r === 2) return { ok: false, busy: true, error: 'That slot is playing.' }
+      return { ok: false, error: errorText() }
     },
+    /** Empties a slot; false when it is heard or fading. */
+    clearSlot(slot) { return x.rig_slot_clear(slot) === 0 },
+    slotInfo(slot) { return describe((k) => x.rig_slot_info(slot, INFO[k])) },
+    /** Asks to hear a slot (or none, -1) as soon as it is warm. */
+    play(slot) { x.rig_set_param(PARAM.play, slot) },
     /** The input peak (after the input gain) since the last call. */
     takeInputPeak() { return x.rig_take_input_peak() },
     /** The output's fade and what muted it: { muted: 0 none | 1 squeal guard | 2 auto-off on silence | 3 on hum, hz,
@@ -126,5 +189,13 @@ export async function createEngine(wasm, sampleRate, log = () => {}) {
     status() {
       return { muted: x.rig_status(0), hz: x.rig_status(1), trips: x.rig_status(2), seconds: x.rig_status(3), at: x.rig_status(4), gain: x.rig_status(5) }
     },
+    /** The slots (build plan R5): { playing (the slot heard, a switch's target from its first frame, or -1), held and
+     *  ready (lists of slots holding a capture, and a warm one), wanted (a slot asked for and not yet warm, or -2),
+     *  switchAt (frames since start when the last switch began), switching }. */
+    slots() {
+      return { playing: x.rig_status(6), held: bits(x.rig_status(7)), ready: bits(x.rig_status(8)), wanted: x.rig_status(9), switchAt: x.rig_status(10), switching: x.rig_status(11) === 1 }
+    },
+    /** The engine's linear memory, in bytes. */
+    memoryBytes() { return memory.buffer.byteLength },
   }
 }

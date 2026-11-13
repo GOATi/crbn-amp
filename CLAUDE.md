@@ -26,7 +26,7 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 |---|---|
 | The standalone (C++): a thin host since R2a (D-RIG-017), Rig's page over Rig's engine | `NeuralAmpModeler/` (`NeuralAmpModeler.cpp` the host and its message list, `RigWebView.cpp` the WebView2 host, `RigDesktop.cpp` the engine's threads, IR, Standby, riff and meters, `RigLibrary.cpp` the library's folder (its dialog, listing, reading and watch; R4), `config.h`, `resources/`) |
 | Upstream's libraries, vendored (`vendor.json`, `UPSTREAM.md`; D-RIG-001), and the WebView2 SDK (D-RIG-017) | `iPlug2/`, `NeuralAmpModelerCore/`, `AudioDSPTools/`, `eigen/`, `WebView2/` |
-| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends, and `kits.js` the players' own kits from the Rig builder (R1b); `library.js` the library's index, read by the same rules as `RigLibrary.cpp`, and `library-view.js` its list, cards and shelves (R4); `engine/` the engine both builds run, compiled to wasm and into the app, with `rig_guard.h` its squeal guard and auto-off (R3); `build.mjs`, `check.mjs`) |
+| The page, for the web version and the desktop app alike | `web/` (`src/` the page, with `audio-web.js` and `audio-desktop.js` its two audio backends, and `kits.js` the players' own kits from the Rig builder (R1b); `library.js` the library's index, read by the same rules as `RigLibrary.cpp`, and `library-view.js` its list, cards and shelves (R4); `pads.js` the favourites on standby, which capture the engine holds in which slot, and the pads' three drawings (R5); `engine/` the engine both builds run, compiled to wasm and into the app, with `rig_guard.h` its squeal guard and auto-off (R3) and its twelve slots, warmed off the playing path and switched by a crossfade or a dip (R5); `build.mjs`, `check.mjs`) |
 | Rig's hardware: the kits on the amp and cabinet (D-RIG-009..016), ported from the Hardware Lab | `web/src/hw/` (`hw.js`, `hw.css`, `tex/` Salvage's sheets, `fonts/`) |
 | The suite's looks, vendored by pin | `look.json`, `scripts/vendor-look.mjs` into `web/src/look/` (never edit the copy) |
 | The Hub folder, and the desktop app's check | `packaging/windows/package.ps1` (and `sign.ps1`), into `dist/hub/`; `packaging/windows/check.mjs` |
@@ -41,13 +41,14 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
 
 - **Desktop:** `pwsh packaging/windows/package.ps1` (Visual Studio 18, toolset v145, then `node web/build.mjs` for the
   page; a minute or two). `-SkipBuild` to re-package, `-Sign` with the owner's SimplySign session open. Then `node
-  packaging/windows/check.mjs` (33 checks): `crbn-rig.exe --render` against the parity harness, then the app itself
+  packaging/windows/check.mjs` (35 checks): `crbn-rig.exe --render` against the parity harness, then the app itself
   under a throwaway WebView2 profile with DevTools on loopback (the page, the driver's status, the riff through the
   native engine, Output, Standby and Space, an IR, real keys, the library (R4: a generated 5,000-file folder in
   `dist/desktop-check/library` picked in the real folder dialog, indexed natively and read as `library.js` reads it,
-  searched, played, starred, watched), auto-off in the native engine, Audio settings, a clean exit), then a second
-  opening on the same profile, which plays the guitar at once because it was playing at close (R3) and has the library
-  back. It plays the riff and the guitar input quietly through the default devices and will not run beside an open CRBN
+  searched, played, starred, watched), the pads (R5: a real 2 switching while the riff plays), auto-off in the native
+  engine, Audio settings, a clean exit), then a second opening on the same profile, which plays the guitar at once
+  because it was playing at close (R3) and has the library and the warm pads back. Its timing bounds assume a quiet box:
+  look for runaway headless browsers first (R5 found six from a lab session at 125 CPU-hours). It plays the riff and the guitar input quietly through the default devices and will not run beside an open CRBN
   Rig. Stop any headless Edge a stopped probe left behind first (profiles `crbn-rig-edge-*`): it can hold the default
   audio device. `CRBN_RIG_DEVTOOLS=1` gives a release build its developer tools.
 - **Web:** `node web/build.mjs` (emscripten SDK 6.0.13 at `%LOCALAPPDATA%\emsdk`), then `node web/check.mjs`
@@ -55,10 +56,13 @@ in the engine and the page, and checked in both (`docs/BUILD_PLAN.md`).
   AudioWorklet, equal to the engine run directly, the squeal guard mutes a real feedback loop through the worklet, and
   auto-off trips through the page's own input, Edge's fake microphone playing a pulled jack; the library opens NAM
   Core's examples and a generated folder from the browser's private folder, and indexes 5,000 files in time; its fixture
-  is `web/test/library-fixture.mjs`). `node web/engine/test.mjs`
+  is `web/test/library-fixture.mjs`; the pads switch by key while the riff plays, and a dip between two slots through
+  the worklet equals the engine run directly). `node web/engine/test.mjs`
   plays every NAM Core example capture through the wasm engine and the same source built with MSVC and compares them
   sample by sample (most are bit-identical), then the squeal guard's and auto-off's cases (`web/engine/scenarios.mjs`:
-  feedback loops, pulled jacks, and long notes, chords, sweeps and the riff that must trip nothing) in both builds.
+  feedback loops, pulled jacks, and long notes, chords, sweeps and the riff that must trip nothing) in both builds, then
+  the slots' (R5): a crossfade and a dip against a reference, a load that must not change one sample heard, and weights
+  handed over as floats against the same capture as text.
   NAM Core's example clip, the page's "demo riff", is a second of silence and a second of a 220 Hz sine.
   `node web/shots.mjs` takes the store screenshots, one per look. `node web/probe.mjs <steps.json>`
   runs script, CPU measures and clipped screenshots against `dist/web` in headless Edge (`web/test` under `/__selftest/`);

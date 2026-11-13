@@ -50,6 +50,11 @@ struct Meters
   double hz = 0.0;
   int trips = 0;
   double seconds = 0.0;
+  // The engine's slots (build plan R5): the one heard (-1: none), a bit per slot holding a warm capture, and whether a
+  // switch is fading.
+  int playing = -1;
+  int ready = 0;
+  bool switching = false;
 };
 
 enum class Source : int
@@ -73,8 +78,10 @@ public:
   double SampleRate() const { return mSampleRate; }
   // A setting by the engine's parameter id (engine.js's PARAM), applied at the next block.
   void SetParam(int id, double value);
-  bool StageCapture(const std::string& json, CaptureInfo& info, std::string& error);
-  void ClearCapture();
+  // A capture into one of the engine's slots (build plan R5): built and warmed here, on the calling thread, and taken by
+  // the audio thread at the start of a block; the page then asks for the slot (the engine's `play` parameter).
+  bool StageSlot(int slot, const std::string& json, CaptureInfo& info, std::string& error);
+  void ClearSlot(int slot);
   // A cabinet IR: its first channel at its own rate, as the page decoded the WAV (resampled, scaled and cut to 8192
   // samples here, as the desktop always did); `seconds` is its length.
   bool StageIR(const std::vector<float>& samples, double sampleRate, double& seconds, std::string& error);
@@ -131,7 +138,8 @@ private:
 
   std::atomic<int> mSource{static_cast<int>(Source::kNone)};
   std::atomic<float> mPeakIn{0.0f}, mPeakRaw{0.0f}, mPeakOut{0.0f};
-  std::atomic<int> mMuted{0}, mTrips{0};
+  std::atomic<int> mMuted{0}, mTrips{0}, mPlaying{-1}, mReady{0};
+  std::atomic<bool> mSwitching{false};
   std::atomic<double> mMutedHz{0.0}, mMutedSeconds{0.0};
 
   std::vector<double> mMono, mWet;

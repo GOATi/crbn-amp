@@ -516,6 +516,8 @@ export function createLibrary({ host = null, onChange = () => {} } = {}) {
       return set.has(p)
     },
     get favCount() { return favs().size },
+    /** The open folder's favourites' paths, in the order they were starred (the pads', build plan R5). */
+    get favourites() { return [...favs()] },
     /** The key this folder's favourites and index are kept under. */
     get key() { return source?.key ?? null },
   }

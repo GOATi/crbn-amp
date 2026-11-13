@@ -42,7 +42,7 @@ const cflags = [
   '-Wno-deprecated-declarations', '-Wno-unused-command-line-argument',
 ]
 const exports = ['rig_init', 'rig_input', 'rig_output', 'rig_process', 'rig_set_param', 'rig_text_buffer', 'rig_load_model',
-  'rig_error', 'rig_clear_model', 'rig_info', 'rig_take_input_peak', 'rig_status']
+  'rig_error', 'rig_clear_model', 'rig_info', 'rig_take_input_peak', 'rig_status', 'rig_slot_load', 'rig_slot_clear', 'rig_slot_info', 'rig_weights_buffer']
 const ldflags = [
   '-O3', '-msimd128', '-fwasm-exceptions', '-sSTANDALONE_WASM=1', '--no-entry', '-sFILESYSTEM=0',
   '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=33554432', '-sSTACK_SIZE=1048576', '-sERROR_ON_UNDEFINED_SYMBOLS=1',
@@ -62,8 +62,9 @@ const self = statSync(import.meta.filename).mtimeMs
 const started = Date.now()
 // Objects are named by their path, since NAM Core and AudioDSPTools each have a dsp.cpp.
 const objects = sources.map((src) => ({ src, obj: join(objDir, relative(root, src).replace(/[\\/]/g, '__').replace(/\.cpp$/, '.o')) }))
-// rig_engine.cpp includes the engine's own headers (rig_guard.h), so it is as new as the newest of them.
-const engineHeaders = readdirSync(join(root, 'web', 'engine')).filter((f) => f.endsWith('.h')).map((f) => statSync(join(root, 'web', 'engine', f)).mtimeMs)
+// rig_engine.cpp includes the engine's own headers (rig_guard.h) and the desktop's ResamplingNAM.h, so it is as new as
+// the newest of them.
+const engineHeaders = [...readdirSync(join(root, 'web', 'engine')).filter((f) => f.endsWith('.h')).map((f) => join(root, 'web', 'engine', f)), join(root, 'NeuralAmpModeler', 'ResamplingNAM.h')].map((f) => statSync(f).mtimeMs)
 const newest = (src) => (basename(src) === 'rig_engine.cpp' ? Math.max(statSync(src).mtimeMs, ...engineHeaders) : statSync(src).mtimeMs)
 const stale = objects.filter(({ src, obj }) => !existsSync(obj) || statSync(obj).mtimeMs < Math.max(newest(src), self))
 const jobs = Math.max(1, Math.min(stale.length, Math.floor(cpus().length / 2)))

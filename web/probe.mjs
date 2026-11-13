@@ -48,9 +48,10 @@ const steps = JSON.parse(readFileSync(process.argv[2], 'utf8'))
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.wav': 'audio/wav', '.nam': 'application/json', '.md': 'text/markdown', '.txt': 'text/plain' }
 const server = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-  // /__selftest/ is web/test (the library's fixture, R4), as web/check.mjs serves it; the rest is the built site
-  const base = p.startsWith('/__selftest/') ? join(root, 'web', 'test') : site
-  const file = normalize(join(base, p === '/' ? 'index.html' : p.startsWith('/__selftest/') ? p.slice(12) : p.slice(1)))
+  // /__selftest/ is web/test (the library's fixture, R4) and /__examples/ NAM Core's example captures (R5's measures), as
+  // web/check.mjs serves them; the rest is the built site
+  const [prefix, base] = p.startsWith('/__selftest/') ? ['/__selftest/', join(root, 'web', 'test')] : p.startsWith('/__examples/') ? ['/__examples/', join(root, 'NeuralAmpModelerCore', 'example_models')] : ['/', site]
+  const file = normalize(join(base, p === '/' ? 'index.html' : p.slice(prefix.length)))
   if (!file.startsWith(base + sep)) { res.writeHead(403).end(); return }
   let bytes
   try { bytes = readFileSync(file) } catch { res.writeHead(404).end(); return }

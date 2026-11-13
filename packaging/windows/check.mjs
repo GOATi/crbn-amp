@@ -162,7 +162,8 @@ if (!process.argv.includes('--no-app')) {
 
     await js("document.querySelector('#hw-amp .sw[data-role=\"standby\"]').click()")
     await sleep(200)
-    const s = await measure(1000)
+    // 1.5 s: the riff is a second of silence, then its sine (a second measured from its top caught the sine only by timer slop)
+    const s = await measure(1500)
     await js("document.querySelector('#hw-amp .sw[data-role=\"standby\"]').click()")
     check('Standby silences the output, the input still heard', s.output < 1e-6 && s.input > 0.01, `output ${s.output.toExponential(2)}, input ${s.input.toFixed(3)}`)
 
@@ -283,6 +284,25 @@ if (!process.argv.includes('--no-app')) {
       const starred = await js("document.querySelector('#lib-body .lib-star').getAttribute('aria-pressed') === 'true' && document.getElementById('capture-star').getAttribute('aria-pressed') === 'true'")
       check('a click plays a capture from the library in the native engine, and a star keeps it', starred, await js("document.getElementById('capture-meta').textContent"))
 
+      // Favourites on standby (build plan R5): a second favourite makes pad 2; the app builds and warms each pad's
+      // capture off the audio thread, and the native engine crossfades between them. A real 2 from Windows while the riff
+      // plays, then the left arrow back.
+      await js("(() => { const q = document.getElementById('lib-q'); q.value = 'Core/lstm.nam'; q.dispatchEvent(new Event('input')); document.querySelector('#lib-body .lib-star').click(); q.value = ''; q.dispatchEvent(new Event('input')); return true })()")
+      const padState = (i) => `document.querySelector('.pads-grid [data-pad="${i}"]')?.dataset.state`
+      await js("document.getElementById('play-demo').click(); true")
+      await until(`${padState(0)} === 'playing' && ${padState(1)} === 'ready'`, 15000, 'pad 1 heard and pad 2 warm')
+      const pads = await js("[...document.querySelectorAll('.pads-grid [data-pad] .pn')].slice(0, 2).map((p) => p.firstChild?.textContent).join(' / ')")
+      // timed in the page: from the key's arrival to pad 2 saying Playing (the engine's report comes with the meters)
+      await js(`(() => { window.__k = 0; window.__heard = 0; addEventListener('keydown', (e) => { if (e.key === '2' && !window.__k) window.__k = performance.now() }, true); const watch = () => { if (window.__k && ${padState(1)} === 'playing') window.__heard = performance.now(); else requestAnimationFrame(watch) }; watch(); document.activeElement?.blur(); return true })()`)
+      if (existsSync(launcher)) spawnSync('pwsh', ['-NoProfile', '-File', launcher, '-ProcessId', String(app.pid), '-Out', join(out, 'keys-pad-2.png'), '-Keys', '2'], { encoding: 'utf8' })
+      else await js("document.body.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit2', key: '2', bubbles: true })); true")
+      await until(`${padState(1)} === 'playing' && document.getElementById('capture-name').textContent === 'Test LSTM'`, 8000, 'pad 2 by key')
+      const keyMs = Math.round(await js('window.__heard - window.__k'))
+      await js("document.body.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft', bubbles: true })); true")
+      await until(`${padState(0)} === 'playing'`, 8000, 'the left arrow')
+      check('the pads: a real 2 switches to pad 2 while the riff plays, in the native engine, and the left arrow back', true, `${pads}; Playing ${keyMs} ms after the key arrived (the engine's report rides on the meters, about every 33 ms)`)
+      await js("document.getElementById('play-demo').click(); true")
+
       writeFileSync(join(libDir, 'Copied in.nam'), template)
       await until(`document.getElementById('lib-src').textContent.includes('${(caps + 1).toLocaleString('en-GB')} captures')`, 15000, 'the copied file')
       check('the app watches the folder: a file copied in appears by itself', true, await js("document.getElementById('lib-src').textContent + ' · the amp ' + document.documentElement.dataset.powerState + (document.getElementById('banner').hidden ? '' : ': ' + document.getElementById('banner-title').textContent)"))
@@ -363,7 +383,14 @@ if (!process.argv.includes('--no-app')) {
       favs = (await js2("(() => { const s = document.getElementById('lib-src').textContent; if (!/captures/.test(s) || /reading|looking/.test(s)) return ''; const c = document.querySelector('#lib-chips [data-favs]'); c.click(); const r = [...document.querySelectorAll('#lib-body .lib-row:not(.hd) b')].map((b) => b.textContent).join(); c.click(); return s + ' | ' + r })()")) ?? ''
       if (favs) break
     }
-    check('opened again, the library’s folder is back with its favourite', /captures/.test(favs) && favs.endsWith('| Test Model'), favs || 'no library')
+    check('opened again, the library’s folder is back with its favourites', /captures/.test(favs) && favs.endsWith('| Test LSTM,Test Model'), favs || 'no library')
+    // and the pads with them, loaded and warm without a click (R5)
+    let padsBack = ''
+    for (const end = Date.now() + 15000; Date.now() < end; await sleep(200)) {
+      padsBack = (await js2("[0, 1].map((i) => { const b = document.querySelector(`.pads-grid [data-pad=\"${i}\"]`); return `${b?.querySelector('.pn')?.firstChild?.textContent} ${b?.dataset.state}` }).join(' / ')")) ?? ''
+      if (/^Test Model (playing|ready) \/ Test LSTM (playing|ready)$/.test(padsBack)) break
+    }
+    check('opened again, the pads are back, loaded and warm', /^Test Model (playing|ready) \/ Test LSTM (playing|ready)$/.test(padsBack), padsBack)
     await js2("document.getElementById('stop').click(); true")
   } catch (err) {
     check('the second opening ran to the end', false, err?.message ?? err)

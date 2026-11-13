@@ -10,12 +10,18 @@
 // onInputLost says so, and the page puts the amp in standby.
 //
 // app.js drives this or audio-desktop.js (the desktop app, D-RIG-017) through the same calls.
+import { packCapture } from './engine.js'
 import { scaledIR } from './ir.js'
+
+// A browser's switch between captures (build plan R5): a dip, one capture playing at a time, since two standard
+// captures at once need most of the audio thread; warming a capture held for later takes a quarter of a frame per frame
+// heard (twice that while a switch waits for it).
+const SWITCH = { switchMode: 1, switchMs: 30, warmRate: 0.25 }
 
 export function createWebAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {} } = {}) {
   let ctx = null, node = null, convolver = null, analyser = null
   let micStream = null, micSource = null, demoSource = null, demoBuffer = null, wasmBytes = null
-  let irOn = true, messageId = 0, scratch = null, status = null
+  let irOn = true, messageId = 0, scratch = null, status = null, slots = null
   const waiting = new Map()
   const peaks = { input: 0, raw: 0 }
   const post = (m) => node?.port.postMessage(m)
@@ -28,8 +34,8 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
     else node.connect(analyser)
   }
   function onWorklet(m) {
-    if (m.type === 'meter') { peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); status = m.status ?? status }
-    else if (m.type === 'capture') { waiting.get(m.id)?.(m); waiting.delete(m.id) }
+    if (m.type === 'meter') { peaks.input = Math.max(peaks.input, m.input); peaks.raw = Math.max(peaks.raw, m.raw); status = m.status ?? status; slots = m.slots ?? slots }
+    else if (m.type === 'slot') { waiting.get(m.id)?.(m); waiting.delete(m.id) }
     else if (m.type === 'error') onError(`The engine could not start: ${m.error}`)
     else if (m.type === 'log') console.debug('[engine]', m.line)
   }
@@ -78,7 +84,7 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
         processorOptions: { wasm: wasmBytes.slice(0) },
       })
       node.port.onmessage = (e) => onWorklet(e.data)
-      for (const [name, value] of Object.entries(params)) node.port.postMessage({ type: 'param', name, value })
+      for (const [name, value] of Object.entries({ ...params, ...SWITCH })) node.port.postMessage({ type: 'param', name, value })
       convolver = new ConvolverNode(ctx, { disableNormalization: true })
       analyser = new AnalyserNode(ctx, { fftSize: 1024 })
       analyser.connect(ctx.destination)
@@ -90,11 +96,16 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
     wake() { return ctx && ctx.state === 'suspended' && (micSource || demoSource) ? ctx.resume() : null },
 
     setParam(name, value) { post({ type: 'param', name, value }) },
-    async loadCapture(bytes) {
-      const copy = bytes.slice(0)
-      return ask({ type: 'capture', bytes: copy.buffer }, [copy.buffer])
+    /** Builds a capture into one of the engine's slots (build plan R5): the page reads its JSON (engine.js's
+     *  packCapture), the audio thread builds it. Resolves to { ok, info } or { ok: false, error, busy }. */
+    async loadSlot(slot, bytes) {
+      let packed
+      try { packed = packCapture(bytes) } catch { return { ok: false, error: 'This file is not a NAM capture (it is not JSON).' } }
+      return ask({ type: 'slot', slot, text: packed.text.buffer, weights: packed.weights.buffer }, [packed.text.buffer, packed.weights.buffer])
     },
-    clearCapture() { node?.port.postMessage({ type: 'clearCapture', id: 0 }) },
+    clearSlot(slot) { return ask({ type: 'clearSlot', slot }) },
+    /** Asks to hear a slot, or none (-1); the engine switches once it is warm. */
+    play(slot) { post({ type: 'param', name: 'play', value: slot }) },
     /** Throws when the browser cannot read the WAV. */
     async loadIR(bytes) {
       const decoded = await ctx.decodeAudioData(bytes.slice(0).buffer)
@@ -143,7 +154,7 @@ export function createWebAudio({ onError = () => {}, onChange = () => {}, onInpu
         analyser.getFloatTimeDomainData(scratch)
         for (const v of scratch) { const a = Math.abs(v); if (a > output) output = a }
       }
-      const m = { input: peaks.input, raw: peaks.raw, output, status }
+      const m = { input: peaks.input, raw: peaks.raw, output, status, slots }
       peaks.input = 0; peaks.raw = 0
       return m
     },

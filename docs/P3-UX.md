@@ -2,8 +2,9 @@
 
 **Status:** the brief, from the owner's picks of 2026-11-10 (crbn-launcher D-RIG-006). Built so far, in both builds:
 U2, the desktop on the page (R2, D-RIG-017 and D-RIG-018), U1, power, auto-off and the squeal guard (R3,
-D-RIG-021; `docs/BUILD_PLAN.md` "R3, as built"), and U3, the library (R4, "R4, as built"; web build
-`20261112-0709-b07901a-0bb8a2c1`, desktop 0.9.3). U4 to U7 follow, in the order below.
+D-RIG-021; `docs/BUILD_PLAN.md` "R3, as built"), U3, the library (R4, "R4, as built"; web build
+`20261112-0709-b07901a-0bb8a2c1`, desktop 0.9.3), and U4, favourites on standby (R5, "R5, as built"; desktop 0.9.4).
+U5 to U7 follow, in the order below.
 
 **How it looks** is decided in the Rig Lab (D-RIG-007, `docs/design/2026-11-10-rig-lab/lab.html`): the mark, the
 finishes, the layout and each feature below drawn three ways, with the owner's picks in its db. Upstream's IGraphics

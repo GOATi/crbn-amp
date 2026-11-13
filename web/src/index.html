@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b" data-library="a">
+<html lang="en" data-product="rig" data-look="capsule" data-layout="b" data-amp="b" data-meters="b" data-library="a" data-pads="a">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,7 +25,7 @@ try {
   if (p && /^(capsule|holo|redline|daylight)$/.test(p.look)) h.dataset.look = p.look
   if (p && p.density === 'compact') h.dataset.density = 'compact'
   var r = JSON.parse(localStorage.getItem('crbn-rig/rig') || '{}')
-  ;['layout', 'amp', 'meters', 'library'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
+  ;['layout', 'amp', 'meters', 'library', 'pads'].forEach(function (k) { if (/^[abc]$/.test(r[k])) h.dataset[k] = r[k] })
   if (/^[a-z]+$/.test(r.salvWords || '')) h.dataset.salvWords = r.salvWords
 } catch (e) {}
 </script>
@@ -239,6 +239,21 @@ try {
       </details>
     </div>
   </section>
+
+  <!-- Favourites on standby (build plan R5, P3-UX U4; drawn as D-RIG-008 (d) picked: footswitches by default, keycaps and
+       a setlist in the look menu). The library's first ten favourite captures, held warm by the engine, on keys 1 to 0.
+       pads.js draws and fills it. -->
+  <section class="isl pads" aria-labelledby="pads-title">
+    <header class="pads-head">
+      <h2 class="sec" id="pads-title">Favourites</h2>
+      <span class="pads-meta" id="pads-meta">On standby · keys <kbd>1</kbd> to <kbd>0</kbd></span>
+      <span class="sp"></span>
+      <span class="pads-keys" aria-hidden="true"><kbd>&larr;</kbd><kbd>&rarr;</kbd> next and previous</span>
+      <button class="btn small ghost" type="button" id="pads-last" title="Back to the capture before this one (the key left of 1)" disabled><kbd>`</kbd> Last two</button>
+    </header>
+    <div class="pads-grid" role="group" aria-label="Favourites on keys 1 to 0"></div>
+    <p class="pads-empty" id="pads-empty" hidden></p>
+  </section>
 </main>
 
 <footer class="foot">
@@ -302,6 +317,8 @@ try {
       <button type="button" role="radio" data-value="b">LED</button><button type="button" role="radio" data-value="a">Bars</button><button type="button" role="radio" data-value="c">VU</button></div></div>
     <div class="lm-row"><span id="lm-library-l">Library</span><div class="segmented" data-rig="library" role="radiogroup" aria-labelledby="lm-library-l">
       <button type="button" role="radio" data-value="a">List</button><button type="button" role="radio" data-value="b">Cards</button><button type="button" role="radio" data-value="c">Shelves</button></div></div>
+    <div class="lm-row"><span id="lm-pads-l">Favourites</span><div class="segmented" data-rig="pads" role="radiogroup" aria-labelledby="lm-pads-l">
+      <button type="button" role="radio" data-value="a">Footswitches</button><button type="button" role="radio" data-value="b">Keycaps</button><button type="button" role="radio" data-value="c">Setlist</button></div></div>
     <div class="lm-row"><span id="lm-power-l">Power</span><div class="segmented" data-rig="power" role="radiogroup" aria-labelledby="lm-power-l">
       <button type="button" role="radio" data-value="b">Pilot lamp</button><button type="button" role="radio" data-value="a">Header</button><button type="button" role="radio" data-value="c">Big button</button></div></div>
   </section>
