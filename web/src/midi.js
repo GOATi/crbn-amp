@@ -32,6 +32,26 @@ export function parseMidi(data) {
   return null
 }
 export const msgKey = (m) => `${m.type}:${m.ch}:${m.num}`
+/** The device a port belongs to, as its box is labelled: Windows names a controller's second and later ports
+ *  "MIDIIN2 (Morningstar MC8)" and so on, and a musician has one MC8, not four (the owner's review, 2026-11-14). */
+export function deviceName(port) {
+  const s = String(port ?? '').trim()
+  return (s.match(/^MIDI(?:IN|OUT)\d+ \((.+)\)$/)?.[1] ?? s).replace(/ \[\d+\]$/, '').trim() || 'MIDI input'
+}
+
+// A pedal's sweep (the owner's review, 2026-11-14): what its heel and toe really send. His MC8's expression pedal sends
+// 50 to 88 from heel to toe; measured, that becomes the knob's whole range.
+export const SWEEPS = 5 // heel to toe or back, counted while measuring, before the sweep is set by itself
+const BAND = 0.15 // how near an end of what has been seen counts as reaching it
+/** A pedal's sweep from what was seen while measuring: its ends, a step inside each so both are reached for sure, unless
+ *  the person set that end by hand. Null when it is too short to be a sweep. */
+export function sweepFrom({ lo, hi, heel = null, toe = null }) {
+  const inset = hi - lo >= 12 ? 1 : 0
+  const h = heel ?? lo + inset, t = toe ?? hi - inset
+  return Number.isInteger(h) && Number.isInteger(t) && Math.abs(t - h) >= 4 ? { heel: h, toe: t } : null
+}
+/** A CC's value as a fraction of its pedal's sweep (0 at the heel, 1 at the toe), or of 0 to 127 when not measured. */
+export const sweepValue = (value, sweep) => (sweep ? Math.min(1, Math.max(0, (value - sweep.heel) / (sweep.toe - sweep.heel))) : value / 127)
 const noteName = (n) => `${NOTES[n % 12]}${Math.floor(n / 12) - 1}`
 /** "CC 20 · ch 1", "PC 3 · ch 1", "Note C4 · ch 10": as a controller's editor names them, numbers from 0. */
 export function describeMsg(m, withValue = false) {
@@ -73,10 +93,14 @@ export function loadMidi() {
   try { x = JSON.parse(localStorage.getItem(KEY) ?? '{}') ?? {} } catch { /* none */ }
   const maps = []
   for (const m of Array.isArray(x.maps) ? x.maps : []) { const t = tidyMap(m); if (t) maps.push(t) }
-  return { on: x.on === true, maps: maps.slice(-MAX_MAPS) }
+  const sweeps = {}
+  for (const [k, s] of Object.entries(x.sweeps && typeof x.sweeps === 'object' ? x.sweeps : {}).slice(0, MAX_MAPS)) {
+    if (/^cc:(?:[1-9]|1[0-6]):\d{1,3}$/.test(k) && intIn(s?.heel, 0, 127) && intIn(s?.toe, 0, 127) && Math.abs(s.toe - s.heel) >= 4) sweeps[k] = { heel: s.heel, toe: s.toe }
+  }
+  return { on: x.on === true, maps: maps.slice(-MAX_MAPS), sweeps }
 }
 function saveMidi(st) {
-  try { localStorage.setItem(KEY, JSON.stringify({ v: 1, on: st.on, maps: st.maps })); return true } catch { return false }
+  try { localStorage.setItem(KEY, JSON.stringify({ v: 1, on: st.on, maps: st.maps, sweeps: st.sweeps })); return true } catch { return false }
 }
 /** Does a message fit a control being learned? A knob takes a CC; a switch a CC, a note on or a Program Change; a pick
  *  the same. A note off never teaches anything (it is the end of a press). */
@@ -90,13 +114,13 @@ export const fits = (t, m) => (isKnob(t) ? m.type === 'cc' : !(m.type === 'note'
  */
 export function createMidi({ act, request = defaultRequest(), onChange = () => {} }) {
   const st = loadMidi()
-  let access = null, opening = null, learning = null, error = null, errorText = '', ports = []
-  const log = []
+  let access = null, opening = null, learning = null, error = null, errorText = '', ports = [], measuring = null
+  const log = [], latest = new Map() // the last value of each CC, for "Set heel" and "Set toe"
 
   const find = (m) => { const k = msgKey(m); return st.maps.find((x) => msgKey(x.msg) === k) ?? null }
   function run(map, m) {
     const t = map.target
-    if (isKnob(t)) return m.type === 'cc' ? act(t, { value: map.heel + (m.value / 127) * (map.toe - map.heel) }) : ''
+    if (isKnob(t)) return m.type === 'cc' ? act(t, { value: map.heel + sweepValue(m.value, st.sweeps[msgKey(m)]) * (map.toe - map.heel) }) : ''
     const press = m.type === 'pc' || m.value >= 64
     if (!isSwitch(t)) return press ? act(t, { fire: true }) : ''
     if (map.mode === 'momentary' && m.type !== 'pc') return act(t, { set: press })
@@ -105,6 +129,8 @@ export function createMidi({ act, request = defaultRequest(), onChange = () => {
   function handle(data, port) {
     const m = parseMidi(data)
     if (!m) return
+    if (m.type === 'cc') latest.set(msgKey(m), m.value)
+    if (measuring && m.type === 'cc' && msgKey(m) === measuring.key) see(m.value)
     let map = null, said = ''
     if (learning && fits(learning, m)) {
       // A CC learned at a value under 64 is most likely a switch that toggles itself (it sends 0 on every other
@@ -125,13 +151,41 @@ export function createMidi({ act, request = defaultRequest(), onChange = () => {
     onChange('message')
   }
 
+  // ---- measuring a pedal's sweep: rocked heel to toe, the ends seen are its sweep; SWEEPS of them set it by themselves
+  function see(v) {
+    const s = measuring, was = s.hi - s.lo
+    s.lo = Math.min(s.lo, v); s.hi = Math.max(s.hi, v); s.now = v
+    const span = s.hi - s.lo
+    // the sweep grew by more than a tenth: the sweeps so far did not reach its ends, so they count again (a pedal rocked
+    // half way five times must not set half a sweep; simulated on the owner's MC8 log, 2026-11-14)
+    if (was >= 8 && span - was > was * 0.1) { s.sweeps = 0; s.at = null }
+    if (span >= 8) {
+      const end = v <= s.lo + span * BAND ? 'lo' : v >= s.hi - span * BAND ? 'hi' : null
+      if (end && s.at && end !== s.at) s.sweeps++
+      if (end) s.at = end
+    }
+    if (s.sweeps >= SWEEPS) finishMeasure()
+    else onChange('measure')
+  }
+  function finishMeasure() {
+    const s = measuring
+    if (!s) return null
+    measuring = null
+    const sweep = sweepFrom(s)
+    if (sweep) { st.sweeps[s.key] = sweep; saveMidi(st) }
+    onChange('maps'); onChange('measure')
+    return sweep
+  }
+
   function wire() {
-    ports = []
+    const names = new Set()
     for (const input of access.inputs.values()) {
       if (input.state === 'disconnected') continue
-      input.onmidimessage = (e) => handle(e.data, input.name || 'MIDI input')
-      ports.push(input.name || 'MIDI input')
+      const name = deviceName(input.name)
+      input.onmidimessage = (e) => handle(e.data, name)
+      names.add(name)
     }
+    ports = [...names]
   }
   async function open() {
     if (access) return true
@@ -180,8 +234,8 @@ export function createMidi({ act, request = defaultRequest(), onChange = () => {
       st.on = Boolean(on)
       saveMidi(st)
       if (st.on) { onChange('state'); return open() }
-      close(); error = null; learning = null
-      onChange('state'); onChange('learn')
+      close(); error = null; learning = null; measuring = null
+      onChange('state'); onChange('learn'); onChange('measure')
       return false
     },
     /** At start: MIDI back on if it was, when `may()` says the ports can open without asking. */
@@ -197,7 +251,31 @@ export function createMidi({ act, request = defaultRequest(), onChange = () => {
       saveMidi(st)
       onChange('maps')
     },
-    remove(map) { st.maps = st.maps.filter((x) => x !== map); saveMidi(st); onChange('maps') },
+    remove(map) { if (measuring?.map === map) measuring = null; st.maps = st.maps.filter((x) => x !== map); saveMidi(st); onChange('maps') },
+    /** A knob's pedal sweep, { heel, toe } as the pedal sends them, or null for 0 to 127. Kept by the CC, so a pedal
+     *  measured once stays measured whatever it is mapped to next. */
+    sweepOf(map) { return map?.msg.type === 'cc' ? st.sweeps[msgKey(map.msg)] ?? null : null },
+    /** What measuring has seen: { map, lo, hi, now, sweeps, heel, toe }, or null. */
+    get measuring() { return measuring },
+    latest(map) { return map ? latest.get(msgKey(map.msg)) ?? null : null },
+    /** Starts measuring a knob's pedal: rock it heel to toe. */
+    measure(map) {
+      if (!st.maps.includes(map) || map.msg.type !== 'cc') return
+      const now = latest.get(msgKey(map.msg)) ?? null
+      measuring = { map, key: msgKey(map.msg), lo: now ?? 127, hi: now ?? 0, now, sweeps: 0, at: null, heel: null, toe: null }
+      onChange('measure')
+    },
+    /** "Set heel" / "Set toe" while measuring: that end is where the pedal is now. Both set, the sweep is set. */
+    setEnd(end) {
+      const s = measuring
+      if (!s || s.now == null || (end !== 'heel' && end !== 'toe')) return
+      s[end] = s.now
+      if (s.heel != null && s.toe != null) finishMeasure()
+      else onChange('measure')
+    },
+    finishMeasure,
+    cancelMeasure() { measuring = null; onChange('measure'); onChange('maps') },
+    resetSweep(map) { if (map?.msg.type !== 'cc') return; delete st.sweeps[msgKey(map.msg)]; saveMidi(st); onChange('maps') },
     /** Drops mappings whose control is gone for good (a rig deleted). */
     prune(keep) { const n = st.maps.length; st.maps = st.maps.filter((x) => keep(x.target)); if (st.maps.length !== n) { saveMidi(st); onChange('maps') } },
   }
@@ -244,8 +322,9 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
     box.checked = on
     box.closest('.toggle').querySelector('.tg-state').textContent = on ? 'On' : 'Off'
     const ports = midi.ports
-    const said = !on ? 'Off' : midi.asking ? 'Asking for MIDI…' : midi.connected ? (ports.length ? ports.join(', ') : 'On: no controller connected') : midi.error === 'unsupported' ? 'Not in this browser' : 'Not connected'
-    $('#midi-ports').textContent = said
+    const said = !on ? 'Off' : midi.asking ? 'Asking for MIDI…' : midi.connected ? (ports.length ? '' : 'On: no controller found') : midi.error === 'unsupported' ? 'Not in this browser' : 'Not connected'
+    // one line per device, each with a light that blinks as it sends
+    $('#midi-ports').innerHTML = said ? esc(said) : ports.map((p) => `<span class="md-dev" data-dev="${esc(p)}"><i aria-hidden="true"></i>${esc(p)}</span>`).join('')
     button.dataset.state = on && midi.connected ? (ports.length ? 'on' : 'empty') : 'off'
     button.title = on && midi.connected ? `MIDI: ${ports.length ? ports.join(', ') : 'no controller connected'}` : 'MIDI: off'
     renderLearn()
@@ -259,6 +338,9 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
     if (midi.error === 'failed') return `MIDI did not start: ${midi.errorText}`
     if (!midi.on) return 'MIDI is off. Choosing a control turns it on' + (desktop ? '.' : ', and your browser asks you first.')
     if (midi.asking) return 'Your browser is asking whether CRBN Rig may use MIDI devices.'
+    // Found with the owner's MC8 (2026-11-14): while its editor has it open in Chrome, Windows lets nothing else open
+    // any MIDI device, so Rig is told of none at all.
+    if (midi.connected && !midi.ports.length) return 'No controller found. Is it plugged in? If its editor (the MC8 Editor, say) or another MIDI app is open, that app is holding it: close it, then turn MIDI off and on here.'
     return ''
   }
   function renderLearn() {
@@ -298,12 +380,43 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
       } else if (isKnob(t)) {
         const sp = spec(t)
         const end = (k, word) => `<label class="md-end"><span>${word}</span><input type="range" min="0" max="1000" step="1" value="${Math.round(m[k] * 1000)}" data-end="${k}" aria-label="${esc(name)}: ${word.toLowerCase()} (CC ${k === 'heel' ? 0 : 127})"><output>${esc(sp ? sp.text(sp.min + m[k] * (sp.max - sp.min)) : `${Math.round(m[k] * 100)}%`)}</output></label>`
-        how = `<div class="md-range">${end('heel', 'Heel')}${end('toe', 'Toe')}</div>`
+        how = `<div class="md-range">${end('heel', 'Heel')}${end('toe', 'Toe')}</div>` + sweepRow(m, name)
       } else how = `<small class="md-how">${m.msg.type === 'pc' ? 'Its Program Change picks it' : 'A press picks it'}</small>`
       return `<li class="md-map" data-i="${i}"><span class="md-what"><b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>` +
         `<code class="md-msg">${esc(describeMsg(m.msg))}</code>${how}` +
         `<button class="md-rm" type="button" data-md="remove" aria-label="Forget ${esc(name)}’s MIDI" title="Forget this mapping">&times;</button></li>`
     }).join('')
+    renderMeasure()
+  }
+  // A pedal's sweep, under its knob's heel and toe: as it comes, measured, or being measured.
+  function sweepRow(m, name) {
+    if (m.msg.type !== 'cc') return ''
+    const s = midi.measuring
+    if (s?.map === m) {
+      return `<div class="md-sweep measuring" role="group" aria-label="${esc(name)}: measuring the pedal’s sweep">` +
+        `<p class="md-sweep-say">Rock the pedal from heel to toe, all the way, ${SWEEPS} times. Or put it at each end and set that end.</p>` +
+        `<div class="md-bar" aria-hidden="true"><i class="seen"></i><i class="end heel"></i><i class="end toe"></i><i class="now"></i></div>` +
+        `<span class="md-sweep-n" aria-live="polite"></span>` +
+        `<span class="md-sweep-btns"><button class="btn small" type="button" data-md="set-heel">Set heel</button><button class="btn small" type="button" data-md="set-toe">Set toe</button>` +
+        `<button class="btn small" type="button" data-md="sweep-done">Done</button><button class="btn small ghost" type="button" data-md="sweep-cancel">Cancel</button></span></div>`
+    }
+    const sw = midi.sweepOf(m)
+    return `<div class="md-sweep"><span class="md-sweep-say">Pedal sweep <b>${sw ? `${sw.heel} to ${sw.toe}` : 'as it comes'}</b>${sw ? '' : ' <small>(0 to 127)</small>'}</span>` +
+      `<button class="btn small ghost" type="button" data-md="measure" title="Rock the pedal heel to toe and Rig sets its sweep, so the knob goes all the way">${sw ? 'Measure again' : 'Measure sweep'}</button>` +
+      (sw ? `<button class="btn small ghost" type="button" data-md="reset-sweep" title="Back to 0 to 127">Reset</button>` : '') + '</div>'
+  }
+  // the live part of measuring, drawn in place so nothing else in the list moves
+  function renderMeasure() {
+    const s = midi.measuring, box = $('#midi-maps .md-sweep.measuring')
+    if (!s || !box) return
+    const seen = s.hi >= s.lo, pct = (v) => `${((v / 127) * 100).toFixed(2)}%`
+    const bar = box.querySelector('.md-bar')
+    bar.querySelector('.seen').style.cssText = seen ? `left:${pct(s.lo)};width:${pct(s.hi - s.lo)}` : 'display:none'
+    bar.querySelector('.now').style.cssText = s.now == null ? 'display:none' : `left:${pct(s.now)}`
+    for (const end of ['heel', 'toe']) bar.querySelector(`.end.${end}`).style.cssText = s[end] == null ? 'display:none' : `left:${pct(s[end])}`
+    box.querySelector('.md-sweep-n').textContent = s.now == null ? 'Waiting for the pedal…' : `${seen ? `${s.lo} to ${s.hi}` : s.now} · ${s.sweeps} of ${SWEEPS}`
+    for (const b of box.querySelectorAll('[data-md="set-heel"], [data-md="set-toe"]')) b.disabled = s.now == null
+    box.querySelector('[data-md="sweep-done"]').disabled = !sweepFrom(s)
   }
   function renderLog() {
     logQueued = false
@@ -463,6 +576,12 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
     if (!b) return
     if (b.dataset.md === 'cancel') midi.cancel()
     else if (b.dataset.md === 'remove') { const m = midi.maps[Number(b.closest('[data-i]').dataset.i)]; if (m) midi.remove(m) }
+    else if (b.dataset.md === 'measure') { const m = midi.maps[Number(b.closest('[data-i]').dataset.i)]; if (m) { midi.measure(m); renderMaps(); renderMeasure() } }
+    else if (b.dataset.md === 'reset-sweep') { const m = midi.maps[Number(b.closest('[data-i]').dataset.i)]; if (m) midi.resetSweep(m) }
+    else if (b.dataset.md === 'set-heel') midi.setEnd('heel')
+    else if (b.dataset.md === 'set-toe') midi.setEnd('toe')
+    else if (b.dataset.md === 'sweep-done') midi.finishMeasure()
+    else if (b.dataset.md === 'sweep-cancel') midi.cancelMeasure()
     else if (b.dataset.mode) { const m = midi.maps[Number(b.closest('[data-i]').dataset.i)]; if (m) midi.update(m, { mode: b.dataset.mode }) }
   })
   dock.addEventListener('change', (e) => {
@@ -482,6 +601,7 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
   dock.addEventListener('change', (e) => { const r = e.target.closest('input[data-end]'); if (r) { const m = midi.maps[Number(r.closest('[data-i]').dataset.i)]; if (m) midi.update(m, { [r.dataset.end]: Number(r.value) / 1000 }) } })
 
   let blinkTimer = 0
+  const devTimers = new WeakMap()
   return {
     get open() { return open },
     setOpen,
@@ -489,9 +609,15 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
     changed(why) {
       if (why === 'message') {
         button.classList.add('blink'); clearTimeout(blinkTimer); blinkTimer = setTimeout(() => button.classList.remove('blink'), 90)
+        const from = midi.log[0]?.port
+        if (open && from) {
+          const dev = [...dock.querySelectorAll('.md-dev')].find((d) => d.dataset.dev === from)
+          if (dev) { dev.classList.add('blink'); clearTimeout(devTimers.get(dev)); devTimers.set(dev, setTimeout(() => dev.classList.remove('blink'), 120)) }
+        }
         if (open && !logQueued) { logQueued = true; requestAnimationFrame(renderLog) }
         return
       }
+      if (why === 'measure') { if (open) renderMeasure(); return }
       if (why === 'learn' && !midi.learning) {
         const last = midi.log[0]
         if (last?.said === 'learned') { learned = last.map; clearTimeout(learnedTimer); learnedTimer = setTimeout(() => { learned = null; if (open) renderLearn() }, 2600) }

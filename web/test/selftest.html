@@ -602,10 +602,14 @@ try {
 
       // a controller of the test's own, in place of the browser's
       const fake = (() => {
-        const input = { id: 't', name: 'Test FCB', state: 'connected', onmidimessage: null, closed: 0, close() { this.closed++; return Promise.resolve(this) } }
-        const access = { inputs: new Map([['t', input]]), outputs: new Map(), onstatechange: null }
+        const port = (id, name) => ({ id, name, state: 'connected', onmidimessage: null, closed: 0, close() { this.closed++; return Promise.resolve(this) } })
+        const input = port('t', 'Test FCB')
+        // the owner's MC8 as Windows names its four ports (2026-11-14); it sends on the first
+        const mc8 = ['Morningstar MC8', 'MIDIIN2 (Morningstar MC8)', 'MIDIIN3 (Morningstar MC8)', 'MIDIIN4 (Morningstar MC8)'].map((n, i) => port(`mc8-${i}`, n))
+        const access = { inputs: new Map([['t', input], ...mc8.map((p) => [p.id, p])]), outputs: new Map(), onstatechange: null }
         lw().navigator.requestMIDIAccess = async () => access
-        return { input, send: (...b) => input.onmidimessage?.({ data: new (lw().Uint8Array)(b) }) }
+        const to = (p) => (...b) => p.onmidimessage?.({ data: new (lw().Uint8Array)(b) })
+        return { input, send: to(input), mc8: to(mc8[0]) }
       })()
       const at = (el, fx = 0.5, fy = 0.5) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width * fx, y: r.top + r.height * fy } }
       const ptr = (type, p, target) => target.dispatchEvent(new (lw().PointerEvent)(type, { bubbles: true, cancelable: true, button: 0, pointerId: 1, clientX: p.x, clientY: p.y }))
@@ -665,6 +669,56 @@ try {
       const ring = $l('#hw-amp .kw > .midi-range.ring')
       const ringHi = ring ? lw().getComputedStyle(ring).getPropertyValue('--hi').trim() : 'none'
       check('an expression pedal on a knob: CC 0 its heel, CC 127 its toe; a toe at half its sweep is drawn on the knob', Math.abs(heel + 40) < 1e-9 && Math.abs(toe - 40) < 1e-9 && Math.abs(half) < 1e-9 && Number(ringHi) === 0.5, `${heel}, ${toe}, then ${half} dB; ring to ${ringHi}`)
+
+      // The owner's MC8 (his review, 2026-11-14): its footswitches send CC 1 and on, channel 3, 127 on a press and nothing
+      // on release; its expression pedal CC 13, only 50 to 88 heel to toe (dist/mc8/mc8-log.txt, his own playing).
+      const devs = $$l('#midi-ports .md-dev').map((d) => d.dataset.dev)
+      check('a controller’s ports are one device in the dock, named as its box is (the MC8’s four ports, as Windows names them)', devs.length === 2 && devs.filter((d) => d === 'Morningstar MC8').length === 1 && !/MIDIIN/.test($l('#midi-ports').textContent), devs.join(', '))
+      const eq = () => $l('#hw-amp .sw[data-param="eqOn"]').getAttribute('aria-pressed')
+      choose('EQ')
+      await wait(() => state() === 'learning', 3000, 'learning EQ')
+      const e0 = eq()
+      fake.mc8(0xb2, 1, 127)
+      await wait(() => state() === 'learned', 3000, 'EQ learned')
+      const eqMap = JSON.parse(lw().localStorage.getItem('crbn-rig/midi')).maps.find((m) => m.target.param === 'eqOn')
+      const presses = []
+      for (let i = 0; i < 3; i++) { fake.mc8(0xb2, 1, 127); presses.push(eq()) }
+      await wait(() => /Morningstar MC8/.test($l('#midi-log li')?.textContent ?? ''), 3000, 'the MC8 in the monitor')
+      check('the MC8’s footswitch (127 on a press, nothing on release) is learned as Toggle and flips on each press; the monitor names the MC8', eqMap?.mode === 'toggle' && eqMap.msg.ch === 3 && eqMap.msg.num === 1 && presses[0] !== e0 && presses[1] === e0 && presses[2] !== e0, `${eqMap?.mode}; ${e0} then ${presses.join(', ')}; ${$l('#midi-log li')?.textContent}`)
+
+      const bass = () => Number($l('.knob[data-param="bass"]').getAttribute('aria-valuenow'))
+      const bassRow = () => [...$$l('#midi-maps .md-map')].find((li) => /^Bass/.test(li.querySelector('.md-what').textContent))
+      const sweepNow = () => JSON.parse(lw().localStorage.getItem('crbn-rig/midi')).sweeps?.['cc:3:13'] ?? null
+      choose('Bass')
+      await wait(() => state() === 'learning', 3000, 'learning Bass')
+      fake.mc8(0xb2, 13, 69)
+      await wait(() => state() === 'learned', 3000, 'Bass learned')
+      fake.mc8(0xb2, 13, 50); const rawHeel = bass()
+      fake.mc8(0xb2, 13, 88); const rawToe = bass()
+      bassRow().querySelector('[data-md="measure"]').click()
+      const measuring = Boolean(bassRow().querySelector('.md-sweep.measuring'))
+      // his pedal heel to toe and back as the MC8 sent it, then rocked once more
+      for (const v of [82, 79, 76, 72, 69, 66, 62, 54, 50, 58, 65, 68, 71, 75, 78, 81, 85, 88, 80, 77, 73, 70, 67, 64, 54, 50, 58, 65, 68, 71, 75, 78, 81, 85, 88, 77, 73, 70]) fake.mc8(0xb2, 13, v)
+      const counted = bassRow().querySelector('.md-sweep-n')?.textContent ?? ''
+      for (const v of [64, 54, 50, 58, 71, 81, 88]) fake.mc8(0xb2, 13, v)
+      await wait(() => !bassRow().querySelector('.md-sweep.measuring'), 3000, 'the sweep set by itself')
+      const auto = sweepNow()
+      fake.mc8(0xb2, 13, 50); const heelB = bass()
+      fake.mc8(0xb2, 13, 88); const toeB = bass()
+      fake.mc8(0xb2, 13, 69); const midB = bass()
+      check('the MC8’s pedal (50 to 88) measured by rocking it: five sweeps set it by themselves, and its heel and toe reach the knob’s ends',
+        rawHeel > 3.5 && rawToe < 7.5 && measuring && /50 to 88 · 3 of 5/.test(counted) && auto?.heel === 51 && auto?.toe === 87 && heelB === 0 && toeB === 10 && Math.abs(midB - 5) < 0.06 && /51 to 87/.test(bassRow().textContent),
+        `before ${rawHeel} to ${rawToe}; “${counted}”; ${JSON.stringify(auto)}; then ${heelB}, ${midB}, ${toeB}`)
+      bassRow().querySelector('[data-md="reset-sweep"]').click()
+      fake.mc8(0xb2, 13, 88); const resetToe = bass()
+      bassRow().querySelector('[data-md="measure"]').click()
+      fake.mc8(0xb2, 13, 52); bassRow().querySelector('[data-md="set-heel"]').click()
+      fake.mc8(0xb2, 13, 86); bassRow().querySelector('[data-md="set-toe"]').click()
+      const byHand = sweepNow(), shut = !bassRow().querySelector('.md-sweep.measuring')
+      fake.mc8(0xb2, 13, 52); const hHeel = bass()
+      fake.mc8(0xb2, 13, 86); const hToe = bass()
+      check('Reset puts the pedal back to 0 to 127; Set heel and Set toe take where the pedal is', sweepNow() !== null && Math.abs(resetToe - rawToe) < 1e-9 && shut && byHand?.heel === 52 && byHand?.toe === 86 && hHeel === 0 && hToe === 10,
+        `reset ${resetToe}; by hand ${JSON.stringify(byHand)}; ${hHeel} to ${hToe}`)
 
       // a note on a pedal's footswitch, while the riff plays
       const pstate = () => $l('#board-row .pspot[data-pedal="0"]')?.dataset.state ?? 'none'
@@ -730,7 +784,7 @@ try {
       await wait(() => ld() !== was && ld().documentElement.dataset.ready === 'true', 30000, 'the page after a reload')
       await wait(() => $l('#hw-amp .kw > .midi-range.ring') && /Not connected|Test|X-TOUCH|controller/.test($l('#midi-ports').textContent), 10000, 'MIDI back after a reload')
       const again = JSON.parse(lw().localStorage.getItem('crbn-rig/midi'))
-      check('after a reload the mappings are back, the range drawn, and MIDI on again, asking the browser’s own unasked', maps === 5 && again.maps.length === 5 && again.on === true && $l('#midi-on').checked, `${again.maps.length} mappings; “${$l('#midi-ports').textContent}”`)
+      check('after a reload the mappings and the pedal’s sweep are back, the range drawn, and MIDI on again, asking the browser’s own unasked', maps === 7 && again.maps.length === 7 && again.sweeps?.['cc:3:13']?.heel === 52 && again.on === true && $l('#midi-on').checked, `${again.maps.length} mappings; sweep ${JSON.stringify(again.sweeps)}; “${$l('#midi-ports').textContent}”`)
       for (const p of [1, 0]) $l(`#board-row [data-remove="${p}"]`)?.click()
       await wait(() => !$l('#board-row .hw.pedal'), 5000, 'the pedals off the board')
       await wait(() => /captures/.test(src()) && !/reading|looking/.test(src()) && $l('#lib-body .lib-list, #lib-body .lib-card, #lib-body .lib-shelf-sec'), 30000, 'the library after the reload')
