@@ -305,6 +305,23 @@ void WebViewHost::OnControllerCreated(ICoreWebView2Controller* controller)
                              .Get(),
                            &token);
 
+  // MIDI for Rig's own page (build plan R7, D-RIG-027): the page reads the person's controllers through Web MIDI, as
+  // the web version does, so the app grants it here instead of asking. Only Rig's page, and only MIDI; every other
+  // permission keeps WebView2's default.
+  mView->add_PermissionRequested(Callback<ICoreWebView2PermissionRequestedEventHandler>(
+                                   [alive](ICoreWebView2*, ICoreWebView2PermissionRequestedEventArgs* args) -> HRESULT {
+                                     const auto self = alive.lock();
+                                     COREWEBVIEW2_PERMISSION_KIND kind = COREWEBVIEW2_PERMISSION_KIND_UNKNOWN_PERMISSION;
+                                     LPWSTR uri = nullptr;
+                                     if (!self || FAILED(args->get_PermissionKind(&kind)) || FAILED(args->get_Uri(&uri)))
+                                       return S_OK;
+                                     if ((*self)->AllowedUri(Take(uri)) && kind == COREWEBVIEW2_PERMISSION_KIND_MIDI_SYSTEM_EXCLUSIVE_MESSAGES)
+                                       args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                                     return S_OK;
+                                   })
+                                   .Get(),
+                                 &token);
+
   Fit();
   mController->put_IsVisible(TRUE);
   mController->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);

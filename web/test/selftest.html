@@ -579,6 +579,164 @@ try {
       $l('#stop').click()
     }
 
+    // R7 (SYNC:RIG-031, D-RIG-027): MIDI. The browser's own Web MIDI answers once the person allows it (check.mjs allows
+    // it over DevTools, as a person would in the browser's prompt), asked from this test's own page: the page under test
+    // sits in a frame, and Edge refuses Web MIDI to a frame whatever DevTools grants (tried with allow="midi" and from
+    // the frame's own script, SYNC:RIG-031), where Rig itself is always a page of its own. Then a test controller drives the page: a switch
+    // learned by dragging it onto the dock, toggling on each press and never on the press that taught it, then momentary;
+    // an expression pedal over half a knob's sweep, drawn on the knob; a note stomping a pedal while the riff plays;
+    // Program Changes picking a variant and a rig; the monitor; the ports let go when MIDI is turned off; and after a
+    // reload the mappings back, the range drawn, and MIDI on again (asking the browser's own, which the frame refuses).
+    {
+      const LIB_DRAG = 'application/x-crbn-rig-library'
+      const wait = (fn, ms, what) => waitFor(fn, ms, what).catch((err) => { throw new Error(`${err.message}: dock “${$l('#midi-drop')?.textContent}”; ports “${$l('#midi-ports')?.textContent}”; toast “${$l('#toast').hidden ? '' : $l('#toast').textContent}”`) })
+      let granted = { ok: false }
+      try { granted = await (await fetch('/__midi-granted')).json() } catch { /* not served */ }
+      let perm = 'unknown'
+      try { perm = (await navigator.permissions.query({ name: 'midi' })).state } catch (e) { perm = String(e?.message ?? e) }
+      const real = await Promise.race([
+        navigator.requestMIDIAccess().then((a) => ({ ok: true, ports: [...a.inputs.values()].map((p) => p.name) }), (e) => ({ ok: false, error: `${e.name}: ${e.message}` })),
+        new Promise((r) => setTimeout(() => r({ ok: false, error: 'no answer in 8 s' }), 8000)),
+      ])
+      check('Web MIDI answers in this browser once the person allows it (R7)', granted.ok && perm === 'granted' && real.ok, `${perm}${granted.ok ? '' : ` (${granted.error ?? 'not granted'})`}; ${real.ok ? (real.ports.length ? real.ports.join(', ') : 'no controller plugged in') : real.error}`)
+
+      // a controller of the test's own, in place of the browser's
+      const fake = (() => {
+        const input = { id: 't', name: 'Test FCB', state: 'connected', onmidimessage: null, closed: 0, close() { this.closed++; return Promise.resolve(this) } }
+        const access = { inputs: new Map([['t', input]]), outputs: new Map(), onstatechange: null }
+        lw().navigator.requestMIDIAccess = async () => access
+        return { input, send: (...b) => input.onmidimessage?.({ data: new (lw().Uint8Array)(b) }) }
+      })()
+      const at = (el, fx = 0.5, fy = 0.5) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width * fx, y: r.top + r.height * fy } }
+      const ptr = (type, p, target) => target.dispatchEvent(new (lw().PointerEvent)(type, { bubbles: true, cancelable: true, button: 0, pointerId: 1, clientX: p.x, clientY: p.y }))
+      const clickIn = (el) => { const p = at(el); ptr('pointerdown', p, el); ptr('pointerup', p, el); el.dispatchEvent(new (lw().MouseEvent)('click', { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y })) }
+      const dragToDock = (el) => {
+        const a = at(el), d = at($l('#midi-drop'), 0.5, 0.4)
+        ptr('pointerdown', a, el); ptr('pointermove', { x: a.x + 24, y: a.y + 30 }, lw()); ptr('pointermove', d, lw())
+        const shown = Boolean($l('.midi-ghost')) && $l('#midi-dock').classList.contains('drop-over')
+        ptr('pointerup', d, $l('#midi-drop'))
+        return shown
+      }
+      const state = () => $l('#midi-drop').dataset.state
+      const choose = (name) => { const s = $l('#midi-drop select[data-md="pick"]'), o = [...s.options].find((x) => x.textContent === name); s.value = o.value; s.dispatchEvent(new (lw().Event)('change', { bubbles: true })) }
+      const key = (code) => ld().body.dispatchEvent(new (lw().KeyboardEvent)('keydown', { code, key: code.slice(3).toLowerCase(), bubbles: true, cancelable: true }))
+      const variantOn = () => $$l('#variants [data-variant]').findIndex((b) => b.getAttribute('aria-checked') === 'true')
+      const gateSw = () => $l('#hw-amp .sw[data-param="gateOn"]'), gate = () => gateSw().getAttribute('aria-pressed')
+      const outDB = () => Number($l('.knob[data-param="outputDB"]').getAttribute('aria-valuenow'))
+
+      $l('#midi-open').click()
+      await wait(() => $$l('#midi-layer .ml-box').length > 20, 3000, 'map mode')
+      check('the MIDI dock opens the page in map mode: every control that can be mapped is outlined (R7)', !$l('#midi-dock').hidden && ld().documentElement.dataset.midiMap === 'on' && !$l('#midi-on').checked && $l('#midi-open').dataset.state === 'off', `${$$l('#midi-layer .ml-box').length} controls`)
+      $l('#midi-on').click()
+      await wait(() => /Test FCB/.test($l('#midi-ports').textContent) && $l('#midi-open').dataset.state === 'on', 5000, 'the controller')
+
+      // a switch: dragged onto the dock, then the footswitch
+      const g0 = gate()
+      const dragged = dragToDock(gateSw())
+      await wait(() => state() === 'learning', 3000, 'learning the gate')
+      const untouched = gate() === g0
+      fake.send(0xb0, 20, 127)
+      await wait(() => state() === 'learned', 3000, 'the gate learned')
+      const quiet = gate() === g0
+      fake.send(0xb0, 20, 0); fake.send(0xb0, 20, 127)
+      const flipped = gate()
+      fake.send(0xb0, 20, 127)
+      const back = gate()
+      check('a switch dragged onto the dock learns the next footswitch; each press toggles it, never the press that taught it', dragged && untouched && quiet && flipped !== g0 && back === g0, `dragged ${dragged}; untouched ${untouched}; ${g0} then ${flipped}, ${back}`)
+      $l('#midi-maps [data-mode="momentary"]').click()
+      fake.send(0xb0, 20, 127); const held = gate()
+      fake.send(0xb0, 20, 0); const letGo = gate()
+      fake.send(0xb0, 20, 127)
+      check('a switch made momentary is on while the footswitch is held, off when let go', held === 'true' && letGo === 'false' && gate() === 'true', `${held}, ${letGo}`)
+
+      // an expression pedal: Output from the dock's list, heel to toe over the whole sweep, then half of it
+      choose('Output level')
+      await wait(() => state() === 'learning', 3000, 'learning Output')
+      fake.send(0xb0, 7, 0)
+      await wait(() => state() === 'learned', 3000, 'Output learned')
+      const heel = outDB()
+      fake.send(0xb0, 7, 127)
+      const toe = outDB()
+      const toeIn = $l('#midi-maps [data-end="toe"]')
+      toeIn.value = 500
+      toeIn.dispatchEvent(new (lw().Event)('input', { bubbles: true })); toeIn.dispatchEvent(new (lw().Event)('change', { bubbles: true }))
+      fake.send(0xb0, 7, 127)
+      const half = outDB()
+      const ring = $l('#hw-amp .kw > .midi-range.ring')
+      const ringHi = ring ? lw().getComputedStyle(ring).getPropertyValue('--hi').trim() : 'none'
+      check('an expression pedal on a knob: CC 0 its heel, CC 127 its toe; a toe at half its sweep is drawn on the knob', Math.abs(heel + 40) < 1e-9 && Math.abs(toe - 40) < 1e-9 && Math.abs(half) < 1e-9 && Number(ringHi) === 0.5, `${heel}, ${toe}, then ${half} dB; ring to ${ringHi}`)
+
+      // a note on a pedal's footswitch, while the riff plays
+      const pstate = () => $l('#board-row .pspot[data-pedal="0"]')?.dataset.state ?? 'none'
+      const dt = new (lw().DataTransfer)(); dt.setData(LIB_DRAG, 'NAM Core/wavenet.nam')
+      $l('#board-row .pspot[data-pedal="0"]').dispatchEvent(new (lw().DragEvent)('drop', { dataTransfer: dt, bubbles: true, cancelable: true }))
+      await wait(() => pstate() !== 'empty', 15000, `the pedal on the board (${pstate()})`)
+      $l('#play-demo').click()
+      await wait(() => pstate() === 'on' && $l('#play-demo').getAttribute('aria-pressed') === 'true', 15000, 'the pedal heard').catch((e) => { throw new Error(`${e.message}; pedal ${pstate()}; riff ${$l('#play-demo').getAttribute('aria-pressed')}; status ${$l('#status-text').textContent}`) })
+      choose('Pedal 1 footswitch')
+      await wait(() => state() === 'learning', 3000, 'learning the footswitch')
+      fake.send(0x99, 36, 100)
+      await wait(() => state() === 'learned', 3000, 'the footswitch learned')
+      const stillOn = pstate() === 'on'
+      fake.send(0x89, 36, 0); fake.send(0x99, 36, 100)
+      await wait(() => pstate() === 'off', 5000, 'the pedal stomped off by MIDI')
+      fake.send(0x89, 36, 0); fake.send(0x99, 36, 100)
+      await wait(() => pstate() === 'on', 5000, 'the pedal stomped on by MIDI')
+      check('a note learned on a pedal’s footswitch stomps it off and on while the riff plays', stillOn, `${$l('#midi-maps').textContent.match(/Pedal 1 footswitch[^×]*/)?.[0]}`)
+
+      // Program Changes: a variant clicked in map mode, and the rig by its name
+      clickIn($l('#variants [data-variant="1"]'))
+      await wait(() => state() === 'learning', 3000, 'learning variant W')
+      fake.send(0xc0, 2)
+      await wait(() => state() === 'learned', 3000, 'variant W learned')
+      key('KeyQ')
+      await wait(() => variantOn() === 0, 3000, 'variant Q by key')
+      fake.send(0xc0, 2)
+      await wait(() => variantOn() === 1, 3000, 'variant W by Program Change')
+      const rigId = () => JSON.parse(lw().localStorage.getItem('crbn-rig/rigs')).work.from
+      const book = () => JSON.parse(lw().localStorage.getItem('crbn-rig/rigs')).book
+      const mine = rigId(), myName = $l('#rig-name').value
+      clickIn($l('#rig-name'))
+      await wait(() => state() === 'learning', 3000, 'learning the rig')
+      fake.send(0xc0, 5)
+      await wait(() => state() === 'learned', 3000, 'the rig learned')
+      const other = book().find((b) => b.id !== mine)
+      const pick = $l('#rig-pick'); pick.value = other.id; pick.dispatchEvent(new (lw().Event)('change', { bubbles: true }))
+      await wait(() => $l('#rig-name').value === other.rig.name, 15000, 'the other rig opened')
+      fake.send(0xc0, 5)
+      await wait(() => $l('#rig-name').value === myName && rigId() === mine, 15000, 'the rig opened by Program Change')
+      const hits = $$l('#midi-log li.hit').length
+      check('Program Changes pick a variant and open a rig; the monitor shows what arrives and what it did', hits >= 2 && /Test FCB/.test($l('#midi-log').textContent) && /PC 5/.test($l('#midi-log').textContent), `${$$l('#midi-log li').length} shown, ${hits} mapped; ${$l('#midi-log li')?.textContent}`)
+
+      // the dock closed: the range stays drawn; MIDI off lets the ports go
+      $l('#midi-close').click()
+      await wait(() => !$$l('#midi-layer .ml-box').length, 3000, 'map mode closed')
+      const stays = Boolean($l('#hw-amp .kw > .midi-range.ring'))
+      $l('#midi-open').click()
+      $l('#midi-on').click()
+      const let_ = fake.input.onmidimessage === null && fake.input.closed > 0 && $l('#midi-open').dataset.state === 'off'
+      fake.send(0xb0, 20, 0)
+      const deaf = gate() === 'true'
+      check('closed, the dock leaves map mode and the knob’s range drawn; MIDI turned off lets the controller go', stays && let_ && deaf, `range ${stays}; closed ${fake.input.closed}; ${$l('#midi-ports').textContent}`)
+      $l('#midi-on').click()
+      await wait(() => $l('#midi-open').dataset.state === 'on', 5000, 'MIDI on again')
+      $l('#midi-close').click()
+
+      // after a reload: the mappings, the range on the knob, and MIDI on again: it asks the browser's own Web MIDI, unasked
+      // because the person allowed it (in this frame Edge then refuses it, above)
+      const maps = JSON.parse(lw().localStorage.getItem('crbn-rig/midi')).maps.length
+      const was = ld()
+      frame.contentWindow.location.reload()
+      await wait(() => ld() !== was && ld().documentElement.dataset.ready === 'true', 30000, 'the page after a reload')
+      await wait(() => $l('#hw-amp .kw > .midi-range.ring') && /Not connected|Test|X-TOUCH|controller/.test($l('#midi-ports').textContent), 10000, 'MIDI back after a reload')
+      const again = JSON.parse(lw().localStorage.getItem('crbn-rig/midi'))
+      check('after a reload the mappings are back, the range drawn, and MIDI on again, asking the browser’s own unasked', maps === 5 && again.maps.length === 5 && again.on === true && $l('#midi-on').checked, `${again.maps.length} mappings; “${$l('#midi-ports').textContent}”`)
+      for (const p of [1, 0]) $l(`#board-row [data-remove="${p}"]`)?.click()
+      await wait(() => !$l('#board-row .hw.pedal'), 5000, 'the pedals off the board')
+      await wait(() => /captures/.test(src()) && !/reading|looking/.test(src()) && $l('#lib-body .lib-list, #lib-body .lib-card, #lib-body .lib-shelf-sec'), 30000, 'the library after the reload')
+      $l('#stop').click()
+    }
+
     // The three drawings (D-RIG-008 (d)): the list by default, cards and shelves in the look menu.
     const pickLib = (v) => $l(`.segmented[data-rig="library"] [data-value="${v}"]`).click()
     const isList = ld().documentElement.dataset.library === 'a' && $l('#lib-body .lib-list')

@@ -14,7 +14,8 @@ import { ART_NAME_MAX, ART_TYPES, MAX_KITS, NAME_MAX, artURL, artURLNow, importA
 import { createLibrary } from './library.js'
 import { createLibraryView } from './library-view.js'
 import { applyPrefs, connectSuite, fontOf, loadLooks, loadPrefs, lookList, looks, onSharedChange, ownPrefs, sanitize, savePrefs, setEvery, suiteReach } from './look.js'
-import { PADS, captureKey, createPadsView, createStandby } from './pads.js'
+import { createMidi, createMidiDock } from './midi.js'
+import { PADS, PAD_KEYS, captureKey, createPadsView, createStandby } from './pads.js'
 import { PEDAL_DRAG, PEDAL_KNOB, createBoardView, createPedals } from './pedals.js'
 import { PEDAL_DEFAULT, PEDAL_SETTINGS, RIG_SETTINGS, VARIANTS, VARIANT_KEYS, findInLibrary, freeName, freshVariants, keptKey, loadRigs, newId, readRigFile, rigFile, saveRigs, soundOf, tidyName } from './rigs.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
@@ -424,7 +425,7 @@ function parseCapture(bytes) {
 const slots = createStandby({ audio, parse: parseCapture, onChange: (why) => { padsView?.sync(); if (why !== 'pads') syncHeard() } })
 let padsView = null, heardState = null
 // The pedals before the amp (build plan R6): pedals.js keeps the board, the engine's pedal stages play it.
-const pedals = createPedals({ audio, parse: parseCapture, onChange: (why) => { if (why === 'board') { boardView?.render(); rigReconcile() } else boardView?.sync() } })
+const pedals = createPedals({ audio, parse: parseCapture, onChange: (why) => { if (why === 'board') { boardView?.render(); rigReconcile(); midiDock?.relabel() } else boardView?.sync() } })
 let boardView = null
 
 async function useCapture(name, bytes, { remember = true, example = false, from = null } = {}) {
@@ -627,6 +628,7 @@ function syncPads() {
   empty.textContent = !lib?.key
     ? 'Open your library, then star captures: the first ten wait here, loaded and warm, on keys 1 to 0.'
     : 'Star captures in your library: the first ten wait here, loaded and warm, on keys 1 to 0.'
+  midiDock?.relabel()
 }
 async function playPad(i) {
   const p = slots.pads[i]
@@ -938,6 +940,7 @@ async function rigDelete() {
   for (const ref of gone ? [gone.rig.amp, gone.rig.ir, ...gone.rig.pedals] : []) if (ref && !ref.path && !ref.example && !used.has(keptKey(ref))) await forgetFile(keptKey(ref))
   keepRigs(true)
   syncRigBar(true)
+  midi?.prune((t) => t.kind !== 'rig' || rigs.book.some((b) => b.id === t.id))
   toast(`Deleted ${gone?.rig.name ?? 'the rig'}. What is playing stays as it is.`, 'info')
 }
 async function rigExport() {
@@ -983,6 +986,7 @@ function syncRigBar(force = false) {
     const n = b.querySelector('.vn')
     if (n && n.textContent !== w.variants[i].name) n.textContent = w.variants[i].name
   }
+  midiDock?.relabel()
 }
 function wireRigs() {
   if (!rigs.work.variants) rigs.work.variants = freshVariants(boardNow())
@@ -1574,6 +1578,134 @@ function wireWheel() {
   })
 }
 
+// ------------------------------------------------------------------------------------------------- MIDI (U6)
+// A floor controller or expression pedal drives the page's own controls (build plan R7, P3-UX U6, D-RIG-027; midi.js):
+// in both builds through Web MIDI, mapped by dragging a control onto the MIDI dock and pressing the footswitch.
+let midi = null, midiDock = null
+const SWITCH_NAMES = { gateOn: 'Gate', eqOn: 'EQ', irOn: 'Cabinet IR', guardOn: 'Squeal guard', autoOff: 'Auto-off', calibrateInput: 'Calibrate the input' }
+const PEDAL_KNOB_RE = /^pedal(Drive|Level|Tone)([1-4])$/
+/** The control a page element is part of, as midi.js names it, or null. */
+function midiTargetAt(el) {
+  if (!el?.closest) return null
+  let x
+  if ((x = el.closest('.pads-grid [data-pad]'))) return x.classList.contains('empty') ? null : { kind: 'pad', i: Number(x.dataset.pad) }
+  if ((x = el.closest('#variants [data-variant]'))) return { kind: 'variant', i: Number(x.dataset.variant) }
+  if (el.closest('#rig-name')) return { kind: 'rig', id: rigs.work.from ?? '' }
+  if (el.closest('#pads-last')) return { kind: 'last' }
+  if ((x = el.closest('[data-foot]'))) return { kind: 'stomp', p: Number(x.dataset.foot) }
+  if ((x = el.closest('.rig-hw [data-role="foot"]'))) { const h = x.closest('[data-pedal]'); return h ? { kind: 'stomp', p: Number(h.dataset.pedal) } : null }
+  if (el.closest('.pw-bat[data-pw="power"], .rig-hw .sw[data-role="power"]')) return { kind: 'power' }
+  if (el.closest('[data-pw-main], .pw-bat[data-pw="standby"], .rig-hw .sw[data-role="standby"]')) return { kind: 'standby' }
+  if ((x = el.closest('[data-switch], .rig-hw .sw[data-param]'))) return { kind: 'switch', param: x.dataset.switch ?? x.dataset.param }
+  if ((x = el.closest('.toggle, label.check'))) { const box = x.querySelector(':scope > input[data-param]'); return box ? { kind: 'switch', param: box.dataset.param } : null }
+  if ((x = el.closest('.knob[data-param], .rig-hw .kn[data-param], .rig-hw .fd[data-param]'))) return { kind: 'knob', param: x.dataset.param }
+  if ((x = el.closest('.rig-hw .cc[data-param]'))) { const k = x.querySelector('.kn[data-param], .fd[data-param]'); return k ? { kind: 'knob', param: k.dataset.param } : null }
+  return null
+}
+const pedalSub = (p) => pedals.board[p]?.name ?? 'no pedal there'
+/** What a person calls a control: { name, sub }. */
+function midiLabel(t) {
+  switch (t.kind) {
+    case 'knob': {
+      const ped = PEDAL_KNOB_RE.exec(t.param)
+      if (ped) return { name: `Pedal ${ped[2]} ${ped[1].toLowerCase()}`, sub: pedalSub(Number(ped[2]) - 1) }
+      const el = document.querySelector(`.knob[data-param="${t.param}"]`)
+      return { name: el ? el.dataset.aria ?? el.dataset.label : t.param, sub: '' }
+    }
+    case 'switch': {
+      const tone = /^pedalToneOn([1-4])$/.exec(t.param)
+      return tone ? { name: `Pedal ${tone[1]} Tone switch`, sub: pedalSub(Number(tone[1]) - 1) } : { name: SWITCH_NAMES[t.param] ?? t.param, sub: '' }
+    }
+    case 'stomp': return { name: `Pedal ${t.p + 1} footswitch`, sub: pedalSub(t.p) }
+    case 'standby': return { name: 'Standby', sub: 'the Space key' }
+    case 'power': return { name: 'Power', sub: '' }
+    case 'pad': return { name: `Favourite ${PAD_KEYS[t.i]}`, sub: slots.pads[t.i]?.name ?? 'empty' }
+    case 'variant': return { name: `Variant ${VARIANT_KEYS[t.i]}`, sub: rigs.work.variants?.[t.i]?.name ?? '' }
+    case 'rig': return { name: `Rig: ${rigs.book.find((b) => b.id === t.id)?.rig.name ?? 'a deleted rig'}`, sub: '' }
+    case 'last': return { name: 'Last two', sub: 'the capture before this one' }
+    case 'next': return { name: 'Next favourite', sub: '' }
+    case 'prev': return { name: 'Previous favourite', sub: '' }
+  }
+  return { name: t.kind, sub: '' }
+}
+/** Every control, for the dock's list (a keyboard's way, and a touch screen's, to map what it cannot drag). */
+function midiChoices() {
+  const out = [], add = (group, target) => out.push({ group, target, name: midiLabel(target).name })
+  for (const p of ['inputDB', 'gateThresholdDB', 'bass', 'middle', 'treble', 'outputDB']) add('Amp', { kind: 'knob', param: p })
+  if (!$('slim').hidden) add('Amp', { kind: 'knob', param: 'slim' })
+  add('Amp', { kind: 'switch', param: 'gateOn' }); add('Amp', { kind: 'switch', param: 'eqOn' }); add('Amp', { kind: 'switch', param: 'irOn' })
+  add('Power', { kind: 'standby' }); add('Power', { kind: 'power' }); add('Power', { kind: 'switch', param: 'guardOn' }); add('Power', { kind: 'switch', param: 'autoOff' })
+  for (let p = 0; p < PEDAL_COUNT; p++) {
+    add('Pedals', { kind: 'stomp', p })
+    if (pedals.board[p]) for (const w of ['Drive', 'Level', 'Tone']) add('Pedals', { kind: 'knob', param: `pedal${w}${p + 1}` })
+    if (pedals.board[p]) add('Pedals', { kind: 'switch', param: `pedalToneOn${p + 1}` })
+  }
+  for (let i = 0; i < PADS; i++) add('Favourites', { kind: 'pad', i })
+  add('Favourites', { kind: 'next' }); add('Favourites', { kind: 'prev' }); add('Favourites', { kind: 'last' })
+  for (let i = 0; i < VARIANT_KEYS.length; i++) add('Variants', { kind: 'variant', i })
+  for (const b of [...rigs.book].sort((a, c) => a.rig.name.localeCompare(c.rig.name))) add('Rigs', { kind: 'rig', id: b.id })
+  return out
+}
+/** What a mapped message does: the same as the person's own hand on the control. */
+function midiAct(t, ev) {
+  switch (t.kind) {
+    case 'knob': {
+      const sp = specOf(t.param)
+      if (!sp || (PEDAL_KNOB_RE.test(t.param) && !pedals.board[Number(t.param.slice(-1)) - 1])) return ''
+      changeSetting(t.param, sp.min + ev.value * (sp.max - sp.min))
+      return sp.text(settings[t.param])
+    }
+    case 'switch': {
+      if (!(t.param in settings)) return ''
+      const on = 'set' in ev ? ev.set : settings[t.param] < 0.5
+      setSetting(t.param, on ? 1 : 0)
+      return on ? 'on' : 'off'
+    }
+    case 'stomp': {
+      const b = pedals.board[t.p]
+      if (!b) return 'no pedal there'
+      const on = 'set' in ev ? ev.set : !b.on
+      if (on !== Boolean(b.on)) stompPedal(t.p, on)
+      return on ? 'on' : 'off'
+    }
+    case 'standby':
+      // momentary: Standby while held (a kill switch); toggle: as Space does
+      if ('set' in ev) { if (ev.set) { if (powerState() === 'on') setStandby(true) } else turnBackOn() } else powerKey()
+      return STATE_WORDS[powerState()].toLowerCase()
+    case 'power': setPower('set' in ev ? ev.set : !power); return power ? 'on' : 'off'
+    case 'pad': playPad(t.i); return slots.pads[t.i]?.name ?? 'empty'
+    case 'variant': rigVariant(t.i); return rigs.work.variants[t.i].name
+    case 'rig': {
+      const b = rigs.book.find((x) => x.id === t.id)
+      if (!b) return 'a deleted rig'
+      rigOpen(b.rig, b.id).catch((err) => toast(`${b.rig.name}: ${err?.message ?? err}`))
+      return b.rig.name
+    }
+    case 'last': playLast(); return ''
+    case 'next': stepPad(1); return ''
+    case 'prev': stepPad(-1); return ''
+  }
+  return ''
+}
+function wireMidi() {
+  midi = createMidi({ act: midiAct, onChange: (why) => midiDock?.changed(why) })
+  midiDock = createMidiDock({
+    midi, button: $('midi-open'), dock: $('midi-dock'), layer: $('midi-layer'), desktop,
+    targetAt: midiTargetAt, label: midiLabel, choices: midiChoices, spec: (t) => (t.kind === 'knob' ? specOf(t.param) : null),
+    refuse: (t) => (t.kind === 'rig' && !t.id ? 'Save this rig first: its MIDI opens it by name.' : ''),
+    // Pavillion Hub's tool view passes no MIDI to a web tool yet (goati-sync proposals/2026-11-14-hub-tool-view-web-midi.md).
+    notice: () => (hubApp && !midi.connected ? 'Pavillion Hub’s view passes no MIDI to web tools yet: open Rig in your browser, or the installed app, for your controller.' : ''),
+    onOpen: () => { if (!$('look-menu').hidden) openMenu(false) },
+  })
+  // MIDI comes back on at start if it was on: the desktop app grants it to its page; a browser only when the person
+  // allowed it before, so the page never asks without a click.
+  midi.resume(async () => {
+    if (desktop) return true
+    if (hubApp) return false
+    try { return (await navigator.permissions.query({ name: 'midi' })).state === 'granted' } catch { return false }
+  })
+}
+
 // ------------------------------------------------------------------------------------------------- the rest
 let toastTimer = 0
 function toast(text, kind = 'error') {
@@ -1666,6 +1798,8 @@ async function start() {
   if (!query.has('example')) await pedals.restore()
   // The rig playing and its variants (R6 step 3), once the board is back.
   wireRigs()
+  // MIDI (R7), once the board, the pads and the rigs it maps are there.
+  wireMidi()
   // The library's folder from last time: it shows what it indexed then at once, and looks for changes behind it.
   lib.restore().catch((err) => toast(`Your library could not open: ${err?.message ?? err}`))
   // The desktop app's engine starts with the page, so the capture, IR and status are there at once. Since R3, with the

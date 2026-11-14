@@ -8,7 +8,9 @@
 //                                         loop through the worklet, and auto-off through the page's own input;
 //                                         the library (R4): NAM Core's examples and a generated folder opened as the
 //                                         person's folder, searched, filtered, played, starred and reopened after a
-//                                         reload, and a generated 5,000-file folder indexed and searched in time.
+//                                         reload, and a generated 5,000-file folder indexed and searched in time;
+//                                         MIDI (R7): the browser's own Web MIDI, allowed over DevTools as a person
+//                                         allows it in the browser's prompt, then a test controller driving the page.
 //   node web/check.mjs --url=<origin>     the live host: /__build names a build, and every file of the artifact is
 //                                         served byte for byte (SHA-256).
 import { createHash } from 'node:crypto'
@@ -49,7 +51,9 @@ const TYPES = {
   '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.wav': 'audio/wav', '.nam': 'application/json', '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
 }
-let deliver
+let deliver, midiGrant = null, devtoolsWs = null
+// The MIDI permission (build plan R7), given over DevTools when the self-test asks for it at /__midi-granted (a grant
+// made as the browser starts, before the page loads, did not hold).
 const result = new Promise((ok, fail) => { deliver = ok; setTimeout(() => fail(new Error('the self-test sent nothing in 240 s')), 240000).unref() })
 const server = createServer((req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://x').pathname)
@@ -58,6 +62,7 @@ const server = createServer((req, res) => {
     req.on('data', (d) => parts.push(d)).on('end', () => { res.writeHead(204).end(); deliver(JSON.parse(Buffer.concat(parts).toString())) })
     return
   }
+  if (path === '/__midi-granted') { (midiGrant ??= grantMidi()).then((g) => res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(g))); return }
   // /__selftest/ is web/test; /__examples/ NAM Core's example captures, which the library indexes (build plan R4)
   const [prefix, dir] = path.startsWith('/__selftest/') ? ['/__selftest/', join(root, 'web', 'test')] : path.startsWith('/__examples/') ? ['/__examples/', join(root, 'NeuralAmpModelerCore', 'example_models')] : ['/', artifact]
   const base = dir
@@ -88,13 +93,33 @@ const jackWav = join(mkdtempSync(join(tmpdir(), 'crbn-rig-jack-')), 'pulled-jack
   }
   writeFileSync(jackWav, pcm)
 }
+const devtools = 9500 + Math.floor(Math.random() * 400)
 const browser = startHeadlessEdge(`http://127.0.0.1:${server.address().port}/__selftest/selftest.html`, {
   edge,
-  args: ['--autoplay-policy=no-user-gesture-required', '--window-size=1500,1000', '--use-fake-ui-for-media-stream',
+  args: [`--remote-debugging-port=${devtools}`, '--autoplay-policy=no-user-gesture-required', '--window-size=1500,1000', '--use-fake-ui-for-media-stream',
     '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${jackWav}`],
 })
+// Allows Web MIDI for the page's origin, as a person does in the browser's prompt (Browser.grantPermissions). Edge
+// checks every Web MIDI request against the SysEx permission (as WebView2 asks for it, RigWebView.cpp), so both.
+async function grantMidi() {
+  try {
+    let url
+    for (let i = 0; i < 80 && !url; i++) {
+      try { url = (await (await fetch(`http://127.0.0.1:${devtools}/json/version`)).json()).webSocketDebuggerUrl } catch { await new Promise((r) => setTimeout(r, 250)) }
+    }
+    if (!url) throw new Error('no DevTools on the headless browser')
+    // kept open to the end: Edge drops a DevTools grant when its session closes
+    const ws = devtoolsWs = new WebSocket(url)
+    await new Promise((ok, fail) => { ws.addEventListener('open', ok); ws.addEventListener('error', () => fail(new Error('DevTools refused'))) })
+    const answer = await new Promise((ok) => {
+      ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id === 1) ok(m) })
+      ws.send(JSON.stringify({ id: 1, method: 'Browser.grantPermissions', params: { origin: `http://127.0.0.1:${server.address().port}`, permissions: ['midi', 'midiSysex'] } }))
+    })
+    return answer.error ? { ok: false, error: answer.error.message } : { ok: true }
+  } catch (err) { return { ok: false, error: String(err?.message ?? err) } }
+}
 let report
-try { report = await result } finally { await browser.stop(); server.close() }
+try { report = await result } finally { try { devtoolsWs?.close() } catch { /* closed */ } await browser.stop(); server.close() }
 
 for (const c of report.checks) console.log(`${c.ok ? 'ok  ' : 'FAIL'}  ${c.name}${c.detail ? `  (${c.detail.split('\n')[0]})` : ''}`)
 if (report.realtime) console.log(`engine speed in this browser: ${report.realtime}x real time; worklet render ${report.workletMs} ms`)

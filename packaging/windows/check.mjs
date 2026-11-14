@@ -11,7 +11,9 @@
 //    knob, Standby and Space acting on the sound, a cabinet IR scaling it as the desktop always did, auto-off tripping
 //    in the native engine and the page saying why, Audio settings opening the driver's dialog, and a screenshot of the
 //    window; the library (R4): a generated 5,000-file folder picked in the app's folder dialog, indexed natively in time
-//    and read as the web version reads it, searched, played, starred and watched. Then it opens the app again on the
+//    and read as the web version reads it, searched, played, starred and watched; MIDI (R7): the page's own Web MIDI
+//    without a prompt, then a test controller driving the native engine (an expression pedal on Output, a footswitch on
+//    a pedal), learned on the dock. Then it opens the app again on the
 //    same profile: it was playing the guitar when it closed, so it plays it at once (R3), and the library is back. The riff and the guitar play quietly (Output at -40 and -30 dB) through the default devices.
 // It will not start beside a running CRBN Rig (one copy runs at a time). Exit code 0 when every check passes.
 import { spawn, spawnSync } from 'node:child_process'
@@ -399,6 +401,40 @@ if (!process.argv.includes('--no-app')) {
       await js("document.getElementById('rig-save').click(); true")
       await until("JSON.parse(localStorage.getItem('crbn-rig/rigs') ?? '{}').book?.length === 1 && document.getElementById('rig-bar').dataset.state === 'saved'", 5000, 'the rig saved')
       check('a rig file imported in the app finds its pedals in the library; the native engine plays the second in its second stage', imported.names === 'Test Model, Test LSTM' && imported.drive === 2, JSON.stringify(imported))
+
+      // R7 (SYNC:RIG-031, D-RIG-027): MIDI. The app gives its own page Web MIDI (RigWebView.cpp), so it answers without
+      // a prompt and names the controllers plugged in. Then a test controller beside them drives the native engine: an
+      // expression pedal learned by dragging the amp's Output knob onto the dock moves the sound, and a footswitch
+      // learned from the dock's list stomps the second pedal off and on. The mappings stay for the second opening.
+      const realMidi = await js("Promise.race([navigator.requestMIDIAccess().then((a) => ({ ok: true, ports: [...a.inputs.values()].map((p) => p.name) }), (e) => ({ ok: false, error: `${e.name}: ${e.message}` })), new Promise((r) => setTimeout(() => r({ ok: false, error: 'no answer in 5 s (a prompt?)' }), 5000))])")
+      check('the app gives its page Web MIDI without asking; it names the controllers plugged in (R7)', realMidi.ok, realMidi.ok ? (realMidi.ports.join(', ') || 'none plugged in') : realMidi.error)
+      await js("(() => { const input = { name: 'Test FCB', state: 'connected', onmidimessage: null, close() { return Promise.resolve(this) } }; const access = { inputs: new Map([['t', input]]), outputs: new Map(), onstatechange: null }; navigator.requestMIDIAccess = async () => access; window.__fcb = (...b) => input.onmidimessage?.({ data: new Uint8Array(b) }); document.getElementById('midi-open').click(); document.getElementById('midi-on').click(); return true })()")
+      await until("/Test FCB/.test(document.getElementById('midi-ports').textContent)", 5000, 'the test controller')
+      const dockState = "document.getElementById('midi-drop').dataset.state"
+      await js("(() => { const k = document.querySelector('#hw-amp .kn[data-param=\"outputDB\"]'), d = document.getElementById('midi-drop'); const at = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.4 } }; const P = (type, p, t) => t.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, button: 0, pointerId: 1, clientX: p.x, clientY: p.y })); const a = at(k), b = at(d); P('pointerdown', a, k); P('pointermove', { x: a.x + 20, y: a.y + 30 }, window); P('pointermove', b, window); P('pointerup', b, d); return true })()")
+      await until(`${dockState} === 'learning'`, 3000, 'learning Output by a drag onto the dock')
+      await js('__fcb(0xb0, 7, 16); true') // learned, and heard: -40 + 16 / 127 * 80 = -29.9 dB
+      await until(`${dockState} === 'learned'`, 3000, 'Output learned')
+      const at16 = await measure()
+      await js('__fcb(0xb0, 7, 0); true') // the heel: -40 dB
+      const at0 = await measure()
+      const pedalDB = 20 * Math.log10(at0.output / at16.output)
+      check('an expression pedal learned by dragging Output onto the dock moves the native engine’s sound', Math.abs(pedalDB + 10.1) < 0.6 && at0.output > 1e-5,
+        `heel ${pedalDB.toFixed(2)} dB from CC 16 (-29.9 dB to -40 dB); ${await js("document.querySelector('.knob[data-param=\"outputDB\"]').getAttribute('aria-valuetext')")}`)
+      await js("(() => { const s = document.querySelector('#midi-drop select[data-md=\"pick\"]'), o = [...s.options].find((x) => x.textContent === 'Pedal 2 footswitch'); s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true })()")
+      await until(`${dockState} === 'learning'`, 3000, 'learning the second footswitch from the list')
+      await js('__fcb(0xb0, 81, 127); true')
+      await until(`${dockState} === 'learned'`, 3000, 'the footswitch learned')
+      const untouched = await js(`${pedal2} === 'on'`)
+      await js('__fcb(0xb0, 81, 127); true')
+      await until(`${pedal2} === 'off'`, 8000, 'pedal 2 stomped off by MIDI')
+      await js('__fcb(0xb0, 81, 127); true')
+      await until(`${pedal2} === 'on'`, 8000, 'pedal 2 stomped on by MIDI')
+      check('a footswitch learned from the dock’s list stomps a pedal off and on in the native engine', untouched, await js("document.getElementById('midi-log').textContent.slice(0, 160)"))
+      await js("document.getElementById('midi-close').click(); true")
+      // the pedal moved Output after the rig was saved: saved again as it plays now, for the second opening
+      await js("document.getElementById('rig-save').click(); true")
+      await until("document.getElementById('rig-bar').dataset.state === 'saved'", 5000, 'the rig saved again')
       // Push, both pedals on, for the second opening
       await js('document.activeElement?.blur(); true')
       await realKey('w', 'keys-variant-w3.png')
@@ -511,6 +547,13 @@ if (!process.argv.includes('--no-app')) {
       if (rigBack === 'Desktop rig saved 1 Test LSTM on') break
     }
     check('opened again, the rig is open in its variant, both pedals heard', rigBack === 'Desktop rig saved 1 Test LSTM on', rigBack)
+    // and MIDI (R7): its mappings, the range drawn on Output, and MIDI on again through the app's own Web MIDI, unasked
+    let midiBack = ''
+    for (const end = Date.now() + 10000; Date.now() < end; await sleep(200)) {
+      midiBack = (await js2("(() => { const m = JSON.parse(localStorage.getItem('crbn-rig/midi') ?? '{}'); return `${m.on} ${m.maps?.length} ${Boolean(document.querySelector('#hw-amp .kw > .midi-range.ring'))} ${document.getElementById('midi-open').dataset.state} ${document.getElementById('midi-open').title}` })()")) ?? ''
+      if (/^true 2 true (on|empty) /.test(midiBack)) break
+    }
+    check('opened again, MIDI is on through the app’s own Web MIDI, its mappings back and Output’s range drawn', /^true 2 true (on|empty) /.test(midiBack), midiBack)
     await js2("document.getElementById('stop').click(); true")
   } catch (err) {
     check('the second opening ran to the end', false, err?.message ?? err)

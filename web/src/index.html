@@ -64,6 +64,10 @@ try {
     <button class="btn small" id="stop" type="button" hidden>Stop</button>
   </div>
   <nav class="actions" aria-label="Page">
+    <!-- MIDI (build plan R7, P3-UX U6): opens the dock; its lamp blinks as messages arrive. -->
+    <button class="btn look-btn midi-btn" id="midi-open" type="button" aria-expanded="false" aria-controls="midi-dock" data-state="off" title="MIDI: off">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10.5 3.2v2.3h3V3.2"/><circle cx="7" cy="12" r=".9"/><circle cx="17" cy="12" r=".9"/><circle cx="8.6" cy="8.2" r=".9"/><circle cx="15.4" cy="8.2" r=".9"/><circle cx="12" cy="16.6" r=".9"/></svg>MIDI<i class="midi-lamp" aria-hidden="true"></i>
+    </button>
     <button class="btn look-btn" id="look-open" type="button" aria-expanded="false" aria-controls="look-menu">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.3 0 1.8-1 1.3-2-.6-1.2.2-2.5 1.5-2.5H17a4 4 0 0 0 4-4C21 7 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.2" r="1.2"/><circle cx="15" cy="7.6" r="1.2"/></svg>Look
     </button>
@@ -377,6 +381,24 @@ try {
 </div>
 
 <div class="toast" id="toast" role="alert" hidden></div>
+
+<!-- The MIDI dock (build plan R7, P3-UX U6, D-RIG-027; midi.js): what is connected, the place to drop a control, the
+     mappings, and what arrives. While it is open the page is in map mode: a press on a control learns it. -->
+<section class="midi-dock" id="midi-dock" aria-labelledby="midi-title" hidden>
+  <header class="md-head">
+    <h2 id="midi-title">MIDI</h2>
+    <span class="md-ports" id="midi-ports" aria-live="polite"></span>
+    <span class="sp"></span>
+    <label class="toggle"><input type="checkbox" id="midi-on"><span class="tg" aria-hidden="true"></span><b>MIDI</b><small class="tg-state"></small></label>
+    <button class="btn small ghost" id="midi-close" type="button">Close <kbd>Esc</kbd></button>
+  </header>
+  <div class="md-body">
+    <div class="md-drop" id="midi-drop" data-state="idle" aria-live="polite"></div>
+    <section class="md-col" aria-labelledby="midi-maps-h"><h3 class="sec" id="midi-maps-h">Mapped</h3><ol class="md-maps" id="midi-maps"></ol></section>
+    <section class="md-col md-mon" aria-labelledby="midi-log-h"><h3 class="sec" id="midi-log-h">Arriving</h3><ol class="md-log" id="midi-log"></ol></section>
+  </div>
+</section>
+<div class="midi-layer" id="midi-layer" aria-hidden="true"></div>
 
 <dialog id="about" aria-labelledby="about-title">
   <form method="dialog">
