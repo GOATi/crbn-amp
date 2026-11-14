@@ -26,6 +26,13 @@ CRBN Rig stays in TONE3000's ecosystem and credits it, with a UX of our own.
 
 ## Progress log
 
+- 2026-11-14 (SYNC:RIG-031): R7's MIDI learning is built in both builds (D-RIG-027). Web MIDI in the page for the web
+  version and the desktop app alike (the app grants it to its own page). A MIDI dock: drag a control onto it, or click
+  one, then press the footswitch or move the pedal; knobs from a CC, heel to toe over any part of the sweep, drawn on
+  the knob; switches toggled or momentary; favourites, variants and rigs by Program Change; a monitor of what arrives.
+  The MC8 bank export waits for the owner's own backup (his MC8 is the original). Checks: engine 53, web 94, desktop
+  49. Not published: the web waits for the owner's word, the desktop for a SimplySign session. A note to TONE3000
+  drafted for him (`docs/reviews/2026-11-14-tone3000-note-draft.md`), and a Web MIDI brief for the Hub lane.
 - 2026-11-14 (SYNC:RIG-030): R6 is finished in both builds (step 3; D-RIG-026). Rigs beside the pads, saved by name and
   exported or imported as a small JSON file of names and references; variants on Q, W and E keeping each pedal on or
   off and its knobs; a pedal moved along the board by its grip or arrows; a Tone on each pedal (a tilt about 800 Hz)

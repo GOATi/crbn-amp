@@ -46,7 +46,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R4 | The library (U3): built and shipped (SYNC:RIG-021, RIG-022) | Done: his word to release, his SimplySign session | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
 | R6 | Rigs, variants and pedals (U5): built; web live (SYNC:RIG-029, RIG-030; D-RIG-025, D-RIG-026) | Done: rigs beside the pads, variants, the Tone | Pedals in series, hot-swapped while playing |
-| R7 | MIDI (U6) | MIDI in the browser, yes or no; his MC8 backup file, if he has one | His MC8 drives Rig by drag and drop |
+| R7 | MIDI (U6): learning built in both builds (SYNC:RIG-031, D-RIG-027) | Done: both builds; his MC8 is the original. Still: a bank backup for the export, and his MC8 itself | His MC8 drives Rig by drag and drop |
 | R8 | TONE3000 in the library (U7) | His word on TONE3000's API terms, which the session brings him | Browse, favourite and play TONE3000 captures in the library |
 | R9 | Release and store | A SimplySign session; his look at the new pictures | Signed release, web promoted, store refreshed |
 
@@ -945,6 +945,62 @@ desktop only. The desktop takes MIDI through iPlug2: `PLUG_DOES_MIDI_IN` goes to
   SysEx API instead. The recommendation: learning first, the bank export later, after the owner says which MC8 he has
   and gives one of his own bank backups.
 
+### R7, as built (2026-11-14, SYNC:RIG-031, D-RIG-027)
+
+Asked at the kickoff, the owner away from his gear for the day and reviewing by screenshots: **MIDI in both builds**
+(the recommendation, over the desktop only). **His MC8 is the original model**, not the Pro the community has decoded,
+so the bank export waits for one of his own bank backups; learning by drag and drop came first, as recommended.
+
+- **One way in, in both builds: Web MIDI in the page** (`web/src/midi.js`), not iPlug2's MIDI input (`PLUG_DOES_MIDI_IN`
+  stays 0). The desktop app grants its own page MIDI (`RigWebView.cpp`, `PermissionRequested`: MIDI only, Rig's page
+  only; every other permission keeps WebView2's default). One code path for both builds, one hop from a footswitch to
+  the engine (the page sends the parameter, as for a click), and no fight over the port: on Windows a USB MIDI port has
+  one user at a time. **Found:** WebView2 raises a plain `requestMIDIAccess()` as `MIDI_SYSTEM_EXCLUSIVE_MESSAGES`, and
+  Edge 157 checks every Web MIDI request against the SysEx permission (DevTools had to grant `midiSysex` too). Before the
+  grant, the app's page waited forever on a prompt nobody could see.
+- **The MIDI dock**, from the header's MIDI button (its lamp lit when a controller is connected, blinking as messages
+  arrive): a MIDI switch (ports opened only while it is on, and let go when it is off, so the MC8's editor can have
+  them), the place to drop a control, an "Or choose" list of every control (the keyboard's and a touch screen's way),
+  the mappings, and a monitor of the last eight messages (the port, the message, what it did).
+- **Map mode** while the dock is open: every control that can be mapped is outlined, the mapped ones tagged with their
+  message. Dragging a control onto the dock, clicking it, or Enter on it starts learning it, and never uses it; the
+  first message that fits maps it.
+- **What maps:** knobs (the amp's six and Size, the calibration level, each pedal's Drive, Level and Tone, on the page
+  and on the kits) from a CC, heel (CC 0) to toe (CC 127), over any part of the sweep (inverted when the toe is below
+  the heel), drawn dotted outside the knob; switches (Gate, EQ, Cabinet IR, Squeal guard, Auto-off, Calibrate, each
+  pedal's Tone switch and footswitch, Standby, Power) from a CC, a note or a Program Change, toggled or momentary; picks
+  (favourites 1 to 0, next, previous, Last two, variants Q, W and E, each saved rig) from a Program Change or a press.
+  One message drives one control and a control takes one message: learning again moves either.
+- **Kept** in this browser (`crbn-rig/midi`), apart from rigs: the mappings are the player's controller, not a sound. A
+  rig deleted takes its mapping with it.
+- **At start**, MIDI comes back on if it was on: in the desktop app at once; in a browser only if the person allowed it
+  before (`permissions.query` says granted), so the page never asks without a click; in Pavillion Hub's tool view never,
+  and the dock says why (goati-sync `proposals/2026-11-14-hub-tool-view-web-midi.md`, for the Hub lane).
+
+**Found and fixed while building:** a click within 400 ms of a mapping drag was swallowed wherever it landed (the riff's
+button among them); only the drag's own click is now.
+
+**The session's picks, for the owner's review** (each a line to change):
+- A CC learned at a value under 64 starts as momentary: a controller that toggles its own switch sends 0 on every other
+  press, and momentary follows it. Otherwise toggle.
+- Standby momentary is Standby while held (a kill switch).
+- Footswitches map to the board's places (pedal 1 to 4), not to the pedal: a pedal moved to another place answers to
+  that place's footswitch.
+- A message matches by its kind, channel and number, from any port.
+- While the dock is open the page's controls are chosen, not used (the wheel still turns a knob).
+
+**Tests:** `web/engine/test.mjs` 53/53 (the engine is unchanged). `web/check.mjs` 94/94 (9 new: Web MIDI answers in
+Edge once allowed, the real X-TOUCH MINI on Box-C listed; map mode; a switch learned by a drag, toggling and never on
+the press that taught it; momentary; an expression pedal heel to toe and over half a sweep, drawn on the knob; a note
+stomping a pedal while the riff plays; Program Changes picking a variant and opening a rig, and the monitor; the dock
+closed and MIDI off letting the port go; after a reload, the mappings back and MIDI on again). Edge refuses Web MIDI to
+a frame whatever DevTools grants (with `allow="midi"` and from the frame's own script), so the real Web MIDI check asks
+from the self-test's own page. `packaging/windows/check.mjs` 49/49 (4 new: the app gives its page Web MIDI without a prompt, naming the X-TOUCH MINI; an expression pedal learned by dragging Output onto the dock moves the native engine's sound, -10.08 dB from CC 16 to its heel against -10.1 expected; a footswitch learned from the list stomps the second pedal off and on in the native engine; at the second opening MIDI is on again through the app's own Web MIDI, its mappings back and Output's range drawn)..
+
+**Not built:** the MC8 bank export (his original MC8's backup format is undocumented; his own backup is the test),
+MIDI out (lights on the controller), 14-bit CCs, and a knob that waits for its pedal to pass its value before it moves
+(pickup).
+
 ### R8. TONE3000 in the library (U7)
 
 As P3-UX's U7. **Ask first:** read TONE3000's API and its terms for API clients, and bring them to the owner with a
@@ -958,6 +1014,7 @@ recommendation. Build only within those terms, crediting authors as the terms as
   flows (and perhaps its lists), the full API (search, favourites, downloads) under a commercial agreement and
   sign-off; TONE3000's branding, creator credit, no catalogue caching. The recommendation: their Select flow first;
   ask TONE3000 before the browser inside Rig's library.
+- **The note to TONE3000 (2026-11-14, SYNC:RIG-031):** drafted for the owner to send, `docs/reviews/2026-11-14-tone3000-note-draft.md`.
 
 ### R9. Release and store
 
@@ -995,7 +1052,8 @@ recommendation. Build only within those terms, crediting authors as the terms as
 
 - **The Hub lane:** the desktop Hub's tool view grants a web tool no microphone yet (D-RIG-003, goati-sync
   `proposals/2026-11-10-hub-tool-view-audio-input.md`), so Rig's web version in the desktop Hub cannot hear a guitar
-  until that lands. R7 may add a Web MIDI ask.
+  until that lands. R7 added the Web MIDI ask: goati-sync `proposals/2026-11-14-hub-tool-view-web-midi.md` (Chromium asks
+  `midiSysex` even for plain MIDI).
 - **The mark:** Audeze's US registration of CRBN for headphones (`docs/reviews/2026-11-10-mark-knockout-crbn-rig.md`)
   is with the owner's adviser, across the suite.
 - **The Console lane:** Rig's web version is the first to write the `crbn-look` cookie (D-CRBN-024's web half).

@@ -5,8 +5,9 @@ U2, the desktop on the page (R2, D-RIG-017 and D-RIG-018), U1, power, auto-off a
 D-RIG-021; `docs/BUILD_PLAN.md` "R3, as built"), U3, the library (R4, "R4, as built"; web build
 `20261112-0709-b07901a-0bb8a2c1`, desktop 0.9.3), and U4, favourites on standby (R5, "R5, as built"; desktop 0.9.4).
 U5 is built: pedals in series ("R6, step 2 as built"), then rigs, variants on Q, W and E, moving a pedal, and a Tone
-with a bypass switch on each pedal ("R6, step 3 as built", D-RIG-026; web build `20261113-1546-7c4360d-081f912e`). U6
-and U7 follow, in the order below.
+with a bypass switch on each pedal ("R6, step 3 as built", D-RIG-026; web build `20261113-1546-7c4360d-081f912e`). U6's
+learning is built (R7, "R7, as built", D-RIG-027: Web MIDI in both builds, mapped by drag and drop on the MIDI dock);
+its MC8 bank export waits for the owner's own backup. U7 follows.
 
 **How it looks** is decided in the Rig Lab (D-RIG-007, `docs/design/2026-11-10-rig-lab/lab.html`): the mark, the
 finishes, the layout and each feature below drawn three ways, with the owner's picks in its db. Upstream's IGraphics
@@ -58,7 +59,8 @@ A tuner, recording a take, and presets shared between people are good next steps
    built once for both.
 2. **The squeal guard is on out of the box,** with one click (or Space) to come back.
 3. **Ten favourites on keys 1 to 0;** Q, W and E for a rig's variants; arrows for next and previous.
-4. **Still open: MIDI in the browser** (a second Hub permission ask for Web MIDI), decided with U6.
+4. **MIDI in the browser: yes** (D-RIG-027). The Hub's tool view still needs its permission ask (goati-sync
+   `proposals/2026-11-14-hub-tool-view-web-midi.md`).
 
 Each feature is drawn as the owner picked in the Rig Lab (D-RIG-008 (d)), with the other two drawings a player's
 choice: power B (pilot lamp and toggles), pedals B (stompboxes), library A (list), favourites A (footswitches).
