@@ -421,6 +421,21 @@ if (!process.argv.includes('--no-app')) {
       const pedalDB = 20 * Math.log10(at0.output / at16.output)
       check('an expression pedal learned by dragging Output onto the dock moves the native engine’s sound', Math.abs(pedalDB + 10.1) < 0.6 && at0.output > 1e-5,
         `heel ${pedalDB.toFixed(2)} dB from CC 16 (-29.9 dB to -40 dB); ${await js("document.querySelector('.knob[data-param=\"outputDB\"]').getAttribute('aria-valuetext')")}`)
+      // The owner's MC8 review (2026-11-14): his pedal sends only 50 to 88; its sweep set by Set heel and Set toe. The toe
+      // is held at the heel while the pedal is swept, so the speakers stay quiet, then let go.
+      const outRow = "[...document.querySelectorAll('#midi-maps .md-map')].find((li) => /^Output level/.test(li.querySelector('.md-what').textContent))"
+      const toeTo = (v) => `(() => { const r = ${outRow}.querySelector('[data-end=\"toe\"]'); r.value = ${v}; r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); return true })()`
+      await js(toeTo(0))
+      await js(`(() => { ${outRow}.querySelector('[data-md=\"measure\"]').click(); __fcb(0xb0, 7, 50); ${outRow}.querySelector('[data-md=\"set-heel\"]').click(); __fcb(0xb0, 7, 88); ${outRow}.querySelector('[data-md=\"set-toe\"]').click(); return true })()`)
+      await js(toeTo(1000))
+      const sweptTo = await js("JSON.stringify(JSON.parse(localStorage.getItem('crbn-rig/midi')).sweeps?.['cc:1:7'] ?? null)")
+      await js('__fcb(0xb0, 7, 50); true') // its heel: -40 dB
+      const sw50 = await measure()
+      await js('__fcb(0xb0, 7, 52); true') // two steps in: -40 + 2 / 38 * 80 = -35.8 dB (unmeasured, -7.2 dB)
+      const sw52 = await measure()
+      const sweepDB = 20 * Math.log10(sw52.output / sw50.output)
+      check('a pedal that sends only 50 to 88, its sweep set by Set heel and Set toe, moves Output from its heel in the native engine', sweptTo === '{"heel":50,"toe":88}' && Math.abs(sweepDB - 4.21) < 0.6 && sw50.output > 1e-5,
+        `${sweptTo}; CC 52 is ${sweepDB.toFixed(2)} dB over CC 50 (4.21 expected); ${await js("document.querySelector('.knob[data-param=\"outputDB\"]').getAttribute('aria-valuetext')")}`)
       await js("(() => { const s = document.querySelector('#midi-drop select[data-md=\"pick\"]'), o = [...s.options].find((x) => x.textContent === 'Pedal 2 footswitch'); s.value = o.value; s.dispatchEvent(new Event('change', { bubbles: true })); return true })()")
       await until(`${dockState} === 'learning'`, 3000, 'learning the second footswitch from the list')
       await js('__fcb(0xb0, 81, 127); true')
