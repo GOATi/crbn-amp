@@ -46,7 +46,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R4 | The library (U3): built and shipped (SYNC:RIG-021, RIG-022) | Done: his word to release, his SimplySign session | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
 | R6 | Rigs, variants and pedals (U5): built; web live (SYNC:RIG-029, RIG-030; D-RIG-025, D-RIG-026) | Done: rigs beside the pads, variants, the Tone | Pedals in series, hot-swapped while playing |
-| R7 | MIDI (U6): learning built in both builds, shipped in desktop 0.9.6 and the web (SYNC:RIG-031, D-RIG-027); the session's picks approved | Done: both builds; his MC8 is the original. Still: his MC8 tried with the build (he plugs it in for a review session), and a bank backup for the export | His MC8 drives Rig by drag and drop |
+| R7 | MIDI (U6): learning built in both builds, shipped in desktop 0.9.6 and the web (SYNC:RIG-031, D-RIG-027); reviewed with his MC8, the pedal's sweep and the MC8 bank built (SYNC:RIG-032, D-RIG-028) | Done: both builds; his MC8's traffic and backups. Still: a Rig bank restored into his MC8, and Rig picking the MC8 up after its editor lets go, tried with him | His MC8 drives Rig by drag and drop |
 | R8 | TONE3000 in the library (U7) | His word on TONE3000's API terms, which the session brings him | Browse, favourite and play TONE3000 captures in the library |
 | R9 | Release and store | A SimplySign session; his look at the new pictures | Signed release, web promoted, store refreshed |
 
@@ -1000,6 +1000,63 @@ from the self-test's own page. `packaging/windows/check.mjs` 49/49 (4 new: the a
 **Not built:** the MC8 bank export (his original MC8's backup format is undocumented; his own backup is the test),
 MIDI out (lights on the controller), 14-bit CCs, and a knob that waits for its pedal to pass its value before it moves
 (pickup).
+
+### R7, the review with his MC8 (2026-11-14/15, SYNC:RIG-032, D-RIG-028)
+
+He plugged in his MC8 (the original model, firmware 3.13's editor) for a short while at the console; the session logged
+what it sends with a winmm listener of its own (`dist/mc8/mc8-log.txt`, kept out of git), and a session beside it
+took his All Banks backup through Claude in Chrome; this session took a Current Bank one the same way.
+
+**What his MC8 sends:** each footswitch one CC on channel 3 (CC 1 to 8 on bank 1's page 1), value 127, on the press
+only: nothing on release, and a hold sends the same. Bank up and down send nothing. His expression pedal sends CC 13
+(bank 1) but **only 50 to 88 from full heel to full toe**: the MC8's own expression calibration has never been run, and
+it is not in the backup. Bank 1 is "DSP Gojira 1" (CCs for Neural DSP's Gojira plug-in, Program Changes 5 to 8 on M to
+P), bank 3 "DSP Petrucci", the rest empty.
+
+**Built:**
+- **A pedal's sweep** (his ask, D-RIG-028 (a)): under a knob's Heel and Toe, "Pedal sweep" says what the pedal sends
+  (as it comes, 0 to 127, or measured). **Measure sweep** shows a 0 to 127 bar with what has been seen and where the
+  pedal is; five sweeps heel to toe set it by themselves, a step inside each end so both are reached; **Set heel** and
+  **Set toe** take where the pedal is now (both set, done); **Done**, **Cancel**, **Reset**. Kept by the CC
+  (`crbn-rig/midi` `sweeps`), so a pedal measured once stays measured whatever it is mapped to. The count starts over
+  when the sweep grows by more than a tenth: rocked half way five times, a plain count sets half a sweep (simulated on
+  his log before building).
+- **Devices, not ports** (D-RIG-028 (b)): Windows names the MC8's ports "Morningstar MC8", "MIDIIN2 (Morningstar MC8)"
+  and so on; the dock shows one "Morningstar MC8", each device with a light that blinks as it sends, and the monitor
+  names the device. Rig still listens on every port, so nobody picks one.
+- **No controller found** says why: **found with his MC8**, while the MC8 Editor has it open in Chrome, Windows lets
+  nothing else open *any* MIDI input (winmm `midiInOpen` error 7 on all five, the X-TOUCH MINI too) and a fresh Edge's
+  Web MIDI lists no devices at all. Chrome's Web MIDI opens every input on the machine. The dock now says a controller's
+  editor may be holding it, and to turn MIDI off and on once it is closed.
+- **The MC8 bank** (`web/src/mc8.js`): the dock's **MC8 bank…** writes the mappings as the MC8 Editor's own Current
+  Bank file. The format, from his two backups: `{ schemaVersion: 1, dumpType: 'singleBank', deviceModel: 4,
+  downloadDate, hash, data: { bank }, description }`; `hash` is Java's String.hashCode of `JSON.stringify(data)`,
+  reproduced on both files; a bank is 16 bank messages, 22 presets (A to P are the eight switches on two pages) and 4
+  expression presets, each of 16 messages `{ d1, d2, d3, d4, m, c, t, a, tg, mi }` in that key order; on a switch t 1 is
+  a Program Change and t 2 a CC, a 1 a press and a 2 a release; on an expression preset t 1 is a CC from d2 to d3. Only
+  CCs and Program Changes are written (a note is left out and the dialog says so).
+
+**The session's picks, for his review** (each a line to change):
+- The bank's layout, as the MC8 sits on the floor: the pedals' footswitches on the bottom row A to D, variants Q, W, E
+  on E, F, G and Standby on H above them, favourites 1 to 8 on page 2 (I to P); anything else where there is room.
+- The MC8's screen names: PEDAL 1, VAR W, STANDBY, FAV 3, LAST 2, GATE, EQ, CAB IR, P1 TONE, a rig's name in capitals
+  (eight characters, plain ASCII); the long name is Rig's own ("Pedal 1 footswitch: Example drive").
+- A switch is written as his banks are: 127 on a press, toggle mode off on the MC8 (Rig keeps the state); a momentary
+  switch sends 127 held and 0 let go.
+- The bank it is for is chosen every time, never guessed (the file replaces that bank); the last one chosen is kept.
+- Five sweeps to measure a pedal, and a step inside each end.
+
+**Tests:** `web/check.mjs` 102/102 (8 new, his MC8's own traffic and files: its four ports one device; its footswitch
+learned as Toggle and flipping on each press; its pedal measured from his log, 51 to 87, reaching Bass's ends; Reset,
+Set heel and Set toe; the sweep back after a reload; his bank read and its check number reproduced; the dialog; the file
+his format key for key; each switch's bytes). His Gojira bank is the fixture, `web/test/mc8-bank-gojira1.json`.
+`packaging/windows/check.mjs` 50/50 (1 new: a pedal that sends only 50 to 88, its sweep set by Set heel and Set toe,
+moves Output from its heel in the native engine, 4.21 dB at CC 52 as expected). Screenshots of the dock and the dialog
+in Capsule, Daylight, Holo and Redline (`dist/probe/mc8-*.png`).
+
+**Not tried yet, with him:** a Rig bank restored into his MC8 (into a bank he does not use, after a backup); Rig picking
+the MC8 up once its editor lets it go (what turning MIDI off and on does there); presets sending several messages at once
+(his banks have none yet); the feel of Program Changes between variants while playing.
 
 ### R8. TONE3000 in the library (U7)
 

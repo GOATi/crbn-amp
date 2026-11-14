@@ -46,3 +46,13 @@ the community's, not Morningstar's. Check against one of the owner's own backups
 3. **Before building the export, from the owner:** which MC8 he has (the original or the Pro) and its firmware, and one
    of his own Current Bank backups to build and test against. Morningstar's SysEx API is the documented route if the
    file format proves fragile.
+
+## Confirmed on his own MC8 (2026-11-15, SYNC:RIG-032)
+
+His **original** MC8's All Banks and Current Bank backups (Editor v3.13) agree with the community's reading where it
+matters, with the original's sizes: 30 banks; a bank of 16 bank messages, 22 presets and 4 expression presets, each of
+16 messages. The Current Bank file holds `data: { bank }`. `hash` is Java's String.hashCode of `JSON.stringify(data)`
+on both files. On a switch `t` 1 is a Program Change and 2 a CC; on an expression preset `t` 1 is a CC from `d2` to
+`d3`. The All Banks file trims empty expression messages to `[]` where the Current Bank file keeps all 16. The
+expression calibration is not in either. Rig's writer is crbn-amp `web/src/mc8.js`, checked key for key against his
+Gojira bank (`web/test/mc8-bank-gojira1.json`); restoring one into his MC8 is still to try, with him.
