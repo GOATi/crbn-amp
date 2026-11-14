@@ -15,6 +15,7 @@ import { createLibrary } from './library.js'
 import { createLibraryView } from './library-view.js'
 import { applyPrefs, connectSuite, fontOf, loadLooks, loadPrefs, lookList, looks, onSharedChange, ownPrefs, sanitize, savePrefs, setEvery, suiteReach } from './look.js'
 import { createMidi, createMidiDock } from './midi.js'
+import { createMc8Dialog } from './mc8.js'
 import { PADS, PAD_KEYS, captureKey, createPadsView, createStandby } from './pads.js'
 import { PEDAL_DRAG, PEDAL_KNOB, createBoardView, createPedals } from './pedals.js'
 import { PEDAL_DEFAULT, PEDAL_SETTINGS, RIG_SETTINGS, VARIANTS, VARIANT_KEYS, findInLibrary, freeName, freshVariants, keptKey, loadRigs, newId, readRigFile, rigFile, saveRigs, soundOf, tidyName } from './rigs.js'
@@ -1697,6 +1698,13 @@ function wireMidi() {
     notice: () => (hubApp && !midi.connected ? 'Pavillion Hub’s view passes no MIDI to web tools yet: open Rig in your browser, or the installed app, for your controller.' : ''),
     onOpen: () => { if (!$('look-menu').hidden) openMenu(false) },
   })
+  // the mappings as a Morningstar MC8 bank (the owner's MC8 review, 2026-11-14)
+  const mc8 = createMc8Dialog({
+    dialog: $('mc8'), maps: () => midi.maps, label: midiLabel, rigName: () => $('rig-name').value || 'CRBN Rig',
+    save: (name, text) => saveText(name, text, 'application/json', 'MC8 bank'),
+    onSaved: (file, how, n) => toast(`${how === 'downloaded' ? 'Downloaded' : 'Saved'} ${file}. In the MC8 Editor, pick bank ${n}, then Controller Backup, Restore your data.`, 'info'),
+  })
+  $('mc8-open').addEventListener('click', () => mc8.open())
   // MIDI comes back on at start if it was on: the desktop app grants it to its page; a browser only when the person
   // allowed it before, so the page never asks without a click.
   midi.resume(async () => {

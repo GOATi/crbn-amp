@@ -566,7 +566,7 @@ export function createMidiDock({ midi, button, dock, layer, targetAt, label, cho
   button.addEventListener('click', () => setOpen(!open))
   $('#midi-close').addEventListener('click', () => { setOpen(false); button.focus() })
   addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || !open) return
+    if (e.key !== 'Escape' || !open || document.querySelector('dialog[open]')) return
     if (midi.learning) midi.cancel()
     else { setOpen(false); button.focus() }
   })

@@ -762,6 +762,50 @@ try {
       const hits = $$l('#midi-log li.hit').length
       check('Program Changes pick a variant and open a rig; the monitor shows what arrives and what it did', hits >= 2 && /Test FCB/.test($l('#midi-log').textContent) && /PC 5/.test($l('#midi-log').textContent), `${$$l('#midi-log li').length} shown, ${hits} mapped; ${$l('#midi-log li')?.textContent}`)
 
+      // The MC8 bank (the owner's review): the mappings so far written as his MC8's own Current Bank file. His Gojira
+      // bank (web/test/mc8-bank-gojira1.json, from his MC8 on 2026-11-14) is the example of the format.
+      {
+        const mc8 = await import('/mc8.js')
+        const mine = await (await fetch('/__selftest/mc8-bank-gojira1.json')).text()
+        const his = JSON.parse(mine)
+        const read = mc8.readBackup(mine)
+        // the same shape as his: every key in the same order, every value of the same type, every array as long
+        const shape = (a, b, p = '') => {
+          if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length ? a.flatMap((x, i) => shape(x, b[i], `${p}[${i}]`)) : [`${p} length`]
+          if (a && typeof a === 'object') return b && typeof b === 'object' && Object.keys(a).join() === Object.keys(b).join() ? Object.keys(a).flatMap((k) => shape(a[k], b[k], `${p}.${k}`)) : [`${p} keys`]
+          return typeof a === typeof b ? [] : [`${p} type`]
+        }
+        $l('#mc8-open').click()
+        const dlg = $l('#mc8')
+        const shut = $l('#mc8-save').disabled
+        const pickBank = $l('#mc8-bank'); pickBank.value = '3'; pickBank.dispatchEvent(new (lw().Event)('change', { bubbles: true }))
+        let saved = null
+        lw().showSaveFilePicker = async ({ suggestedName }) => ({ createWritable: async () => ({ write: async (b) => { saved = { name: suggestedName, text: await b.text() } }, close: async () => {} }) })
+        const cells = Object.fromEntries($$l('#mc8-pages .mc8-sw').map((c) => [c.querySelector('i').textContent, c.querySelector('b').textContent]))
+        const step = $l('#mc8 .mc8-n').textContent, open = dlg.open
+        $l('#mc8-save').click()
+        await wait(() => saved && !dlg.open, 5000, 'the MC8 bank saved')
+        delete lw().showSaveFilePicker
+        const file = JSON.parse(saved.text), back = mc8.readBackup(saved.text), bank = file.data.bank
+        const diffs = shape(file, his)
+        const P = (i) => bank.presetArray[i], first = (i) => P(i).msgArray[0], at = (letter) => P(mc8.LETTERS.indexOf(letter))
+        const byName = (n) => bank.presetArray.find((p) => p.shortName === n)
+        const eqP = byName('EQ'), gateP = byName('GATE'), varW = at('F'), rigP = bank.presetArray.find((p) => /^Rig: /.test(p.longName))
+        const exps = bank.expPresetArray.filter((e) => e.msgArray[0].t === 1).map((e) => `${e.msgArray[0].d1}/${e.msgArray[0].c}`)
+        check('his own MC8 bank reads, and its check number is reproduced (the MC8 Editor’s, String.hashCode of its data)', read.kind === 'singleBank' && read.hashOk && read.banks[0].bankName === 'DSP Gojira 1', `${read.kind}; hash ${read.hashOk}`)
+        check('the MC8 bank dialog: nothing saved until a bank is chosen; the switches as they sit on the floor, named as Rig names them', shut && open && step === '4' && cells.F === 'VAR W' && cells.A === 'GATE' && cells.B === 'EQ' && cells.C === 'TEST RIG' && Object.keys(cells).join('') === 'EFGHABCDMNOPIJKL',
+          `${shut}; step ${step}; ${Object.entries(cells).map(([k, v]) => `${k} ${v}`).join(', ')}`)
+        check('the bank saved is his MC8’s own format, key for key (a Current Bank file for bank 4), with its check number right',
+          diffs.length === 0 && back.hashOk && file.dumpType === 'singleBank' && file.deviceModel === 4 && bank.bankNumber === 3 && bank.presetArray.every((p) => p.bankNum === 3) && /MC8 bank 4/.test(saved.name),
+          `${diffs.slice(0, 4).join('; ') || 'same shape'}; hash ${back.hashOk}; ${saved.name}`)
+        check('each switch sends what Rig learned: EQ CC 1 on a press, the momentary gate 127 held and 0 let go, variant W and the rig by Program Change, the pedals’ knobs on the expression inputs, a note left out and said',
+          eqP && first(bank.presetArray.indexOf(eqP)).t === 2 && first(bank.presetArray.indexOf(eqP)).d1 === 1 && first(bank.presetArray.indexOf(eqP)).d2 === 127 && first(bank.presetArray.indexOf(eqP)).c === 3 && first(bank.presetArray.indexOf(eqP)).a === 1 &&
+          gateP && gateP.msgArray[0].a === 1 && gateP.msgArray[0].d2 === 127 && gateP.msgArray[1].a === 2 && gateP.msgArray[1].d2 === 0 && gateP.msgArray[1].d1 === 20 &&
+          varW.msgArray[0].t === 1 && varW.msgArray[0].d1 === 2 && rigP?.msgArray[0].t === 1 && rigP.msgArray[0].d1 === 5 &&
+          exps.join() === '7/1,13/3' && /Pedal 1 footswitch/.test($l('#mc8-skip').textContent) && !/[^\x20-\x7e]/.test(bank.presetArray.map((p) => p.shortName + p.longName).join('')),
+          `EQ ${JSON.stringify(eqP?.msgArray[0])}; gate ${JSON.stringify(gateP?.msgArray.slice(0, 2).map((m) => [m.a, m.d1, m.d2]))}; W ${JSON.stringify([varW.shortName, varW.msgArray[0].t, varW.msgArray[0].d1])}; rig ${rigP?.shortName}; exp ${exps}; ${$l('#mc8-skip').textContent}`)
+      }
+
       // the dock closed: the range stays drawn; MIDI off lets the ports go
       $l('#midi-close').click()
       await wait(() => !$$l('#midi-layer .ml-box').length, 3000, 'map mode closed')

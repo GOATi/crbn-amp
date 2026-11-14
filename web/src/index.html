@@ -394,11 +394,34 @@ try {
   </header>
   <div class="md-body">
     <div class="md-drop" id="midi-drop" data-state="idle" aria-live="polite"></div>
-    <section class="md-col" aria-labelledby="midi-maps-h"><h3 class="sec" id="midi-maps-h">Mapped</h3><ol class="md-maps" id="midi-maps"></ol></section>
+    <section class="md-col" aria-labelledby="midi-maps-h"><div class="md-col-head"><h3 class="sec" id="midi-maps-h">Mapped</h3><button class="btn small ghost" id="mc8-open" type="button" title="Write these mappings as a bank for a Morningstar MC8">MC8 bank…</button></div><ol class="md-maps" id="midi-maps"></ol></section>
     <section class="md-col md-mon" aria-labelledby="midi-log-h"><h3 class="sec" id="midi-log-h">Arriving</h3><ol class="md-log" id="midi-log"></ol></section>
   </div>
 </section>
 <div class="midi-layer" id="midi-layer" aria-hidden="true"></div>
+
+<!-- The MC8 bank (the owner's MC8 review, 2026-11-14; mc8.js): the mappings written as a Morningstar MC8 bank file. -->
+<dialog id="mc8" class="mc8" aria-labelledby="mc8-title">
+  <form method="dialog">
+    <h2 id="mc8-title">Your MC8 bank</h2>
+    <p>Rig writes a bank for a Morningstar MC8 from what you have mapped: each switch sends what Rig learned for it, and
+      the MC8’s screen names it as Rig does.</p>
+    <div class="mc8-fields">
+      <label><span>For bank</span><select id="mc8-bank" required><option value="">Choose…</option></select></label>
+      <label><span>Bank name</span><input id="mc8-name" maxlength="16" spellcheck="false"></label>
+    </div>
+    <div class="mc8-pages" id="mc8-pages"></div>
+    <p class="mc8-exp" id="mc8-exp"></p>
+    <ul class="mc8-skip" id="mc8-skip"></ul>
+    <ol class="mc8-steps">
+      <li>In the MC8 Editor, back up first: <b>Controller Backup</b>, <b>All Banks</b>.</li>
+      <li>Pick bank <b class="mc8-n">…</b> in the list of banks on the left.</li>
+      <li><b>Controller Backup</b>, <b>Restore your data</b>, and choose this file.</li>
+    </ol>
+    <p class="mc8-note">Pick a bank you do not use: the file replaces that bank on the MC8.</p>
+    <div class="mc8-actions"><button class="btn" value="cancel">Cancel</button><button class="btn primary" id="mc8-save" type="button" disabled>Save bank file</button></div>
+  </form>
+</dialog>
 
 <dialog id="about" aria-labelledby="about-title">
   <form method="dialog">

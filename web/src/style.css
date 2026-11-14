@@ -489,6 +489,33 @@ dialog p { color: var(--text-dim); }
 dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 .notices { padding-left: 18px; color: var(--text-dim); }
 
+/* the MC8 bank (mc8.js): its switches as they sit on the floor, top row E to H over A to D, page 2 beside */
+.md-col-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.md-col-head .btn { font-size: var(--fs-xs); padding: 1px 8px; }
+dialog.mc8 { max-width: min(640px, calc(100vw - 32px)); }
+.mc8 form { display: grid; gap: 12px; }
+.mc8 p { margin: 0; font-size: var(--fs-s); }
+.mc8-fields { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.mc8-fields label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-s); color: var(--text-dim); }
+.mc8-fields select, .mc8-fields input { font: 400 var(--fs-s) var(--font-ui); color: var(--text); background: var(--field); border: 1px solid var(--line-2); border-radius: var(--r-field); padding: 3px 6px; }
+.mc8-fields input { width: 12em; font-family: var(--font-mono); }
+.mc8-pages { display: grid; gap: 10px; }
+.mc8-page { display: grid; gap: 4px; }
+.mc8-page h3 { font-size: var(--fs-xs); color: var(--text-faint); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin: 0; }
+.mc8-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.mc8-sw { display: grid; gap: 1px; padding: 5px 6px; border-radius: var(--r-sm); background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); min-height: 52px; align-content: start; }
+.mc8-sw i { font: 600 10px var(--font-mono); color: var(--text-faint); font-style: normal; }
+.mc8-sw b { font: 600 12px var(--font-mono); color: var(--text); white-space: pre; overflow: hidden; }
+.mc8-sw small { font: 400 10px var(--font-mono); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc8-sw.empty b { color: var(--text-faint); font-weight: 400; }
+.mc8-exp { color: var(--text-dim); }
+.mc8-skip { margin: 0; padding-left: 18px; font-size: var(--fs-xs); color: var(--text-dim); }
+.mc8-skip:empty { display: none; }
+.mc8-steps { margin: 0; padding-left: 20px; font-size: var(--fs-s); color: var(--text-dim); display: grid; gap: 2px; }
+.mc8-steps b { color: var(--text); font-weight: 600; }
+.mc8 .mc8-note { font-size: var(--fs-xs); color: var(--text-faint); }
+.mc8-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
 /* the pedals before the amp (build plan R6, P3-UX U5): stompboxes on a board above the amp, as D-RIG-008 (d) picked; the
    kit's own pedal on the Hardware drawing (hw.js), the Rig Lab's stompbox on the islands and the stripe. Each says what
    it is doing in words under its footswitch: On, Off, Loading, Cannot play. */
@@ -784,7 +811,7 @@ dialog h2 { font-size: calc(14px * var(--d-scale)); color: var(--text); }
 .md-dev.blink i { background: var(--accent); transition: none; }
 .md-rm { grid-area: rm; width: 24px; height: 24px; border: 0; border-radius: var(--r-btn); background: transparent; color: var(--text-faint); font-size: 16px; line-height: 1; cursor: pointer; }
 .md-rm:hover { background: var(--hover); color: var(--text); }
-.md-log li { display: grid; grid-template-columns: minmax(0, 7em) auto minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: var(--fs-xs); color: var(--text-faint); padding: 2px 4px; border-radius: 4px; }
+.md-log li { display: grid; grid-template-columns: minmax(0, 9.5em) auto minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: var(--fs-xs); color: var(--text-faint); padding: 2px 4px; border-radius: 4px; }
 .md-log li.hit { color: var(--text-dim); }
 .md-log li.md-none { display: block; }
 .md-log code { font: 500 11px var(--font-mono); color: var(--text); white-space: nowrap; }
