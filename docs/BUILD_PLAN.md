@@ -46,7 +46,7 @@ and when a step is done. The owner's decisions so far are D-CRBN-021 and D-RIG-0
 | R4 | The library (U3): built and shipped (SYNC:RIG-021, RIG-022) | Done: his word to release, his SimplySign session | Both builds; a 5,000-file folder stays fast |
 | R5 | Favourites on standby (U4) | Nothing new (ten, keys 1 to 0) | Switching is gapless and click-free in both builds |
 | R6 | Rigs, variants and pedals (U5): built; web live (SYNC:RIG-029, RIG-030; D-RIG-025, D-RIG-026) | Done: rigs beside the pads, variants, the Tone | Pedals in series, hot-swapped while playing |
-| R7 | MIDI (U6): learning built in both builds (SYNC:RIG-031, D-RIG-027) | Done: both builds; his MC8 is the original. Still: a bank backup for the export, and his MC8 itself | His MC8 drives Rig by drag and drop |
+| R7 | MIDI (U6): learning built in both builds, shipped in desktop 0.9.6 and the web (SYNC:RIG-031, D-RIG-027); the session's picks approved | Done: both builds; his MC8 is the original. Still: his MC8 tried with the build (he plugs it in for a review session), and a bank backup for the export | His MC8 drives Rig by drag and drop |
 | R8 | TONE3000 in the library (U7) | His word on TONE3000's API terms, which the session brings him | Browse, favourite and play TONE3000 captures in the library |
 | R9 | Release and store | A SimplySign session; his look at the new pictures | Signed release, web promoted, store refreshed |
 
@@ -1014,7 +1014,7 @@ recommendation. Build only within those terms, crediting authors as the terms as
   flows (and perhaps its lists), the full API (search, favourites, downloads) under a commercial agreement and
   sign-off; TONE3000's branding, creator credit, no catalogue caching. The recommendation: their Select flow first;
   ask TONE3000 before the browser inside Rig's library.
-- **The note to TONE3000 (2026-11-14, SYNC:RIG-031):** drafted for the owner to send, `docs/reviews/2026-11-14-tone3000-note-draft.md`.
+- **The note to TONE3000 (2026-11-14, SYNC:RIG-031):** drafted for the owner to send, `docs/reviews/2026-11-14-tone3000-note-draft.md`. **Never ask him whether he sent it** (his word, 2026-11-14): he tells a session once it has gone, and R8 waits until then and for TONE3000's answer.
 
 ### R9. Release and store
 
