@@ -2,8 +2,8 @@
 // com.pavillionhub.crbn.amp and never the product name, so a rename never strands anyone's settings.
 #define PLUG_NAME "CRBN Rig"
 #define PLUG_MFR "GOATi Entertainment"
-#define PLUG_VERSION_HEX 0x00000906
-#define PLUG_VERSION_STR "0.9.6"
+#define PLUG_VERSION_HEX 0x00000907
+#define PLUG_VERSION_STR "0.9.7"
 // New ids (upstream's were '1YEo' and 'SDAa'), so a DAW never takes CRBN Rig for upstream NAM (D-CRBN-002 (a)).
 #define PLUG_UNIQUE_ID 'CRig'
 #define PLUG_MFR_ID 'Goat'
