@@ -1122,6 +1122,10 @@ RIG-032 left them.
   owner there, before the next desktop release.
 - **The next desktop release is 0.9.8:** `package.ps1` (unsigned, for the pictures and the check) rebuilt
   `dist/hub/crbn-rig-0.9.7-windows-x64` over the signed 0.9.7 folder, which is published and needs nothing more.
+- **Applied the same day (SYNC:RIG-034), on the owner's yes:** the words and the five pictures are live (record version
+  30, `packaging/hub/README.md`), with desktop 0.9.8 (signed; `check.mjs` 50/50, the app got the front with him remote)
+  and the web build `20261115-0224-e10294e-f282bdd9`. Still open from R9: `docs/PLAN.md` and `P3-UX.md`; the MC8 bank in
+  the words once a Rig bank is restored into his MC8.
 
 ## Rules every session keeps
 
