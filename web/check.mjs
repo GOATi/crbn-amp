@@ -19,9 +19,12 @@ import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 
 import { tmpdir } from 'node:os'
 import { extname, join, normalize, relative, resolve, sep } from 'node:path'
 import { DEFAULT_EDGE, startHeadlessEdge } from '../scripts/headless-edge.mjs'
+import { createTone3000Fixture } from './test/tone3000-fixture.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const artifact = resolve(process.env.ARTIFACT_DIR ?? join(root, 'dist', 'web'))
+// A recorded TONE3000 under /__t3k (build plan R8): the self-test points the page at it; nothing calls TONE3000 itself.
+const t3k = createTone3000Fixture(root)
 const urlArg = process.argv.find((a) => a.startsWith('--url='))?.slice(6)
 
 const files = []
@@ -60,6 +63,11 @@ const server = createServer((req, res) => {
   if (req.method === 'POST' && path === '/__result') {
     const parts = []
     req.on('data', (d) => parts.push(d)).on('end', () => { res.writeHead(204).end(); deliver(JSON.parse(Buffer.concat(parts).toString())) })
+    return
+  }
+  if (path.startsWith('/__t3k')) {
+    const parts = []
+    req.on('data', (d) => parts.push(d)).on('end', () => t3k.handle(req, res, path, Buffer.concat(parts)))
     return
   }
   if (path === '/__midi-granted') { (midiGrant ??= grantMidi()).then((g) => res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(g))); return }

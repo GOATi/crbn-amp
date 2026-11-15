@@ -1,6 +1,7 @@
 // CRBN Rig's page in the desktop app: see RigWebView.h.
 #include "RigWebView.h"
 
+#include <algorithm>
 #include <cwchar>
 #include <utility>
 
@@ -21,6 +22,11 @@ using CreateEnvironmentFn = HRESULT(STDAPICALLTYPE*)(PCWSTR, PCWSTR, ICoreWebVie
 using RuntimeVersionFn = HRESULT(STDAPICALLTYPE*)(PCWSTR, LPWSTR*);
 constexpr UINT_PTR kSubclassId = 0x52494721; // 'RIG!'
 constexpr UINT kDeferMessage = WM_APP + 0x52; // Defer's: the parent window runs what was deferred
+// TONE3000 (build plan R8): the page that opens its sign-in window, and where its answer comes back (the redirect the
+// page registers for the desktop app; TONE3000 always allows loopback redirects).
+constexpr const wchar_t* kT3kAuthorize = L"https://www.tone3000.com/api/v1/oauth/authorize?";
+constexpr const wchar_t* kT3kCallback = L"http://127.0.0.1/callback";
+constexpr const wchar_t* kT3kClass = L"CrbnRigTone3000";
 
 // WebView2Loader.dll beside the exe (WebView2/, vendored, D-RIG-017), loaded once and kept for the process's life:
 // the runtime's objects live in it.
@@ -262,6 +268,8 @@ void WebViewHost::OnControllerCreated(ICoreWebView2Controller* controller)
                                     const std::wstring u = Take(uri);
                                     if ((*self)->AllowedUri(u))
                                       (*self)->OpenOwnFile(u); // the About's notices, from the app's folder
+                                    else if (StartsWithNoCase(u, kT3kAuthorize))
+                                      (*self)->OpenT3k(args); // TONE3000's sign-in, in a window of Rig's own
                                     else
                                       OpenOutside(u);
                                     return S_OK;
@@ -328,8 +336,197 @@ void WebViewHost::OnControllerCreated(ICoreWebView2Controller* controller)
   mView->Navigate((L"https://" + mOptions.host + L"/" + mOptions.page).c_str());
 }
 
+void WebViewHost::OpenT3k(ICoreWebView2NewWindowRequestedEventArgs* rawArgs)
+{
+  if (!mEnv || mParent == nullptr)
+    return;
+  CloseT3k(true); // one at a time: a second sign-in replaces the first
+  static const bool registered = [] {
+    WNDCLASSEXW wc{sizeof(wc)};
+    wc.lpfnWndProc = T3kProc;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512)); // IDC_ARROW, whose macro is narrow in this build
+    wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
+    wc.lpszClassName = kT3kClass;
+    return RegisterClassExW(&wc) != 0;
+  }();
+  if (!registered)
+    return;
+  // TONE3000's page at the size its own examples use, scaled for the display and centred on Rig's window.
+  const UINT dpi = GetDpiForWindow(mParent);
+  const int w = MulDiv(500, dpi, 96), h = MulDiv(760, dpi, 96);
+  RECT pr{};
+  GetWindowRect(mParent, &pr);
+  const int x = pr.left + ((pr.right - pr.left) - w) / 2, y = pr.top + std::max(0L, ((pr.bottom - pr.top) - h) / 2);
+  mT3kWindow = CreateWindowExW(0, kT3kClass, L"TONE3000 · CRBN Rig", WS_OVERLAPPEDWINDOW, x, y, w, h, mParent, nullptr,
+                               GetModuleHandleW(nullptr), nullptr);
+  if (mT3kWindow == nullptr)
+    return;
+  SetWindowLongPtrW(mT3kWindow, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+  if (const HICON icon = reinterpret_cast<HICON>(GetClassLongPtrW(mParent, GCLP_HICON)))
+    SendMessageW(mT3kWindow, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon));
+  ShowWindow(mT3kWindow, SW_SHOWNORMAL);
+  mT3kAnswered = false;
+
+  // The page's window.open waits for this window's view (a deferral), then the runtime navigates it to TONE3000.
+  ComPtr<ICoreWebView2NewWindowRequestedEventArgs> args = rawArgs;
+  ComPtr<ICoreWebView2Deferral> deferral;
+  args->GetDeferral(&deferral);
+  const std::weak_ptr<WebViewHost*> alive = mAlive;
+  const HWND window = mT3kWindow;
+  const HRESULT made = mEnv->CreateCoreWebView2Controller(
+    window, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+              [alive, args, deferral, window](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+                const auto self = alive.lock();
+                WebViewHost* host = self ? *self : nullptr;
+                if (host == nullptr || host->mT3kWindow != window || FAILED(result) || controller == nullptr)
+                {
+                  if (controller != nullptr)
+                    controller->Close();
+                  deferral->Complete();
+                  if (host != nullptr && host->mT3kWindow == window)
+                    host->CloseT3k(true);
+                  return S_OK;
+                }
+                host->mT3kController = controller;
+                controller->get_CoreWebView2(&host->mT3kView);
+                ComPtr<ICoreWebView2Settings> settings;
+                if (host->mT3kView && SUCCEEDED(host->mT3kView->get_Settings(&settings)))
+                {
+                  settings->put_IsWebMessageEnabled(FALSE); // TONE3000's pages never reach Rig's engine
+                  settings->put_AreDevToolsEnabled(host->mOptions.devTools ? TRUE : FALSE);
+                  settings->put_IsStatusBarEnabled(FALSE);
+                }
+                EventRegistrationToken token;
+                if (host->mT3kView)
+                {
+                  // Its answer is caught here, before any request is made; the web stays in this window; anything
+                  // else goes to the person's browser.
+                  host->mT3kView->add_NavigationStarting(
+                    Callback<ICoreWebView2NavigationStartingEventHandler>(
+                      [alive](ICoreWebView2*, ICoreWebView2NavigationStartingEventArgs* nav) -> HRESULT {
+                        const auto me = alive.lock();
+                        LPWSTR uri = nullptr;
+                        if (!me || FAILED(nav->get_Uri(&uri)))
+                          return S_OK;
+                        const std::wstring u = Take(uri);
+                        const std::wstring cb = kT3kCallback;
+                        if (StartsWithNoCase(u, cb) && (u.size() == cb.size() || u[cb.size()] == L'?' || u[cb.size()] == L'#'))
+                        {
+                          nav->put_Cancel(TRUE);
+                          (*me)->AnswerT3k(u);
+                        }
+                        else if (!StartsWithNoCase(u, L"https://"))
+                        {
+                          nav->put_Cancel(TRUE);
+                          OpenOutside(u);
+                        }
+                        return S_OK;
+                      })
+                      .Get(),
+                    &token);
+                  host->mT3kView->add_NewWindowRequested(
+                    Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+                      [](ICoreWebView2*, ICoreWebView2NewWindowRequestedEventArgs* more) -> HRESULT {
+                        LPWSTR uri = nullptr;
+                        more->put_Handled(TRUE);
+                        if (SUCCEEDED(more->get_Uri(&uri)))
+                          OpenOutside(Take(uri));
+                        return S_OK;
+                      })
+                      .Get(),
+                    &token);
+                  host->mT3kView->add_WindowCloseRequested(
+                    Callback<ICoreWebView2WindowCloseRequestedEventHandler>([alive](ICoreWebView2*, IUnknown*) -> HRESULT {
+                      if (const auto me = alive.lock())
+                        (*me)->Defer([h = *me] { h->CloseT3k(true); });
+                      return S_OK;
+                    }).Get(),
+                    &token);
+                  args->put_NewWindow(host->mT3kView.Get());
+                }
+                RECT r;
+                GetClientRect(window, &r);
+                controller->put_Bounds(r);
+                controller->put_IsVisible(TRUE);
+                controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+                deferral->Complete();
+                return S_OK;
+              })
+              .Get());
+  if (FAILED(made))
+  {
+    deferral->Complete();
+    CloseT3k(true);
+  }
+}
+
+void WebViewHost::AnswerT3k(const std::wstring& url)
+{
+  // The callback's address, as JSON text: only its query matters to the page, which checks state and the rest.
+  std::string json = "{\"type\":\"t3kCallback\",\"url\":\"";
+  for (const char c : Narrow(url))
+  {
+    if (c == '"' || c == '\\')
+      json += '\\';
+    if (static_cast<unsigned char>(c) < 0x20)
+      continue;
+    json += c;
+  }
+  json += "\"}";
+  mT3kAnswered = true;
+  Post(json);
+  Defer([this] { CloseT3k(false); });
+}
+
+void WebViewHost::CloseT3k(bool tellPage)
+{
+  if (mT3kWindow == nullptr && !mT3kController)
+    return;
+  if (tellPage && !mT3kAnswered)
+  {
+    mT3kAnswered = true;
+    Post("{\"type\":\"t3kCallback\",\"url\":\"http://127.0.0.1/callback?canceled=true\"}");
+  }
+  if (mT3kController)
+    mT3kController->Close();
+  mT3kView.Reset();
+  mT3kController.Reset();
+  const HWND w = mT3kWindow;
+  mT3kWindow = nullptr;
+  if (w != nullptr)
+  {
+    SetWindowLongPtrW(w, GWLP_USERDATA, 0);
+    DestroyWindow(w);
+  }
+  if (mParent != nullptr)
+    SetForegroundWindow(mParent);
+}
+
+LRESULT CALLBACK WebViewHost::T3kProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+  auto* host = reinterpret_cast<WebViewHost*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+  if (host != nullptr && host->mT3kWindow == hwnd)
+  {
+    if (msg == WM_SIZE && host->mT3kController)
+    {
+      RECT r;
+      GetClientRect(hwnd, &r);
+      host->mT3kController->put_Bounds(r);
+      return 0;
+    }
+    if (msg == WM_CLOSE)
+    {
+      host->CloseT3k(true); // closed by the person: the page hears it was canceled
+      return 0;
+    }
+  }
+  return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
 void WebViewHost::Close()
 {
+  CloseT3k(false);
   mAlive.reset();
   if (mSubclassed && mParent != nullptr)
     RemoveWindowSubclass(mParent, ParentProc, kSubclassId);

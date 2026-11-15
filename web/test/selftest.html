@@ -5,7 +5,8 @@
      this browser, directly and through the real AudioWorklet (rig-processor.js), and the two agree; the cabinet stage
      scales as the desktop's does; the library (R4), its folder in the browser's private folder; favourites on standby
      (R5): pads from the library's favourites, switched by key while the riff plays, and a switch through the worklet
-     equal to the engine run directly. -->
+     equal to the engine run directly; TONE3000 in the library (R8), against the recorded TONE3000 check.mjs serves
+     under /__t3k (tone3000-fixture.mjs), never the real one. -->
 <meta charset="utf-8">
 <title>CRBN Rig self-test</title>
 <body style="margin:0">
@@ -893,6 +894,152 @@ try {
     results.library = { indexMs: Math.round(indexMs), scan, searchMs: +worst.toFixed(1) }
     // the page as the rest of the self-test expects it: the handle folder again, nothing loaded from it
     await lw().navigator.storage.getDirectory().then((r) => r.removeEntry('Tones', { recursive: true })).catch(() => {})
+  }
+
+  // 1f. TONE3000 in the library (build plan R8, docs/R8-TONE3000.md), against a recorded TONE3000 (/__t3k, served by
+  // check.mjs from tone3000-fixture.mjs; nothing here calls TONE3000): the tab and its splash; signing in through
+  // TONE3000's flow (the popup a page opens is a hidden frame here; the fixture checks PKCE; the answer comes back
+  // through tone3000.html's BroadcastChannel); the pick playing at once, fetched only then, kept in the folder with its
+  // tone3000.json and credited in My folder and the capture panel; the lists, a search, a heart, a format Rig cannot
+  // play; the cabinet's way in, for an IR; played again from the folder, not fetched again; a refresh; a reload still
+  // signed in; signing out. In its own frame on the same origin, beside the page the checks above used.
+  {
+    const { writePrivateFolder } = await import('/__selftest/library-fixture.mjs')
+    const template = await (await fetch('/demo/example.nam')).text()
+    const dir = await writePrivateFolder('T3K Tones', [{ path: 'Mine.nam', bytes: new TextEncoder().encode(template) }])
+    for (const k of ['crbn-rig/tone3000', 'crbn-rig/tone3000-view', 'crbn-rig/tone3000-preview']) localStorage.removeItem(k)
+    const mainDoc = frame.contentDocument
+    check('until TONE3000 signs off, its tab and buttons show only where ?tone3000 turned them on', mainDoc.documentElement.dataset.t3k === 'off' && frame.contentWindow.getComputedStyle(mainDoc.querySelector('.lib-panes')).display === 'none' && frame.contentWindow.getComputedStyle(mainDoc.querySelector('[data-t3k-browse]')).display === 'none', mainDoc.documentElement.dataset.t3k)
+    const tf = document.createElement('iframe')
+    tf.style.cssText = 'width:1440px;height:900px;border:0'
+    tf.src = '/?t3k=/__t3k&tone3000'
+    document.body.append(tf)
+    const td = () => tf.contentDocument, tw = () => tf.contentWindow
+    const $t = (s) => td().querySelector(s), $$t = (s) => [...td().querySelectorAll(s)]
+    const t3kLog = async () => (await fetch('/__t3k/log')).json()
+    const shown = (el) => el && tw().getComputedStyle(el).display !== 'none' && !el.hidden
+    await wait(() => td()?.documentElement.dataset.ready === 'true', 20000, 'the TONE3000 page')
+    // TONE3000's window, as a hidden frame: TONE3000's page there sends the person back to tone3000.html at once.
+    const opened = []
+    const stubOpen = () => {
+      tw().open = (url) => {
+        opened.push(new URL(url))
+        const f = document.createElement('iframe')
+        f.style.display = 'none'; f.src = url
+        document.body.append(f)
+        return { closed: false, close() { f.remove(); this.closed = true }, focus() {} }
+      }
+    }
+    stubOpen()
+    tw().showDirectoryPicker = async () => dir
+    $t('#lib-choose').click()
+    await wait(() => /T3K Tones · 1 capture/.test($t('#lib-src').textContent), 15000, 'the folder')
+
+    $t('[data-pane-tab="t3k"]').click()
+    check('TONE3000 is a tab beside My folder: signed out, TONE3000’s logo, its words and Continue, the folder’s list put away',
+      $t('.lib').dataset.pane === 't3k' && $t('#t3k .t3k-splash img.t3k-logo[src="t3k/tone3000-logo.svg"]') && $t('#t3k [data-continue]') && !shown($t('#lib-body')), $t('#t3k').textContent.slice(0, 120))
+
+    // Continue: TONE3000's sign-in and picker (select_tone); the fixture picks its Plexi, which plays at once.
+    $t('#t3k [data-continue]').click()
+    await wait(() => /Plexi A2 Standard|^A2$/.test($t('#capture-name').textContent), 20000, 'the pick to play')
+    const auth = opened[0]?.searchParams
+    check('Continue opens TONE3000’s own flow: Rig’s key, PKCE S256, a state, the picker, A2 asked for, back to tone3000.html',
+      opened[0]?.pathname === '/__t3k/oauth/authorize' && auth.get('client_id') === 't3k_pub_J6MuMOba14a05Nl3Luf4Mp1Zj7Ik7oPi' && auth.get('code_challenge_method') === 'S256' && auth.get('state')?.length >= 16 &&
+      auth.get('prompt') === 'select_tone' && auth.get('architecture') === '2' && auth.get('menubar') === 'true' && auth.get('redirect_uri') === `${location.origin}/tone3000.html`, opened[0]?.href)
+    await wait(() => $t('#t3k .t3k-head .t3k-me span:last-child')?.textContent === 'rig-tester', 5000, 'the person named')
+    check('signed in: the person’s name, Powered by TONE3000 with a link, Browse TONE3000 and Sign out', $t('#t3k .t3k-powered')?.href === 'https://www.tone3000.com/' && $t('#t3k .t3k-head [data-browse] img.t3k-mark') && $t('#t3k [data-signout]'), $t('#t3k .t3k-head').textContent)
+
+    // Kept in the folder, with its credit beside it, and found there by the library.
+    const toneDir = await (await dir.getDirectoryHandle('TONE3000')).getDirectoryHandle('Made-Up Maker - Made-Up Plexi Crunch (9001)')
+    const keptBytes = new Uint8Array(await (await (await toneDir.getFileHandle('Plexi A2 Standard.nam')).getFile()).arrayBuffer())
+    const a2 = new Uint8Array(await (await fetch('/__examples/A2.nam')).arrayBuffer())
+    const credit = JSON.parse(await (await (await toneDir.getFileHandle('tone3000.json')).getFile()).text())
+    check('the pick is kept in the folder as TONE3000 sent it, under TONE3000/<creator> - <title> (<id>)', keptBytes.length === a2.length && keptBytes.every((b, i) => b === a2[i]), `${keptBytes.length} bytes`)
+    check('its tone3000.json keeps the tone, its licence, its creator and the model', credit.tone3000 === 1 && credit.tone.id === 9001 && credit.tone.license === 'cc-by' && credit.tone.url === 'https://www.tone3000.com/tones/test-9001' &&
+      credit.creator.username === 'made-up-maker' && credit.models.length === 1 && credit.models[0].id === 81 && credit.models[0].file === 'Plexi A2 Standard.nam' && credit.models[0].architecture === '2', JSON.stringify(credit).slice(0, 300))
+    let log = await t3kLog()
+    const downloads = () => log.filter((r) => /^\/models\/\d+\/download\//.test(r.path))
+    check('only the model played was fetched, and models were asked for with A2', downloads().length === 1 && /\/models\/81\//.test(downloads()[0].path) && log.some((r) => r.path === '/models' && r.query.architecture === '2'), downloads().map((r) => r.path).join(', '))
+    const credited = $t('#capture-t3k')
+    check('the capture panel shows it came from TONE3000: the T3K mark, its creator, a link to the tone', shown(credited) && credited.querySelector('img.t3k-mark') && /by Made-Up Maker/.test(credited.textContent) && credited.href === 'https://www.tone3000.com/tones/test-9001', credited?.outerHTML.slice(0, 200))
+    $t('[data-pane-tab="folder"]').click()
+    const row = $$t('#lib-body .lib-row:not(.hd)').find((r) => r.querySelector('img.t3k-mark'))
+    check('in My folder it is a capture like any other, with the T3K mark and its creator', $$t('#lib-body .lib-row:not(.hd)').length === 2 && row && /by Made-Up Maker/.test(row.textContent) && /TONE3000\/Made-Up Maker/.test(row.querySelector('[data-go]').dataset.go), row?.textContent)
+    $t('[data-pane-tab="t3k"]').click()
+
+    // The lists: an empty Favorites first showed Trending; each tone with its gear, format and creator.
+    await wait(() => $t('#t3k [data-back]'), 5000, 'the details')
+    $t('#t3k [data-back]').click()
+    await wait(() => $$t('#t3k .t3k-card').length, 5000, 'a list')
+    const cards = $$t('#t3k .t3k-card')
+    check('signed in with no favorites: Trending, each tone with its image, gear, format and creator',
+      $t('#t3k [data-tab="trending"]').getAttribute('aria-selected') === 'true' && cards.length === 4 && cards.every((c) => c.querySelector('.t3k-img') && /·/.test(c.querySelector('.t3k-m').textContent) && c.querySelector('.t3k-by .t3k-av')) &&
+      cards[0].querySelector('.t3k-m').textContent.startsWith('Amp + Cab · NAM') && cards[0].querySelector('.t3k-by').textContent.endsWith('Made-Up Maker'), cards.map((c) => c.textContent).join(' | '))
+    check('a partial list invites the person to browse all of TONE3000', $t('#t3k .t3k-invite [data-browse]'), '')
+    $t('#t3k [data-tab="downloaded"]').click()
+    await wait(() => $t('#t3k [data-tab="downloaded"]').getAttribute('aria-selected') === 'true' && $t('#t3k .t3k-body').getAttribute('aria-busy') === 'false', 5000, 'Downloaded')
+    check('Downloaded lists the tone just fetched, marked In your library', $$t('#t3k .t3k-card').length === 1 && /Made-Up Plexi Crunch/.test($t('#t3k .t3k-card').textContent) && /In your library/.test($t('#t3k .t3k-card').textContent), $t('#t3k .t3k-body').textContent)
+    const q = $t('#t3k-q'); q.value = 'green'; q.dispatchEvent(new (tw().Event)('input', { bubbles: true }))
+    await wait(() => $$t('#t3k .t3k-card').length === 1 && /Green Drive/.test($t('#t3k .t3k-card').textContent), 5000, 'the search')
+    log = await t3kLog()
+    const searches = log.filter((r) => r.path === '/tones/search')
+    check('a search asks TONE3000 once the person stops typing, with A2', searches.length === 1 && searches[0].query.query === 'green' && searches[0].query.architecture === '2', JSON.stringify(searches.map((s) => s.query)))
+    $t('#t3k [data-heart="9002"]').click()
+    await wait(() => $t('#t3k [data-heart="9002"]')?.getAttribute('aria-pressed') === 'true', 5000, 'the heart')
+    const q2 = $t('#t3k-q'); q2.value = ''; q2.dispatchEvent(new (tw().Event)('input', { bubbles: true }))
+    await new Promise((r) => setTimeout(r, 600))
+    $t('#t3k [data-tab="favorited"]').click()
+    await wait(() => $t('#t3k [data-tab="favorited"]').getAttribute('aria-selected') === 'true' && $t('#t3k .t3k-body').getAttribute('aria-busy') === 'false' && /Green Drive/.test($t('#t3k .t3k-card')?.textContent), 5000, 'Favorites')
+    check('a heart is TONE3000’s favorite: it shows in Favorites', /Green Drive/.test($t('#t3k .t3k-card').textContent) && $t('#t3k [data-heart="9002"]').getAttribute('aria-pressed') === 'true', $t('#t3k .t3k-body').textContent)
+    $t('#t3k [data-tab="latest"]').click()
+    await wait(() => $t('#t3k [data-open="9005"]'), 5000, 'Latest')
+    $t('#t3k [data-open="9005"]').click()
+    await wait(() => /plays NAM captures and IRs/.test($t('#t3k .t3k-detail')?.textContent ?? ''), 5000, 'the snapshot tone')
+    check('a tone in a format Rig cannot play says so, with no Play', !$t('#t3k [data-play]') && /this tone is Snapshot/.test($t('#t3k .t3k-detail').textContent), '')
+    $t('#t3k [data-back]').click()
+
+    // The cabinet's way in: TONE3000's picker for cabinet IRs; the IR plays, kept and credited.
+    td().querySelector('[data-t3k-browse="ir"]').click()
+    await wait(() => $t('#ir-name').textContent === '4x12 SM57', 15000, 'the IR')
+    const irAuth = opened.at(-1).searchParams
+    check('the cabinet’s Browse TONE3000 opens the picker for cabinet IRs, and the IR plays, credited', irAuth.get('gears') === 'cab' && irAuth.get('format') === 'ir' && shown($t('#ir-t3k')) && /by Made-Up Maker/.test($t('#ir-t3k').textContent), irAuth.toString())
+
+    // Played again from the folder: open the Plexi, Play its A2 model: nothing fetched.
+    await wait(() => $t('#t3k [data-play]') && !$t('#t3k [data-play]').disabled, 5000, 'the IR settled')
+    log = await t3kLog(); const before = downloads().length
+    $t('#t3k [data-back]').click()
+    $t('#t3k [data-tab="downloaded"]').click()
+    await wait(() => $t('#t3k [data-open="9001"]'), 5000, 'Downloaded again')
+    $t('#t3k [data-open="9001"]').click()
+    await wait(() => $t('#t3k .t3k-model input[value="81"]') && $t('#t3k [data-play]'), 5000, 'the Plexi’s models')
+    check('a tone’s details: its models to choose from, the kept one marked', $$t('#t3k .t3k-model').length === 2 && /in your library/.test($t('#t3k .t3k-model input[value="81"]').closest('label').textContent) && /A1/.test($t('#t3k .t3k-model input[value="82"]').closest('label').textContent), $t('#t3k .t3k-models').textContent)
+    $t('#t3k [data-play]').click()
+    await wait(() => $t('#t3k [data-play]') && !$t('#t3k [data-play]').disabled, 5000, 'Play')
+    log = await t3kLog()
+    check('a model kept in the folder plays from there, not fetched again', downloads().length === before && shown($t('#capture-t3k')), `${before} then ${downloads().length}`)
+
+    // A refresh when the access token runs out (the fixture rotates the refresh token), then a reload: still signed in.
+    const kept = JSON.parse(tw().localStorage.getItem('crbn-rig/tone3000'))
+    tw().localStorage.setItem('crbn-rig/tone3000', JSON.stringify({ ...kept, expires_at: 0 }))
+    const tokensBefore = (await t3kLog()).filter((r) => r.path === '/oauth/token').length
+    const reloaded = td()
+    tw().location.reload()
+    await wait(() => td() !== reloaded && td().documentElement.dataset.ready === 'true' && $t('#t3k .t3k-me span:last-child')?.textContent === 'rig-tester' && $$t('#t3k .t3k-card').length, 20000, 'the page after a reload')
+    const after = JSON.parse(tw().localStorage.getItem('crbn-rig/tone3000'))
+    log = await t3kLog()
+    check('after a reload: still signed in, on the TONE3000 tab, the expired token refreshed once and the new refresh token kept',
+      $t('.lib').dataset.pane === 't3k' && log.filter((r) => r.path === '/oauth/token').length === tokensBefore + 1 && after.refresh_token !== kept.refresh_token && after.expires_at > Date.now(), `${tokensBefore} then ${log.filter((r) => r.path === '/oauth/token').length}`)
+    check('every call to TONE3000 in this block came from the person’s actions, under Rig’s own limit', log.length < 60, `${log.length} calls`)
+
+    // Signing out forgets the tokens; what was kept stays in the folder.
+    stubOpen()
+    await wait(() => /T3K Tones · 2 captures, 1 IR/.test($t('#lib-src').textContent), 10000, 'the folder looked at again')
+    $t('#t3k [data-signout]').click()
+    check('Sign out forgets the tokens and shows the splash; the kept captures stay in the folder', !tw().localStorage.getItem('crbn-rig/tone3000') && $t('#t3k .t3k-splash') && /T3K Tones · 2 captures, 1 IR/.test($t('#lib-src').textContent), $t('#lib-src').textContent)
+    tf.remove()
+    for (const f of document.querySelectorAll('iframe:not(#page)')) f.remove()
+    for (const k of ['crbn-rig/tone3000', 'crbn-rig/tone3000-view', 'crbn-rig/tone3000-preview']) localStorage.removeItem(k)
+    await navigator.storage.getDirectory().then((r) => r.removeEntry('T3K Tones', { recursive: true })).catch(() => {})
   }
 
   // 2. The engine in this browser.

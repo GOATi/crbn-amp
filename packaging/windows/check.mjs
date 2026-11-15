@@ -13,7 +13,8 @@
 //    window; the library (R4): a generated 5,000-file folder picked in the app's folder dialog, indexed natively in time
 //    and read as the web version reads it, searched, played, starred and watched; MIDI (R7): the page's own Web MIDI
 //    without a prompt, then a test controller driving the native engine (an expression pedal on Output, a footswitch on
-//    a pedal), learned on the dock. Then it opens the app again on the
+//    a pedal), learned on the dock; TONE3000 (R8): a kept capture written into the library natively and credited, and
+//    TONE3000's sign-in window catching a real redirect (one request, a malformed challenge). Then it opens the app again on the
 //    same profile: it was playing the guitar when it closed, so it plays it at once (R3), and the library is back. The riff and the guitar play quietly (Output at -40 and -30 dB) through the default devices.
 // It will not start beside a running CRBN Rig (one copy runs at a time). Exit code 0 when every check passes.
 import { spawn, spawnSync } from 'node:child_process'
@@ -484,6 +485,46 @@ if (!process.argv.includes('--no-app')) {
     const liftedOff = await js("document.getElementById('banner').hidden && document.documentElement.dataset.powerState === 'on'")
     const afterLift = liftedOff ? '' : await js("` (then: ${document.documentElement.dataset.powerState}, ${document.getElementById('banner').hidden ? 'no banner' : document.getElementById('banner-title').textContent}, ${document.getElementById('status-text').textContent})`")
     check('auto-off: a pulled jack in the native engine mutes it, the page says why, Turn back on lifts it', liftedOff && /went dead after a loud pop/.test(offWords), offWords + afterLift)
+
+    // TONE3000 (build plan R8, docs/R8-TONE3000.md), its native half. A capture and its tone3000.json written into the
+    // library folder by the app (libWrite), a write outside the folder or of another kind refused, the watch listing
+    // them and My folder crediting the capture. Then TONE3000's sign-in window: the page opens TONE3000's authorize
+    // page, which the app gives a WebView2 window of its own; TONE3000 answers at once with a redirect to
+    // http://127.0.0.1/callback (the challenge is malformed on purpose, so no one signs in: one request to TONE3000,
+    // the only one any check makes), which the app catches before it is made and hands to the page, and the window
+    // closes. The rest of TONE3000 (lists, search, hearts, downloads) is the page's own, checked by web/check.mjs.
+    {
+      const libDir = join(out, 'library')
+      const wavenet = readFileSync(join(root, 'NeuralAmpModelerCore', 'example_models', 'wavenet.nam'))
+      const dirRel = 'TONE3000/Made-Up Maker - Made-Up Desktop Tone (9101)'
+      const credit = {
+        tone3000: 1,
+        tone: { id: 9101, title: 'Made-Up Desktop Tone', url: 'https://www.tone3000.com/tones/test-9101', gear: 'pedal', format: 'nam', license: 'cc-by', image: null, makes: [], description: '' },
+        creator: { username: 'made-up-maker', display_name: 'Made-Up Maker', url: 'https://www.tone3000.com/made-up-maker', avatar_url: null },
+        models: [{ id: 91, name: 'Desktop Model', size: 'standard', architecture: '1', file: 'Desktop Model.nam' }],
+      }
+      const write = (path, bytes) => js(`new Promise((ok) => { const id = 900000 + Math.floor(Math.random() * 99999); const on = (e) => { if (e.data?.type === 'libWrite' && e.data.id === id) { chrome.webview.removeEventListener('message', on); ok(e.data) } }; chrome.webview.addEventListener('message', on); chrome.webview.postMessage({ type: 'libWrite', id, folder: ${JSON.stringify(libDir)}, path: ${JSON.stringify(path)}, b64: ${JSON.stringify(Buffer.from(bytes).toString('base64'))} }) })`)
+      const w1 = await write(`${dirRel}/Desktop Model.nam`, wavenet)
+      const w2 = await write(`${dirRel}/tone3000.json`, Buffer.from(JSON.stringify(credit)))
+      const bad1 = await write('../outside.nam', wavenet), bad2 = await write(`${dirRel}/run.exe`, wavenet)
+      const onDisk = readFileSync(join(libDir, ...dirRel.split('/'), 'Desktop Model.nam'))
+      const leftovers = readdirSync(join(libDir, ...dirRel.split('/'))).filter((f) => f.endsWith('.crbn-part'))
+      check('TONE3000: the app writes a kept capture and its credit into the library folder, whole, and nothing outside it or of another kind',
+        w1.ok && w2.ok && !bad1.ok && !bad2.ok && onDisk.equals(wavenet) && !leftovers.length && !existsSync(join(out, 'outside.nam')), `${JSON.stringify([w1.ok, w2.ok, bad1.error, bad2.error])}; ${leftovers.join(', ')}`)
+      await js("(() => { const q = document.getElementById('lib-q'); q.value = 'Desktop Model'; q.dispatchEvent(new Event('input')); return true })()")
+      await until("[...document.querySelectorAll('#lib-body .lib-row:not(.hd)')].some((r) => r.querySelector('img.t3k-mark') && /by Made-Up Maker/.test(r.textContent))", 20000, 'the kept capture listed and credited')
+      check('TONE3000: the watch lists it, and My folder credits it with the T3K mark (tone3000.json read natively)', true, await js("document.querySelector('#lib-body .lib-row:not(.hd)').textContent"))
+      await js("(() => { const q = document.getElementById('lib-q'); q.value = ''; q.dispatchEvent(new Event('input')); return true })()")
+
+      const authorize = `https://www.tone3000.com/api/v1/oauth/authorize?client_id=t3k_pub_J6MuMOba14a05Nl3Luf4Mp1Zj7Ik7oPi&redirect_uri=${encodeURIComponent('http://127.0.0.1/callback')}&response_type=code&code_challenge=not-a-challenge&code_challenge_method=S256&state=rig-desktop-check`
+      await js(`(() => { window.__t3k = []; chrome.webview.addEventListener('message', (e) => { if (e.data?.type === 't3kCallback') window.__t3k.push(e.data.url) }); window.open(${JSON.stringify(authorize)}, 't3k', 'popup=yes,width=480,height=700'); return true })()`)
+      await until('window.__t3k.length > 0', 20000, 'TONE3000’s answer caught by the app')
+      await sleep(1500)
+      const answers = await js('window.__t3k')
+      const windowLeft = ps(`${user32} $h = [U]::FindWindowW('CrbnRigTone3000', $null); if ($h -eq [IntPtr]::Zero) { 'closed' } else { 'open' }`)
+      check('TONE3000: its sign-in opens in a window of the app’s own; the answer to http://127.0.0.1/callback is caught and handed to the page once; the window closes',
+        answers.length === 1 && /^http:\/\/127\.0\.0\.1\/callback\?/.test(answers[0]) && /state=rig-desktop-check/.test(answers[0]) && /error=/.test(answers[0]) && windowLeft === 'closed', `${JSON.stringify(answers)}; window ${windowLeft}`)
+    }
 
     // The page's look in the screenshot, then Audio settings: iPlug2's own dialog, owned by the app.
     const shot = await send('Page.captureScreenshot', { format: 'png' })

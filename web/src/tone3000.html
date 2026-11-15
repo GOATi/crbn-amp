@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>CRBN Rig and TONE3000</title>
+<style>
+  :root { color-scheme: light dark; --bg: #f4f2ee; --fg: #1d1c1a; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #151514; --fg: #ecebe8; } }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+  p { margin: 0 16px; text-align: center; }
+</style>
+</head>
+<body>
+<p id="say">Back to CRBN Rig…</p>
+<script>
+  // TONE3000's sign-in comes back here (the redirect_uri registered for Rig's key, docs/R8-TONE3000.md). The answer
+  // goes to the Rig page that asked: its popup's opener, or the Rig pages of this site by a BroadcastChannel when the
+  // browser cleared the opener during sign-in, or, when the whole page went to TONE3000, back to Rig itself.
+  (function () {
+    var query = location.search.replace(/^\?/, '')
+    var msg = { type: 't3k_callback', query: query }
+    var flow = null
+    try { flow = sessionStorage.getItem('crbn-rig/t3k-flow') } catch (e) { /* none */ }
+    if (flow) {
+      try { sessionStorage.setItem('crbn-rig/t3k-callback', JSON.stringify(query)) } catch (e) { /* lost */ }
+      location.replace('/')
+      return
+    }
+    var sent = false
+    try { if (window.opener && !window.opener.closed) { window.opener.postMessage(msg, location.origin); sent = true } } catch (e) { /* cleared */ }
+    try { var ch = new BroadcastChannel('crbn-rig-t3k'); ch.postMessage(msg); ch.close(); sent = true } catch (e) { /* none */ }
+    document.getElementById('say').textContent = sent ? 'Done. You can close this window.' : 'Open CRBN Rig again to carry on.'
+    setTimeout(function () { window.close() }, 150)
+  })()
+</script>
+</body>
+</html>

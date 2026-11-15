@@ -53,6 +53,14 @@ public:
 
 private:
   void OnControllerCreated(ICoreWebView2Controller* controller);
+  // TONE3000's sign-in and picker (build plan R8, docs/R8-TONE3000.md): the page's window.open of TONE3000's authorize
+  // page gets its own WebView2 window, owned by Rig's, on the same profile. Its redirect to http://127.0.0.1/callback
+  // is caught before it is made and handed to the page as {type:'t3kCallback', url}; then the window closes. Closed by
+  // the person first, the page hears canceled=true.
+  void OpenT3k(ICoreWebView2NewWindowRequestedEventArgs* args);
+  void CloseT3k(bool tellPage);
+  void AnswerT3k(const std::wstring& url);
+  static LRESULT CALLBACK T3kProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
   bool AllowedUri(const std::wstring& uri) const;
   static void OpenOutside(const std::wstring& uri);
   void OpenOwnFile(const std::wstring& uri) const;
@@ -72,6 +80,11 @@ private:
   Microsoft::WRL::ComPtr<ICoreWebView2> mView;
   bool mSubclassed = false;
   std::deque<std::function<void()>> mDeferred;
+  // TONE3000's window, while it is open.
+  HWND mT3kWindow = nullptr;
+  Microsoft::WRL::ComPtr<ICoreWebView2Controller> mT3kController;
+  Microsoft::WRL::ComPtr<ICoreWebView2> mT3kView;
+  bool mT3kAnswered = false;
 };
 
 // UTF-8 and UTF-16, for the messages and paths.

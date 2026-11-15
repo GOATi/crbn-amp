@@ -56,6 +56,8 @@ public:
   void List(double id, const std::string& folder);
   void Meta(double id, const std::string& folder, std::vector<std::string> paths);
   void Read(double id, const std::string& folder, const std::string& path);
+  // Writes a file (base64) under the folder, making its folders: {ok, error} (build plan R8, TONE3000's captures).
+  void Write(double id, const std::string& folder, const std::string& path, std::string b64);
   // Watches one folder (an empty one stops); a change, once the folder has been quiet for 0.8 s, replies
   // {type:'libChanged'}. UI thread.
   void Watch(const std::string& folder);

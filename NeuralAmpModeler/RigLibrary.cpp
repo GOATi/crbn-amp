@@ -213,7 +213,43 @@ bool Wanted(const std::wstring& name, bool* wav = nullptr)
   const bool isWav = EndsWithNoCase(base, L".wav");
   if (wav != nullptr)
     *wav = isWav;
-  return isWav || EndsWithNoCase(base, L".nam");
+  // ... or the credit Rig keeps beside captures a person got from TONE3000 (build plan R8, library.js CREDIT_FILE).
+  return isWav || EndsWithNoCase(base, L".nam") || _wcsicmp(base.c_str(), L"tone3000.json") == 0;
+}
+
+// Base64 (the page's btoa) to bytes; false on a character that is not base64.
+bool Unbase64(const std::string& in, std::string& out)
+{
+  out.clear();
+  out.reserve(in.size() / 4 * 3);
+  unsigned acc = 0;
+  int bits = 0;
+  for (const char c : in)
+  {
+    int v;
+    if (c >= 'A' && c <= 'Z')
+      v = c - 'A';
+    else if (c >= 'a' && c <= 'z')
+      v = c - 'a' + 26;
+    else if (c >= '0' && c <= '9')
+      v = c - '0' + 52;
+    else if (c == '+')
+      v = 62;
+    else if (c == '/')
+      v = 63;
+    else if (c == '=')
+      break;
+    else
+      return false;
+    acc = (acc << 6) | static_cast<unsigned>(v);
+    bits += 6;
+    if (bits >= 8)
+    {
+      bits -= 8;
+      out += static_cast<char>((acc >> bits) & 0xff);
+    }
+  }
+  return true;
 }
 
 // A page's relative path (parts joined by '/') as "\part\part"; false for "", ".", "..", or a part holding '\', ':'
@@ -579,6 +615,64 @@ void Library::Read(double id, const std::string& folder, const std::string& path
           reply["b64"] = Base64(bytes);
         }
       }
+    }
+    Reply(Dump(reply));
+  });
+}
+
+void Library::Write(double id, const std::string& folder, const std::string& path, std::string b64)
+{
+  // A capture or IR the person got from TONE3000, or its tone3000.json (build plan R8): written under a temporary name,
+  // then moved into place, so the folder never holds half a file. Only under the library folder, only the kinds it
+  // lists, never over a folder.
+  Run([this, id, folder, path, b64 = std::move(b64)] {
+    json reply = {{"type", "libWrite"}, {"id", id}, {"ok", false}};
+    const std::wstring base = LongFolder(folder);
+    std::wstring r;
+    std::string bytes;
+    const DWORD attr = base.empty() ? INVALID_FILE_ATTRIBUTES : GetFileAttributesW((base + L"\\").c_str());
+    if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
+      reply["error"] = "Your library folder is not there any more.";
+    else if (!RelativePath(path, r) || !Wanted(r))
+      reply["error"] = "CRBN Rig keeps only .nam captures, .wav IRs and their credit in your library folder.";
+    else if (!Unbase64(b64, bytes) || bytes.empty() || bytes.size() > kMaxRead)
+      reply["error"] = "That file is not one CRBN Rig can keep.";
+    else
+    {
+      // Its folders, one part at a time (the long-path form works with CreateDirectoryW, not SHCreateDirectoryExW).
+      bool ok = true;
+      for (size_t at = r.find(L'\\', 1); ok && at != std::wstring::npos; at = r.find(L'\\', at + 1))
+      {
+        const std::wstring dir = base + r.substr(0, at);
+        if (!CreateDirectoryW(dir.c_str(), nullptr) && GetLastError() != ERROR_ALREADY_EXISTS)
+          ok = false;
+      }
+      const std::wstring target = base + r, part = target + L".crbn-part";
+      const DWORD was = GetFileAttributesW(target.c_str());
+      if (ok && was != INVALID_FILE_ATTRIBUTES && (was & FILE_ATTRIBUTE_DIRECTORY))
+        ok = false;
+      if (ok)
+      {
+        const HANDLE h = CreateFileW(part.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        ok = h != INVALID_HANDLE_VALUE;
+        size_t done = 0;
+        while (ok && done < bytes.size())
+        {
+          DWORD wrote = 0;
+          const DWORD chunk = static_cast<DWORD>(std::min<size_t>(bytes.size() - done, size_t{1} << 20));
+          ok = WriteFile(h, bytes.data() + done, chunk, &wrote, nullptr) && wrote == chunk;
+          done += wrote;
+        }
+        if (h != INVALID_HANDLE_VALUE)
+          ok = CloseHandle(h) && ok;
+        ok = ok && MoveFileExW(part.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+        if (!ok)
+          DeleteFileW(part.c_str());
+      }
+      if (ok)
+        reply["ok"] = true;
+      else
+        reply["error"] = "CRBN Rig could not write into your library folder.";
     }
     Reply(Dump(reply));
   });

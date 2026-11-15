@@ -30,7 +30,9 @@ function sub(e) {
     return bits.join(' · ')
   }
   const gear = [e.make, e.model].filter(Boolean).join(' ')
-  return [e.by && `by ${e.by}`, gear].filter(Boolean).join(' · ') || (e.bad ? 'could not be read' : '')
+  // A capture kept from TONE3000 names its creator there: the credit TONE3000's terms ask for (build plan R8).
+  const by = e.t3k?.by || e.by
+  return [by && `by ${by}`, gear].filter(Boolean).join(' · ') || (e.bad ? 'could not be read' : '')
 }
 
 /**
@@ -50,7 +52,8 @@ export function createLibraryView({ lib, play, playing, toast, pickFiles, dragTy
 
   const drawing = () => document.documentElement.dataset.library || 'a'
   const isPlaying = (e) => { const p = playing(); return e.k === 'ir' ? p.ir === e.p : p.capture === e.p }
-  const tag = (e) => (isPlaying(e) ? '<span class="lib-tag">Playing</span>' : '')
+  // A capture kept from TONE3000 carries the T3K mark, its credit and licence in tone3000.json (build plan R8).
+  const tag = (e) => (e.t3k ? `<img class="t3k-mark" src="t3k/t3k-mark.svg" alt="TONE3000" title="${esc(e.t3k.title)} by ${esc(e.t3k.by)} on TONE3000" width="33" height="11">` : '') + (isPlaying(e) ? '<span class="lib-tag">Playing</span>' : '')
   const star = (e) => {
     const on = lib.isFav(e.p)
     return `<button class="lib-star" type="button" data-star="${esc(e.p)}" aria-pressed="${on}" aria-label="${on ? 'Starred' : 'Star'}: ${esc(e.n)}" title="${on ? 'In your favourites: click to take it out' : 'Add to your favourites'}">${svg('star')}</button>`

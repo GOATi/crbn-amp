@@ -61,6 +61,8 @@ writeFileSync(join(out, 'NOTICE.txt'), [
   'CRBN Rig is based on Neural Amp Modeler by Steven Atkinson, used under the MIT License (LICENSE.txt). It plays',
   'captures (.nam) and impulse responses (.wav) made by others, such as those on TONE3000 (https://www.tone3000.com);',
   'they belong to their authors and are not part of CRBN Rig. The files a person loads stay in their browser.',
+  "Signed in to TONE3000, a person browses it through TONE3000's API, powered by TONE3000; t3k/ holds TONE3000's own",
+  'logos, unaltered, used as its API terms ask (https://www.tone3000.com/api/terms). TONE3000 is not part of CRBN Rig.',
   'The demo riff (demo/di.wav) and the example capture (demo/example.nam) are from Neural Amp Modeler Core (MIT).',
   '',
   'ThirdPartyNotices.txt carries the notices of everything this site contains; look/fonts/LICENSES.md the fonts\'.',

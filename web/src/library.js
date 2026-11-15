@@ -18,6 +18,7 @@
 // SlimmableContainer keeps each submodel's metadata inside it and its own at the end. RigLibrary.cpp reads them by the
 // same rules (namInfo, wavInfo below), and the desktop check compares the two.
 import { libDelete, libGet, libPut } from './store.js'
+import { readCredit } from './tone3000.js'
 
 /** Bump when an entry's shape or what is read changes: cached entries of another version are read again. */
 export const INDEX_VERSION = 1
@@ -184,7 +185,7 @@ const BY = {
  * is a single pass. Returns the matching entries in order.
  */
 export function createSearch(entries) {
-  const hay = new Map(entries.map((e) => [e, fold([e.n, e.p, e.make, e.model, e.by, gearWord(e), toneWord(e), groupOf(e)].join('\n'))]))
+  const hay = new Map(entries.map((e) => [e, fold([e.n, e.p, e.make, e.model, e.by, gearWord(e), toneWord(e), groupOf(e), e.t3k ? `${e.t3k.title}\n${e.t3k.by}\ntone3000` : ''].join('\n'))]))
   const orders = new Map()
   const ordered = (sort) => { if (!orders.has(sort)) orders.set(sort, [...entries].sort(BY[sort] ?? BY.name)); return orders.get(sort) }
   return {
@@ -212,7 +213,10 @@ export function createSearch(entries) {
 }
 
 // ------------------------------------------------------------------------------------------------- where files come from
-const wanted = (name) => /\.(nam|wav)$/i.test(name) && !name.startsWith('.')
+/** The credit Rig keeps beside captures a person got from TONE3000 (tone3000.js, docs/R8-TONE3000.md). */
+export const CREDIT_FILE = 'tone3000.json'
+const isCredit = (p) => p === CREDIT_FILE || p.endsWith(`/${CREDIT_FILE}`)
+const wanted = (name) => (/\.(nam|wav)$/i.test(name) || name === CREDIT_FILE) && !name.startsWith('.')
 const decoder = () => new TextDecoder('utf-8')
 async function readFileInfo(file) {
   if (/\.wav$/i.test(file.name)) return wavInfo(new Uint8Array(await file.slice(0, WAV_HEAD_BYTES).arrayBuffer()), file.size)
@@ -278,7 +282,31 @@ function handleSource(dir) {
       }
       return new Uint8Array(await (await h.getFile()).arrayBuffer())
     },
+    /** May Rig write into this folder? With `ask`, asks the person (it needs their click). */
+    async writable(ask = false) {
+      try {
+        if ((await dir.queryPermission({ mode: 'readwrite' })) === 'granted') return true
+        return ask && (await dir.requestPermission({ mode: 'readwrite' })) === 'granted'
+      } catch { return false }
+    },
+    /** Writes a file under the folder, making its folders: a capture the person got from TONE3000, or its credit. */
+    async write(p, bytes) {
+      const parts = p.split('/')
+      let d = dir
+      for (const part of parts.slice(0, -1)) d = await d.getDirectoryHandle(part, { create: true })
+      const h = await d.getFileHandle(parts.at(-1), { create: true })
+      const w = await h.createWritable()
+      await w.write(bytes)
+      await w.close()
+      handles.set(p, h)
+    },
   }
+}
+
+function toBase64(bytes) {
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+  return btoa(s)
 }
 
 /** Files without a handle: an <input webkitdirectory>, or a dropped folder read entry by entry. Kept for the visit. */
@@ -322,6 +350,24 @@ function desktopSource(host, path) {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
       return bytes
     },
+    async writable() { return typeof host.libWrite === 'function' },
+    async write(p, bytes) {
+      const r = await host.libWrite(path, p, toBase64(bytes))
+      if (!r?.ok) throw new Error(r?.error || 'The file could not be written.')
+    },
+  }
+}
+
+/** Each capture beside a tone3000.json gets its credit: the tone, who made it, its licence and its page. */
+function attachCredits(entries, credits) {
+  for (const e of entries) {
+    const cut = e.p.lastIndexOf('/') + 1, c = credits.get(e.p.slice(0, cut))
+    const m = c?.models.find((x) => x.file === e.p.slice(cut))
+    if (!c || !m) { delete e.t3k; continue }
+    e.t3k = {
+      tone: c.tone.id, model: m.id, title: c.tone.title, url: c.tone.url, gear: c.tone.gear, format: c.tone.format, license: c.tone.license,
+      image: c.tone.image, by: c.creator.display_name || c.creator.username, byUrl: c.creator.url, avatar: c.creator.avatar_url,
+    }
   }
 }
 
@@ -355,7 +401,7 @@ function loadFavs() { try { const f = JSON.parse(localStorage.getItem(FAVS_KEY) 
  */
 export function createLibrary({ host = null, onChange = () => {} } = {}) {
   const desktop = typeof host?.libList === 'function'
-  let source = null, entries = [], search = createSearch([]), favAll = loadFavs(), scanning = null, again = false
+  let source = null, entries = [], credits = new Map(), search = createSearch([]), favAll = loadFavs(), scanning = null, again = false
   const state = { status: 'none', progress: 0, total: 0, error: '', scannedAt: 0, timing: null, opened: null }
   const changed = (why, p) => onChange(why, p)
   // The open folder's favourites as a set, made again only when they change or the folder does.
@@ -379,7 +425,12 @@ export function createLibrary({ host = null, onChange = () => {} } = {}) {
     const cached = await libGet(`index:${src.key}`)
     if (source !== src) return
     const known = Array.isArray(cached?.entries)
-    if (known) { entries = cached.entries; search = createSearch(entries); changed() }
+    if (known) {
+      entries = cached.entries
+      credits = new Map(Array.isArray(cached.credits) ? cached.credits : [])
+      attachCredits(entries, credits)
+      search = createSearch(entries); changed()
+    }
     if (src.kind === 'path') host.libWatch?.(src.path)
     await scan({ quick: known && !remember })
   }
@@ -395,7 +446,14 @@ export function createLibrary({ host = null, onChange = () => {} } = {}) {
       changed(quiet ? 'progress' : undefined)
       try {
         const old = new Map(entries.map((e) => [e.p, e]))
-        const files = await src.list(old, quick)
+        const listing = await src.list(old, quick)
+        const files = listing.filter((f) => !isCredit(f.p))
+        // The credits beside TONE3000 captures: few and small, read whole every time.
+        const found = new Map()
+        for (const f of listing.filter((x) => isCredit(x.p))) {
+          try { const c = readCredit(new TextDecoder().decode(await src.read(f.p))); if (c) found.set(f.p.slice(0, f.p.length - CREDIT_FILE.length), c) } catch { /* unreadable: no credit */ }
+        }
+        if (source !== src) return
         const listed = performance.now()
         const keep = [], need = []
         for (const f of files) {
@@ -408,12 +466,14 @@ export function createLibrary({ host = null, onChange = () => {} } = {}) {
         if (source !== src) return
         const read = performance.now()
         entries = [...keep, ...need.map((f, i) => entryOf(f, infos[i]))]
+        credits = found
+        attachCredits(entries, credits)
         search = createSearch(entries)
         state.status = 'ready'; state.scannedAt = Date.now()
         // How long it took: listing the folder, reading what changed, and the whole scan with the search built.
         state.timing = { files: files.length, read: need.length, quick, listMs: Math.round(listed - t0), readMs: Math.round(read - listed), ms: Math.round(performance.now() - t0) }
         state.opened ??= state.timing
-        if (src.kind !== 'files') await libPut(`index:${src.key}`, { v: INDEX_VERSION, entries })
+        if (src.kind !== 'files') await libPut(`index:${src.key}`, { v: INDEX_VERSION, entries, credits: [...credits] })
       } catch (err) {
         if (source !== src) return
         state.status = 'error'
@@ -505,6 +565,29 @@ export function createLibrary({ host = null, onChange = () => {} } = {}) {
     },
     /** A file's bytes, to play. */
     async read(p) { if (!source) throw new Error('No folder is open.'); return source.read(p) },
+    /**
+     * May Rig keep a file in this folder? 'yes', 'ask' (a browser will ask the person, on their click), or 'no' (no
+     * folder, or files only lent for the visit).
+     */
+    async canKeep() {
+      if (!source?.write) return 'no'
+      return (await source.writable(false)) ? 'yes' : source.kind === 'handle' ? 'ask' : 'no'
+    },
+    /** Asks to keep files here (a browser's readwrite permission, on the person's click). */
+    async askKeep() { return Boolean(source?.write && (await source.writable(true))) },
+    /** Writes files into the folder ([[path, bytes]]), then looks again so they are listed. */
+    async keep(files) {
+      if (!source?.write) throw new Error('Choose a folder for your library first.')
+      for (const [p, bytes] of files) await source.write(p, bytes)
+      await scan({ quick: true })
+    },
+    /** A tone kept from TONE3000 in this folder: { dir, credit } (dir ends in '/'), or null. */
+    keptTone(id) {
+      for (const [dir, c] of credits) if (c.tone.id === id) return { dir, credit: c }
+      return null
+    },
+    /** The credit beside a kept file's folder, read as it was written: null when there is none. */
+    creditAt(dir) { return credits.get(dir) ?? null },
     isFav(p) { return favs().has(p) },
     toggleFav(p) {
       if (!source) return false

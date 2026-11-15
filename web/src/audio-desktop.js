@@ -46,7 +46,7 @@ function base64(floats) {
   return btoa(s)
 }
 
-export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {}, onLibChanged = () => {} } = {}) {
+export function createDesktopAudio({ onError = () => {}, onChange = () => {}, onInputLost = () => {}, onLibChanged = () => {}, onT3k = () => {} } = {}) {
   const view = globalThis.chrome.webview
   const post = (m) => view.postMessage(m)
   let status = null, source = null, begun = false, demoSent = null, messageId = 0, gotReady, engine = null, slots = null, load = null, settingsAt = -Infinity
@@ -65,6 +65,9 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
       if ('load' in m) load = m.load
     } else if (m.type === 'libChanged') {
       onLibChanged()
+    } else if (m.type === 't3kCallback') {
+      // TONE3000's sign-in came back to http://127.0.0.1/callback in its popup; the host caught it (RigWebView.cpp).
+      onT3k(String(m.url ?? ''))
     } else if (m.type === 'ready' || m.type === 'status') {
       const was = status?.running
       status = m
@@ -159,5 +162,7 @@ export function createDesktopAudio({ onError = () => {}, onChange = () => {}, on
     libRead(folder, path) { return ask({ type: 'libRead', folder, path }) },
     /** Watches the folder (an empty path stops): the app says libChanged when its files change. */
     libWatch(folder) { post({ type: 'libWatch', folder }) },
+    /** Writes a file under the folder (a capture kept from TONE3000, or its tone3000.json): { ok, error }. */
+    libWrite(folder, path, b64) { return ask({ type: 'libWrite', folder, path, b64 }) },
   }
 }

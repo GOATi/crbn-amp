@@ -20,6 +20,8 @@ import { PADS, PAD_KEYS, captureKey, createPadsView, createStandby } from './pad
 import { PEDAL_DRAG, PEDAL_KNOB, createBoardView, createPedals } from './pedals.js'
 import { PEDAL_DEFAULT, PEDAL_SETTINGS, RIG_SETTINGS, VARIANTS, VARIANT_KEYS, findInLibrary, freeName, freshVariants, keptKey, loadRigs, newId, readRigFile, rigFile, saveRigs, soundOf, tidyName } from './rigs.js'
 import { forgetFile, loadSettings, recallFile, rememberFile, saveSettings } from './store.js'
+import { createTone3000, tone3000On } from './tone3000.js'
+import { createTone3000View } from './tone3000-view.js'
 
 const $ = (id) => document.getElementById(id)
 const ENGINE_PARAMS = Object.keys(DEFAULTS)
@@ -293,8 +295,9 @@ function wirePowerKey() {
 // One backend or the other (above), with the same calls; the page keeps what the person chose and sends it.
 const inputLost = () => { if (power) setMuted({ why: 'device', hz: 0, seconds: 0 }) }
 let lib = null, libView = null // the library (build plan R4), made in start()
+let t3k = null, t3kView = null // TONE3000 in the library (build plan R8), made with it
 const audio = inDesktopApp()
-  ? createDesktopAudio({ onChange: () => updateStatus(), onInputLost: inputLost, onLibChanged: () => lib?.refresh() })
+  ? createDesktopAudio({ onChange: () => updateStatus(), onInputLost: inputLost, onLibChanged: () => lib?.refresh(), onT3k: (url) => t3k?.onCallback(url) })
   : createWebAudio({ onError: (text) => toast(text), onChange: () => updateStatus(), onInputLost: inputLost })
 const desktop = audio.kind === 'desktop'
 let metersRunning = false
@@ -511,6 +514,7 @@ function showCapture() {
     $('amp-sub').textContent = 'Drop a .nam capture here'
     fillChips($('amp-chips'), [])
     hardware?.setSlim(false); hardware?.setCapture('', 'Drop a .nam capture here')
+    showT3k('capture-t3k', null)
     return
   }
   const m = capture.meta ?? {}
@@ -529,6 +533,7 @@ function showCapture() {
   if (capture.info?.sampleRate && audio.sampleRate && Math.abs(capture.info.sampleRate - audio.sampleRate) > 1) lines.push(`Recorded at ${capture.info.sampleRate / 1000} kHz, resampled`)
   $('capture-meta').textContent = lines.join(' · ')
   $('capture-meta').title = capture.from?.p ?? capture.name
+  showT3k('capture-t3k', t3kOf(capture))
   $('amp-sub').textContent = [note, gear, ...chips, m.modeled_by && `captured by ${m.modeled_by}`].filter(Boolean).join(' · ')
   hardware?.setCapture(note ? `${name} · ${note}` : name, $('amp-sub').textContent)
   boardView?.sync()
@@ -573,13 +578,14 @@ function showIR() {
   syncRigStars()
   if (!has) {
     $('ir-name').textContent = 'None'; $('ir-meta').textContent = 'Drop a .wav here for a speaker cabinet'
-    $('cab-name').textContent = 'No IR'; $('cab-meta').textContent = 'Drop a .wav here'; hardware?.setIR('', ''); return
+    $('cab-name').textContent = 'No IR'; $('cab-meta').textContent = 'Drop a .wav here'; hardware?.setIR('', ''); showT3k('ir-t3k', null); return
   }
   const name = ir.name.replace(/\.wav$/i, ''), meta = ir.seconds ? `${Math.round(ir.seconds * 1000)} ms impulse response` : 'Impulse response'
   $('ir-name').textContent = name; $('ir-meta').textContent = meta
   $('ir-meta').title = ir.from?.p ?? ir.name
   $('cab-name').textContent = name; $('cab-meta').textContent = meta
   hardware?.setIR(name, meta)
+  showT3k('ir-t3k', t3kOf(ir))
   boardView?.sync()
 }
 
@@ -672,7 +678,7 @@ function wirePads() {
 
 const LIB_DRAG = 'application/x-crbn-rig-library'
 function makeLibrary() {
-  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') { syncRigStars(); syncPads(); if (rigs.ready) syncRigBar() } } })
+  lib = createLibrary({ host: audio, onChange: (why, p) => { libView?.changed(why, p); if (why !== 'progress') { syncRigStars(); syncPads(); if (rigs.ready) syncRigBar(); t3kView?.libChanged(); if (!why) { showT3k('capture-t3k', t3kOf(capture)); showT3k('ir-t3k', t3kOf(ir)) } } } })
   libView = createLibraryView({ lib, play: playEntry, playing: playingPaths, toast, pickFiles: () => $('lib-dir').click(), dragType: LIB_DRAG })
   $('lib-dir').addEventListener('change', (e) => { const f = e.target.files; if (f?.length) lib.openFiles(f).catch((err) => toast(String(err?.message ?? err))); e.target.value = '' })
   for (const slot of ['capture', 'ir']) {
@@ -686,6 +692,41 @@ function makeLibrary() {
     lib.refresh({ quick: true })
   })
   libView.render()
+  // TONE3000 beside the folder (build plan R8, docs/R8-TONE3000.md): until TONE3000 signs it off, only where ?tone3000
+  // turned it on (tone3000.js RELEASED). A capture kept from TONE3000 keeps its credit either way.
+  const t3kOn = tone3000On()
+  document.documentElement.dataset.t3k = t3kOn ? 'on' : 'off'
+  if (!t3kOn) return
+  t3k = createTone3000({ desktop, onChange: () => t3kView?.changed() })
+  t3kView = createTone3000View({ t3k, lib, play: playT3k, toast, chooseFolder: () => $('lib-choose').click() })
+  t3kView.draw()
+  // Where a capture or an IR goes in, TONE3000's picker too (its requirement 1): NAM for the amp, cabinet IRs for the cab.
+  for (const b of document.querySelectorAll('[data-t3k-browse]')) {
+    b.addEventListener('click', () => t3kView.browse(b.dataset.t3kBrowse === 'ir' ? { gears: 'cab', format: 'ir' } : { format: 'nam' }))
+  }
+}
+
+// A capture or IR from TONE3000: from the library when Rig kept it there (so it is a library file like any other, with
+// its pads, stars and rigs), else from its bytes for this visit.
+async function playT3k({ kind, name, bytes, path }) {
+  const e = path ? lib.entries.find((x) => x.p === path) : null
+  if (e) { await playEntry(e); return }
+  if (!bytes) throw new Error('That capture is no longer in your folder.')
+  if (kind === 'ir') await useIR(name, bytes); else await useCapture(name, bytes)
+}
+/** The TONE3000 credit of what the rig plays, when it came from TONE3000 and is kept in the library. */
+function t3kOf(f) { return f.from && lib && f.from.key === lib.key ? lib.entries.find((x) => x.p === f.from.p)?.t3k ?? null : null }
+function showT3k(id, t) {
+  const a = $(id)
+  if (!a) return
+  a.hidden = !t
+  if (!t) return
+  a.href = t.url || 'https://www.tone3000.com'
+  a.title = `${t.title} by ${t.by} on TONE3000`
+  a.innerHTML = (t.image ? `<img class="rf-t3k-img" src="${t.image.replace(/"/g, '%22')}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '') +
+    '<img class="t3k-mark" src="t3k/t3k-mark.svg" alt="TONE3000" width="33" height="11">' +
+    `<span></span>`
+  a.querySelector('span').textContent = `by ${t.by}`
 }
 
 // ------------------------------------------------------------------------------------------------- pedals
@@ -1764,6 +1805,8 @@ async function start() {
   meterIn = meterOf('meter-in'); meterOut = meterOf('meter-out')
 
   makeLibrary()
+  // Back from a TONE3000 sign-in that took the whole page (popups refused): finish it, and open the tone picked.
+  t3k?.resume().then((r) => { if (r?.toneId) t3kView.open(r.toneId, { autoplay: true }) }).catch((e) => toast(e?.message ?? String(e)))
   wirePads()
   wireBoard()
   wireFiles()

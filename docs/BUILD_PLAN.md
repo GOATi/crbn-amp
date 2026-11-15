@@ -1073,6 +1073,49 @@ recommendation. Build only within those terms, crediting authors as the terms as
   ask TONE3000 before the browser inside Rig's library.
 - **The note to TONE3000 (2026-11-14, SYNC:RIG-031):** drafted for the owner to send, `docs/reviews/2026-11-14-tone3000-note-draft.md`. **Never ask him whether he sent it** (his word, 2026-11-14): he tells a session once it has gone, and R8 waits until then and for TONE3000's answer.
 
+### R8, as built (2026-11-15, SYNC:RIG-035, D-RIG-029)
+
+The owner, 2026-11-15: TONE3000 asked him to use their API as designed, then send it for their review. In the picker
+he chose the full U7 design. He let the session make Rig's key on his TONE3000 account and approve Rig's own key there
+while testing. He also allowed the download of TONE3000's logo pack. The design is `docs/R8-TONE3000.md`; the note for
+TONE3000's review is `docs/reviews/2026-11-15-tone3000-review.md`, with its pictures.
+
+- **The key:** publishable `t3k_pub_J6MuMOba14a05Nl3Luf4Mp1Zj7Ik7oPi` (the `client_id`, in `tone3000.js`); the secret
+  is never used. One redirect is registered, `https://rig.carbonlinear.com/tone3000.html`; loopback is always allowed.
+- **Found live:**
+  - The API and `/oauth/token` answer any origin (CORS `*`), and `model_url` redirects to `files.tone3000.com`, also
+    `*`. So both builds call TONE3000 from the page, with no proxy.
+  - `/models` hides A2 unless asked for (`architecture=2`).
+  - TONE3000's A2 files are capture version 0.7.0, which NAM Core reads fully.
+  - The authorize page sends no Cross-Origin-Opener-Policy header, so a popup's `closed` can be watched.
+- **The page:**
+  - `tone3000.js`: the client (PKCE, popup and full-page flows, tokens, the limiter, the endpoints, the download, the
+    credit).
+  - `tone3000-view.js`: the tab, splash, lists, search, hearts, details and model selector.
+  - `tone3000.html`: the redirect page. `t3k/`: TONE3000's logos.
+  - `library.js`: reads `tone3000.json` beside captures, credits them, and writes files (`canKeep`, `askKeep`, `keep`).
+  - "In the rig" shows the credit and has the T3K Browse buttons.
+- **The desktop app:**
+  - `RigWebView.cpp` gives TONE3000's authorize page a WebView2 window of its own and catches
+    `http://127.0.0.1/callback` before it is requested (`t3kCallback`).
+  - `RigLibrary.cpp` adds `libWrite` (a temporary name, then a rename; only `.nam`, `.wav` and `tone3000.json` under
+    the folder) and lists `tone3000.json`.
+- **Gated until TONE3000 signs off:** `RELEASED = false`; `?tone3000` shows it in that browser.
+- **Checks:**
+  - `web/check.mjs` (124) adds a recorded TONE3000 (`web/test/tone3000-fixture.mjs`, under `/__t3k`): sign-in
+    through the real redirect page, PKCE checked, the pick kept and credited, lists, search, a heart, an unplayable
+    format, the cabinet's way in, no second download, a refresh, a reload, sign-out, and the gate.
+  - `packaging/windows/check.mjs` (53) adds `libWrite` and its refusals, the watch crediting the file, and TONE3000's
+    sign-in window catching a real redirect (one request, a malformed challenge, so no one signs in).
+- **Live, in the owner's Chrome on localhost:**
+  - The full sign-in, the picker, a pick played and kept in a private-storage folder, the lists, a search and a heart.
+  - The heart was taken off again, so his favourites are as they were.
+- **Not built, asked of TONE3000 first:** rig files naming tone ids for Load Tone; a pedalboard Browse (`gears=pedal`).
+- **Next:**
+  - The owner sends the review note.
+  - With his word, the web build goes live (gated), so TONE3000 can try `?tone3000`.
+  - Their answers, then `RELEASED = true`, the store words, and the desktop app.
+
 ### R9. Release and store
 
 - Run every check in both builds: `web/engine/test.mjs`, `web/check.mjs`, the desktop smoke, and the parity render.
