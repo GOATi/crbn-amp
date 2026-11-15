@@ -76,9 +76,15 @@ export function createStandby({ audio, parse, onChange = () => {} }) {
     return h.loading
   }
 
-  // The pads' captures, loaded one after another (a pad that cannot be read is skipped, and says so).
+  // The pads' captures, loaded one after another (a pad that cannot be read is skipped, and says so). A call while a fill
+  // runs is not lost: the fill looks again when it lets go. A fill that finds nothing to load is over at once, but lets
+  // go a moment later, and a call in between used to be dropped: the pads starred in the same moment stayed Loading for
+  // good (found staging the store's pictures, 2026-11-15: the capture playing starred, then three more at once).
+  let refill = false
   function fill() {
-    if (!audio.started || filling) return filling
+    if (!audio.started) return filling
+    if (filling) { refill = true; return filling }
+    refill = false
     filling = (async () => {
       for (let again = true; again;) {
         again = false
@@ -89,7 +95,7 @@ export function createStandby({ audio, parse, onChange = () => {} }) {
           break // the pads may have changed meanwhile
         }
       }
-    })().finally(() => { filling = null })
+    })().finally(() => { filling = null; if (refill) fill() })
     return filling
   }
 

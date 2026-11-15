@@ -389,6 +389,19 @@ try {
       check('pads are footswitches by default, with keycaps and a setlist in the look menu; Playing in words', isSwitches && isCaps && isList, `${isSwitches}/${isCaps}/${isList}`)
       press('Digit1', '1')
       await wait(() => state(0) === 'playing', 5000, 'key 1')
+      // A fill asked for as another ends is not lost (found staging the store's pictures, 2026-11-15): a star that gives
+      // the pads nothing new to load (the cabinet's IR), then a capture starred in the same moment, is loaded and warm.
+      {
+        await search('TS808')
+        const extraPath = $l('#lib-body .lib-row:not(.hd) .lib-star[aria-pressed="false"]')?.dataset.star
+        const starOf = (p) => $l(`#lib-body .lib-star[data-star="${lw().CSS.escape(p)}"]`)
+        const irShown = !$l('#ir-star').hidden
+        $l('#ir-star').click(); starOf(extraPath)?.click()
+        const warmed = await wait(() => state(2) === 'ready', 15000, 'the pad').then(() => true, () => false)
+        check('a capture starred in the same moment as a star that loads nothing is loaded and warm all the same', irShown && warmed && padName(2) !== '', `the IR's star ${irShown ? 'shown' : 'hidden'}; pad 3 ${state(2)} (${padName(2)})`)
+        starOf(extraPath)?.click(); $l('#ir-star').click() // as it was
+        await search('')
+      }
       $l('#stop').click()
       await search('Core/lstm.nam')
       $l('#lib-body .lib-star').click()
