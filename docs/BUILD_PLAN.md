@@ -1085,6 +1085,44 @@ recommendation. Build only within those terms, crediting authors as the terms as
 - **Docs:** `docs/PLAN.md` (P3 done), `docs/P3-UX.md` (status), `packaging/hub/README.md`, a SYNC entry that names
   what is left (P4, production) for the owner.
 
+### R9, the store's pictures and words drafted (2026-11-15, SYNC:RIG-033)
+
+The owner away from the office; his pick of the session's suggestions: the web check's flake first, then the store
+refresh, then a checklist for his next visit. Nothing uploaded, applied or published: the store and the web host are as
+RIG-032 left them.
+
+- **The flake** (RIG-032's 1.73e-2 once): the three checks comparing the worklet with the engine run directly paused the
+  offline render after its first quantum; an engine ready by then played 128 frames of silence before the capture came.
+  One extra empty block in the direct run gives exactly 1.73e-2; the engine forced ready first fails the old render 5 of
+  5. They now pause at frame 0 (`9a600dd`).
+- **Pads that stayed Loading** (found staging the pictures): `pads.js`'s `fill()` dropped a call made while a fill was
+  letting go, so pads starred in the same moment as a change that loaded nothing were never loaded. A call while a fill
+  runs now asks for another (`5cb69d2`; a new web check, which failed on the old code). Both builds' page.
+- **The store pictures, stocked** (`262f5bf`): `packaging/hub/store-library.mjs` (28 captures and 5 IRs of made-up gear,
+  makers and capturers, each a real capture), `store-stage.js` (the page stocked through its own controls: an amp and a
+  cabinet from the library, eight favourites, three pedals with the second's Tone in and the third off, "Friday set" on
+  Push, the riff; and the MIDI dock on a stand-in MC8), `web/shots.mjs` (each look stocked at 1920x1080; `--midi`),
+  `desktop-shot.mjs --stage --layout=c --size=1860x960` (the folder picked in the app's real dialog; Box-C's screens are
+  1080 high, so the desktop picture uses Captures first, the pads in a rail). Previews in `dist/hub-preview`:
+  `crbn-rig-shot-2-desktop-3.png`, `-shot-1-web-4`, `-shot-3-looks-5`, and a new `-shot-4-midi-1`; the hero, card,
+  cover, logo and Salvage picture unchanged. `web/shots.mjs` used to shoot `?example` before the page was ready, which on
+  R4..R7's page drew no amp.
+- **The words**: `docs/reviews/2026-11-15-store-words-r9.json`, a whole `words.json` (only `//`, `lines`, `description`
+  and `page` differ): sections for the library, favourites on standby, pedals, rigs and variants, footswitches,
+  protection, and the chain, desktop and web sections brought up to date. The MC8 bank is left out until a Rig bank is
+  restored into his MC8. The owner's review page: https://claude.ai/artifact/TvpXWdunSXsE7ZuqMgZnVd (with the visit's
+  checklist). **On his yes:** copy the draft over `packaging/hub/words.json`; `pictures.json` gets the four new names,
+  `storeMedia` in the order desktop -3, Salvage -3, web -4, looks -5, midi -1; `pictures.mjs` (the listing folder this
+  time), then hub-listing `plan`, `upload`, `apply`.
+- **Found: the desktop check's real keys need someone at the machine.** With the owner away, Windows did not bring the
+  app to the front, and crbn-launcher `scripts/desktop-host/shot.ps1` sent its keys (Up, `#3fd9e8`, Space, Space, `2`,
+  twice) to the window in front, the owner's VS Code; the file there is unchanged on disk. `shot.ps1` now sends no click,
+  keys or drag unless the window is in front (crbn-launcher `c0accdd`), and `desktop-shot.mjs` captures nothing unless it
+  is. The desktop check on the `pads.js` change: 31 of 38 before the real keys, the rest not run; it runs again with the
+  owner there, before the next desktop release.
+- **The next desktop release is 0.9.8:** `package.ps1` (unsigned, for the pictures and the check) rebuilt
+  `dist/hub/crbn-rig-0.9.7-windows-x64` over the signed 0.9.7 folder, which is published and needs nothing more.
+
 ## Rules every session keeps
 
 - **Start** from crbn-launcher `CLAUDE.md`, goati-sync `SYNC.md` (Rig's last entry and its `NEXT KICKOFF`) and
