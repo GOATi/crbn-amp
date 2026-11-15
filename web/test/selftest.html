@@ -904,10 +904,12 @@ try {
   check('the engine plays it (finite, not silent)', direct.every(Number.isFinite) && rms(direct) > 1e-4, `rms ${rms(direct).toExponential(2)}`)
   results.realtime = +(input.length / rate / (directMs / 1000)).toFixed(1)
 
-  // Through the AudioWorklet: the first render quantum passes while the engine instantiates, so rendering pauses after
-  // it, the capture goes in, and the riff starts one quantum later. Output from there must equal `direct`.
+  // Through the AudioWorklet: rendering pauses before its first quantum while the engine instantiates, the capture goes
+  // in, and the riff starts at frame 0. The output must equal `direct`. (It paused after the first quantum until
+  // 2026-11-15: an engine that was ready by then played 128 frames of silence before the capture came, which the direct
+  // run never did, and a loaded box failed the check by 1.73e-2, SYNC:RIG-032; this check, the dip's and the pedal's.)
   async function render(irBuffer) {
-    const Q = 128, ctx = new OfflineAudioContext(1, input.length + Q, rate)
+    const Q = 128, ctx = new OfflineAudioContext(1, input.length, rate)
     await ctx.audioWorklet.addModule('/rig-processor.js')
     const node = new AudioWorkletNode(ctx, 'crbn-rig', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
@@ -919,19 +921,20 @@ try {
     src.connect(node)
     if (irBuffer) { const conv = new ConvolverNode(ctx, { disableNormalization: true, buffer: irBuffer }); node.connect(conv); conv.connect(ctx.destination) }
     else node.connect(ctx.destination)
-    src.start(Q / rate)
-    const paused = ctx.suspend(Q / rate).then(async () => {
+    src.start(0)
+    const paused = ctx.suspend(0).then(async () => {
       await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
       const { text, weights } = packCapture(capture)
-      node.port.postMessage({ type: 'slot', id: 1, slot: 0, text: text.buffer, weights: weights.buffer }, [text.buffer, weights.buffer])
+      // play first: the slot's reply then says the worklet has taken both
       node.port.postMessage({ type: 'param', name: 'play', value: 0 })
+      node.port.postMessage({ type: 'slot', id: 1, slot: 0, text: text.buffer, weights: weights.buffer }, [text.buffer, weights.buffer])
       await wait(() => replies.some((m) => m.type === 'slot'), 15000, 'the capture in the worklet')
       await ctx.resume()
     })
     const rendered = await ctx.startRendering()
     await paused
     const reply = replies.find((m) => m.type === 'slot')
-    return { out: rendered.getChannelData(0).subarray(Q), reply }
+    return { out: rendered.getChannelData(0), reply }
   }
   t0 = performance.now()
   const dry = await render(null)
@@ -962,7 +965,7 @@ try {
       e2.process(input.subarray(at, Math.min(input.length, at + 128)), want.subarray(at, Math.min(input.length, at + 128)))
     }
     const switchAt = e2.slots().switchAt
-    const Q = 128, ctx = new OfflineAudioContext(1, input.length + Q, rate)
+    const Q = 128, ctx = new OfflineAudioContext(1, input.length, rate)
     await ctx.audioWorklet.addModule('/rig-processor.js')
     const node = new AudioWorkletNode(ctx, 'crbn-rig', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
@@ -972,21 +975,21 @@ try {
     node.port.onmessage = (e) => replies.push(e.data)
     const src = new AudioBufferSourceNode(ctx, { buffer: di })
     src.connect(node); node.connect(ctx.destination)
-    src.start(Q / rate)
+    src.start(0)
     const send = (m, ...t) => node.port.postMessage(m, t)
     // a message with a reply after the asks: when it comes back, the worklet has taken them
     const settle = async (n) => { send({ type: 'clearSlot', id: 100 + n, slot: 11 }); await wait(() => replies.some((m) => m.id === 100 + n), 15000, 'the worklet') }
-    const first = ctx.suspend(Q / rate).then(async () => {
+    const first = ctx.suspend(0).then(async () => {
       await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
       for (const [slot, bytes] of [[0, capture], [1, second]]) { const { text, weights } = packCapture(bytes); send({ type: 'slot', id: slot + 1, slot, text: text.buffer, weights: weights.buffer }, text.buffer, weights.buffer) }
       send({ type: 'param', name: 'switchMode', value: 1 }); send({ type: 'param', name: 'play', value: 0 })
       await settle(0)
       await ctx.resume()
     })
-    const later = ctx.suspend(((AT + 1) * Q) / rate).then(async () => { send({ type: 'param', name: 'play', value: 1 }); await settle(1); await ctx.resume() })
+    const later = ctx.suspend((AT * Q) / rate).then(async () => { send({ type: 'param', name: 'play', value: 1 }); await settle(1); await ctx.resume() })
     const rendered = await ctx.startRendering()
     await Promise.all([first, later])
-    const got = rendered.getChannelData(0).subarray(Q)
+    const got = rendered.getChannelData(0)
     let worst = 0
     for (let i = 0; i < want.length; i++) worst = Math.max(worst, Math.abs(got[i] - want[i]))
     check('a switch between two slots through the worklet equals the engine run directly', worst < 1e-6 && switchAt === AT * 128, `max difference ${worst.toExponential(2)}; the dip began at block ${switchAt / 128}`)
@@ -1007,7 +1010,7 @@ try {
       e3.process(input.subarray(at, Math.min(input.length, at + 128)), want.subarray(at, Math.min(input.length, at + 128)))
     }
     const st = e3.slots()
-    const Q = 128, ctx = new OfflineAudioContext(1, input.length + Q, rate)
+    const Q = 128, ctx = new OfflineAudioContext(1, input.length, rate)
     await ctx.audioWorklet.addModule('/rig-processor.js')
     const node = new AudioWorkletNode(ctx, 'crbn-rig', {
       numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1], channelCountMode: 'max', channelInterpretation: 'discrete',
@@ -1017,10 +1020,10 @@ try {
     node.port.onmessage = (e) => replies.push(e.data)
     const src = new AudioBufferSourceNode(ctx, { buffer: di })
     src.connect(node); node.connect(ctx.destination)
-    src.start(Q / rate)
+    src.start(0)
     const send = (m, ...t) => node.port.postMessage(m, t)
     const settle = async (n) => { send({ type: 'clearSlot', id: 200 + n, slot: 11 }); await wait(() => replies.some((m) => m.id === 200 + n), 15000, 'the worklet') }
-    const first = ctx.suspend(Q / rate).then(async () => {
+    const first = ctx.suspend(0).then(async () => {
       await wait(() => replies.some((m) => m.type === 'ready'), 15000, 'the worklet engine')
       for (const [slot, bytes] of [[0, capture], [12, pedal]]) { const { text, weights } = packCapture(bytes); send({ type: 'slot', id: slot + 1, slot, text: text.buffer, weights: weights.buffer }, text.buffer, weights.buffer) }
       send({ type: 'param', name: 'switchMode', value: 1 }); send({ type: 'param', name: 'pedalDrive1', value: 3 }); send({ type: 'param', name: 'play', value: 0 })
@@ -1028,10 +1031,10 @@ try {
       await settle(0)
       await ctx.resume()
     })
-    const later = ctx.suspend(((AT + 1) * Q) / rate).then(async () => { send({ type: 'param', name: 'pedal1', value: 12 }); await settle(1); await ctx.resume() })
+    const later = ctx.suspend((AT * Q) / rate).then(async () => { send({ type: 'param', name: 'pedal1', value: 12 }); await settle(1); await ctx.resume() })
     const rendered = await ctx.startRendering()
     await Promise.all([first, later])
-    const got = rendered.getChannelData(0).subarray(Q)
+    const got = rendered.getChannelData(0)
     let worst = 0, changed = 0
     for (let i = 0; i < want.length; i++) { worst = Math.max(worst, Math.abs(got[i] - want[i])); if (i >= AT * 128 + 1440) changed = Math.max(changed, Math.abs(want[i])) }
     const meters = replies.filter((m) => m.type === 'meter')
