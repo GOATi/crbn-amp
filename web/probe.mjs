@@ -9,11 +9,13 @@
 //   { "go": "/?example&kit=hammer", "w": 1536, "h": 864, "settle": 900, "dpr": 1,
 //     "media": [{ "name": "prefers-reduced-motion", "value": "reduce" }] }    open a page and wait for data-ready
 //   { "eval": "document.querySelectorAll('#hw-amp .kn').length" }            print an expression's value (awaits promises)
+//   { "evalFile": "packaging/hub/store-stage.js" }                             evaluate a script file in the page (R9's staging)
 //   { "shot": "dist/probe/amp.png", "sel": ".chain", "pad": 6 }              a screenshot, of one element if sel is set
 //   { "metrics": 6000, "label": "crbn idle" }                                the renderer's task and script time, as a
 //                                                                            share of the wall clock over that many ms
 //   { "wait": 1000 }
-// web/test is served under /__selftest/ (the library's fixture: import('/__selftest/library-fixture.mjs')).
+// web/test is served under /__selftest/ (the library's fixture: import('/__selftest/library-fixture.mjs')), and
+// packaging/hub under /__hub/ (the store pictures' library: import('/__hub/store-library.mjs'), R9).
 //
 // Notes from R1: the self-test (web/test/selftest.html) runs the page inside an iframe, so wait for a drawing to appear
 // rather than sleeping a fixed time; a canvas reads back with getImageData (same origin); the energy rests after 30 s
@@ -49,8 +51,8 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
 const server = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname)
   // /__selftest/ is web/test (the library's fixture, R4) and /__examples/ NAM Core's example captures (R5's measures), as
-  // web/check.mjs serves them; the rest is the built site
-  const [prefix, base] = p.startsWith('/__selftest/') ? ['/__selftest/', join(root, 'web', 'test')] : p.startsWith('/__examples/') ? ['/__examples/', join(root, 'NeuralAmpModelerCore', 'example_models')] : ['/', site]
+  // web/check.mjs serves them; /__hub/ is packaging/hub (the store pictures' library, R9); the rest is the built site
+  const [prefix, base] = p.startsWith('/__selftest/') ? ['/__selftest/', join(root, 'web', 'test')] : p.startsWith('/__examples/') ? ['/__examples/', join(root, 'NeuralAmpModelerCore', 'example_models')] : p.startsWith('/__hub/') ? ['/__hub/', join(root, 'packaging', 'hub')] : ['/', site]
   const file = normalize(join(base, p === '/' ? 'index.html' : p.slice(prefix.length)))
   if (!file.startsWith(base + sep)) { res.writeHead(403).end(); return }
   let bytes
@@ -93,8 +95,8 @@ try {
       await new Promise((ok) => setTimeout(ok, s.settle ?? 900))
     } else if (s.wait) {
       await new Promise((ok) => setTimeout(ok, s.wait))
-    } else if (s.eval) {
-      const r = await evaluate(s.eval)
+    } else if (s.eval || s.evalFile) {
+      const r = await evaluate(s.eval ?? readFileSync(resolve(root, s.evalFile), 'utf8'))
       console.log('eval:', JSON.stringify(r.result?.value ?? r.exceptionDetails?.exception?.description ?? r.result))
     } else if (s.metrics) {
       const m = async () => Object.fromEntries((await send('Performance.getMetrics')).metrics.map((x) => [x.name, x.value]))

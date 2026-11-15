@@ -4,7 +4,7 @@
 //   node packaging/hub/pictures.mjs        after node web/build.mjs, node web/shots.mjs and node packaging/icons/render.mjs,
 //                                          with the desktop capture at dist/shots/desktop.png (desktop-shot.mjs) and the
 //                                          gear at dist/shots/gear-*.png (gear-shots.mjs)
-//     --only=desktop,hero                  render only these pieces (and `web`, the web shot's copy), leaving every
+//     --only=desktop,hero                  render only these pieces (and `web` and `midi`, the web shots' copies), leaving every
 //                                          other picture in the folder as it is: the CDN keeps a name for a day, so a
 //                                          picture changes only under a new name
 //     --desk=desktop-salvage.png           frame another capture from dist/shots;  --out=<folder> instead of the listing
@@ -39,8 +39,8 @@ const pieces = [
   ['card', 'crbn-rig-card-3.png', 1920, 1080],
   ['cover', 'crbn-rig-cover-4.png', 600, 840], // -4: four kits stacked, the owner's pick
   ['logo', 'crbn-rig-logo-2.png', 800, 240, true],
-  ['desktop', 'crbn-rig-shot-2-desktop-2.png', 1920, 1080], // -2: the app on Rig's page (R2b)
-  ['looks', 'crbn-rig-shot-3-looks-4.png', 1920, 1080],
+  ['desktop', 'crbn-rig-shot-2-desktop-3.png', 1920, 1080], // -3: the app stocked, as the store shows it (R9)
+  ['looks', 'crbn-rig-shot-3-looks-5.png', 1920, 1080], // -5: stocked (R9)
   // to compare, rendered only when --only names them
   ['hero-shots', 'compare-hero-shots.png', 1920, 1080, false, true],
   ['cover-close', 'compare-cover-close.png', 600, 840, false, true],
@@ -51,7 +51,9 @@ try {
     console.log(`${name} ${width}x${height} (${(statSync(join(out, name)).size / 1024).toFixed(0)} KiB)`)
   }
 } finally { server.close() }
-if (!only || only.includes('web')) copyFileSync(join(root, 'dist', 'shots', 'web-capsule.png'), join(out, 'crbn-rig-shot-1-web-3.png'))
+if (!only || only.includes('web')) copyFileSync(join(root, 'dist', 'shots', 'web-capsule.png'), join(out, 'crbn-rig-shot-1-web-4.png')) // -4: stocked (R9)
+// the MIDI dock on a stand-in MC8 (web/shots.mjs --midi, R9), as it is
+if ((!only || only.includes('midi')) && existsSync(join(root, 'dist', 'shots', 'web-midi.png'))) copyFileSync(join(root, 'dist', 'shots', 'web-midi.png'), join(out, 'crbn-rig-shot-4-midi-1.png'))
 if (arg('out')) {
   console.log(`pictures: ${out}`) // a preview, not the listing
 } else {

@@ -3,7 +3,12 @@
 // invisible borders left out) into dist/shots/desktop.png.
 //
 //   node packaging/hub/desktop-shot.mjs [--kit=crbn] [--look=capsule] [--size=1280x640] [--output=-12]
-//                                       [--out=dist/shots/desktop.png] [--folder=<hub folder>]
+//                                       [--out=dist/shots/desktop.png] [--folder=<hub folder>] [--layout=a|b|c] [--stage]
+//
+// --stage (R9) stocks the app as the store shows it: store-library.mjs's folder written to the temp folder and picked in
+// the app's own folder dialog (its Folder box typed into, as packaging/windows/check.mjs does), then store-stage.js run
+// in the page (an amp and a cabinet from it, favourites on the pads, three pedals, a rig on its Push variant, the riff).
+// The window keeps --size then, and the page scrolls inside it (Box-C's screens are 1920x1080).
 //
 // --size is the page's own area (the window's client area); the window grows to fit the page if it would scroll.
 // The app starts with a throwaway WebView2 profile in the temp folder and DevTools on loopback, so the person's own
@@ -14,7 +19,7 @@
 // The window must be on screen and uncovered while it is captured; the script brings it to the front.
 // It will not start beside a running CRBN Rig (one copy runs at a time).
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
@@ -26,7 +31,8 @@ const exe = join(folder, 'crbn-rig.exe')
 const shot = resolve(root, arg('out', join('dist', 'shots', 'desktop.png')))
 const [width, height] = arg('size', '1280x640').split('x').map(Number)
 const outputDB = Number(arg('output', '-12'))
-const query = new URLSearchParams({ look: arg('look', 'capsule'), kit: arg('kit', 'crbn') })
+const query = new URLSearchParams({ look: arg('look', 'capsule'), kit: arg('kit', 'crbn'), ...(arg('layout') ? { layout: arg('layout') } : {}) })
+const stage = process.argv.includes('--stage')
 const work = join(tmpdir(), 'crbn-rig-desktop-shot')
 const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms))
 
@@ -52,6 +58,7 @@ public static class Win {
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int w, int hh, uint f);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int a, out RECT r, int n);
 }
 '@
@@ -76,6 +83,9 @@ $ow = ($w.R - $w.L) - ($c.R - $c.L) + [int]$env:CW; $oh = ($w.B - $w.T) - ($c.B 
 const armCapture = () => new Promise((ok, fail) => {
   const p = spawn('pwsh', ['-NoProfile', '-Command', WIN + `[Console]::Out.WriteLine('armed'); [Console]::Out.Flush()
 [void][Console]::In.ReadLine()
+# the screen where the window is: only while the window is in front, or it is someone else's windows (SYNC:RIG-033)
+[Win]::SetForegroundWindow($h) | Out-Null
+if ([Win]::GetForegroundWindow() -ne $h) { throw 'the window is not in front (Windows refused to bring it there): nothing captured' }
 [Win]::DwmGetWindowAttribute($h, 9, [ref]$v, 16) | Out-Null
 $bw = $v.R - $v.L; $bh = $v.B - $v.T
 $bmp = New-Object System.Drawing.Bitmap $bw, $bh
@@ -138,14 +148,37 @@ try {
   let size = sizeWindow(width, height)
   await sleep(500)
   const needed = await js('document.documentElement.scrollHeight')
-  if (needed > height) { size = sizeWindow(width, needed); await sleep(500) }
+  if (needed > height && !stage) { size = sizeWindow(width, needed); await sleep(500) }
 
   // Output, by the knob's own keys (1 dB a step from -40), then the riff with the example capture.
   const key = (k) => `document.querySelector('.knob[data-param="outputDB"]').dispatchEvent(new KeyboardEvent('keydown', { key: '${k}', bubbles: true }))`
   await js(key('Home'))
   for (let i = 0; i < outputDB + 40; i++) await js(key('ArrowUp'))
   const knob = await js(`document.querySelector('.knob[data-param="outputDB"]').getAttribute('aria-valuenow')`)
-  await js("document.getElementById('play-demo').click()")
+  if (stage) {
+    const { storeLibrary, STORE_RIG } = await import('./store-library.mjs')
+    const libDir = join(work, 'Tones')
+    for (const f of storeLibrary(readFileSync(join(root, 'dist', 'web', 'demo', 'example.nam'), 'utf8'))) {
+      mkdirSync(join(libDir, dirname(f.path)), { recursive: true })
+      writeFileSync(join(libDir, f.path), f.bytes)
+    }
+    await js("document.getElementById('lib-choose').click(); true")
+    const title = 'Choose the folder with your captures and IRs'
+    const user32 = `Add-Type 'using System;using System.Runtime.InteropServices;public static class U{[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr FindWindowW(string c,string t);[DllImport("user32.dll")]public static extern uint GetWindowThreadProcessId(IntPtr h,out uint p);[DllImport("user32.dll")]public static extern bool PostMessageW(IntPtr h,uint m,IntPtr w,IntPtr l);[DllImport("user32.dll")]public static extern bool IsWindow(IntPtr h);[DllImport("user32.dll")]public static extern IntPtr GetDlgItem(IntPtr d,int i);[DllImport("user32.dll",CharSet=CharSet.Unicode)]public static extern IntPtr SendMessageW(IntPtr h,uint m,IntPtr w,string l);}';`
+    // the Folder box (1152) takes the path and "Use this folder" (1) is clicked, as packaging/windows/check.mjs does
+    const picked = spawnSync('pwsh', ['-NoProfile', '-Command', `${user32} for ($i = 0; $i -lt 50; $i++) { $h = [U]::FindWindowW('#32770', '${title}'); if ($h -ne [IntPtr]::Zero) { $p = 0; [void][U]::GetWindowThreadProcessId($h, [ref]$p); if ($p -eq ${app.pid}) { break } }; $h = [IntPtr]::Zero; Start-Sleep -Milliseconds 100 }
+      if ($h -eq [IntPtr]::Zero) { 'no dialog'; return }
+      [void][U]::SendMessageW([U]::GetDlgItem($h, 1152), 0x000C, [IntPtr]::Zero, '${libDir.replace(/'/g, "''")}')
+      [void][U]::PostMessageW([U]::GetDlgItem($h, 1), 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+      for ($i = 0; $i -lt 40 -and [U]::IsWindow($h); $i++) { Start-Sleep -Milliseconds 100 }
+      if ([U]::IsWindow($h)) { [void][U]::PostMessageW($h, 0x0111, [IntPtr]2, [IntPtr]::Zero); 'still open' } else { 'picked' }`], { encoding: 'utf8' }).stdout.trim()
+    if (picked !== 'picked') throw new Error(`the folder dialog: ${picked}`)
+    await js(readFileSync(join(import.meta.dirname, 'store-stage.js'), 'utf8') + '; true')
+    console.log('staged:', await js(`rigStage(${JSON.stringify(STORE_RIG)}).then(JSON.stringify)`))
+    await sleep(800) // the app's sizes settle with the board and the pads drawn
+  } else {
+    await js("document.getElementById('play-demo').click()")
+  }
   await until("document.getElementById('status-text').textContent.startsWith('Demo riff')", 30000, 'the demo riff')
   await js('document.activeElement?.blur(); true') // no focus ring in the picture
   // Fired on a loud moment: the app's own meter messages (linear peaks), after two seconds for the energy to build.
